@@ -20,9 +20,11 @@ def run_tests():
     )
 
     storage.test()
+    config.test()
 
 def cleanup():
     storage.cleanup()
+    config.cleanup()
 
 if __name__ == "__main__":
     run_tests()

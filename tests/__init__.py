@@ -1,1 +1,1 @@
-__all__ = ["storage"]
+__all__ = ["storage", "config"]
