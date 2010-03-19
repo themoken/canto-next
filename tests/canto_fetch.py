@@ -30,10 +30,10 @@ def test_good_fetch_test():
         return 0
 
     # Make sure we got non-None parsed output.
-    feed = cfg.feeds[0]
-    if not feed.feedparsed:
-        log.debug("failed to get feedparser output!")
-        return 0
+    for feed in cfg.feeds:
+        if not feed.feedparsed:
+            log.debug("failed to get feedparser output!")
+            return 0
 
     return 1
 
