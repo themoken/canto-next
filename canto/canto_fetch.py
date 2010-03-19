@@ -31,6 +31,25 @@ class CantoFetchThread(Thread):
         except Exception, e:
             log.info("ERROR: try to parse %s, got %s" % (self.feed.URL, e))
             self.feed.feedparsed = None
+            return
+
+        # Interpret feedparser's bozo_exception, if there was an
+        # error that resulted in no content, it's the same as
+        # any other broken feed.
+
+        if "bozo_exception" in self.feed.feedparsed:
+            if self.feed.feedparsed["bozo_exception"] == urllib2.URLError:
+                log.info("ERROR: couldn't grab %s : %s" %\
+                        (self.feed.URL,\
+                        self.feed.feedparsed["bozo_exception"].reason))
+                self.feed.feedparsed = None
+                return
+            elif len(self.feed.feedparsed["entries"]) == 0:
+                log.info("No content in %s: %s" %\
+                        (self.feed.URL,\
+                        self.feed.feedparsed["bozo_exception"]))
+                self.feed.feedparsed = None
+                return
 
         log.info("Parsed %s" % self.feed.URL)
 
