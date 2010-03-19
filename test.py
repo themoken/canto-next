@@ -21,5 +21,9 @@ def run_tests():
 
     storage.test()
 
+def cleanup():
+    storage.cleanup()
+
 if __name__ == "__main__":
     run_tests()
+    cleanup()

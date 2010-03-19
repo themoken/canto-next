@@ -48,3 +48,9 @@ def test():
 
     print "SHELF TEST PASSED"
     return 1
+
+def cleanup():
+    try:
+        os.unlink(TEST_SHELF)
+    except:
+        pass
