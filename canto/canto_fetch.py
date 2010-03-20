@@ -66,20 +66,29 @@ class CantoFetch():
         self.shelf = shelf
         self.feeds = feeds
 
+    def needs_update(self, feed):
+        needs_update = True
+
+        self.shelf.open()
+        if feed.URL in self.shelf:
+            f = self.shelf[feed.URL]
+
+            # If not enough time has passed, don't bother
+            # starting up a thread.
+            passed = time.time() - f["canto_update"]
+            if passed < feed.rate * 60:
+                log.debug("Not enough time passed on %s (only %sm)" %
+                        (feed.URL, passed / 60))
+                needs_update = False
+
+        self.shelf.close()
+        return needs_update
+
     def fetch(self):
         self.threads = []
         for feed in self.feeds:
-            if feed.URL in self.shelf:
-                f = self.shelf[feed.URL]
-
-                # If not enough time has passed, don't bother
-                # starting up a thread.
-                passed = time.time() - f["canto_update"]
-                if passed < feed.rate * 60:
-                    log.debug("Not enough time passed on %s (only %sm)" %
-                            (feed.URL, passed / 60))
-                    continue
-
+            if not self.needs_update(feed):
+                continue
             thread = CantoFetchThread(feed)
             thread.start()
             log.debug("Started thread for feed %s" % feed.URL)
@@ -93,4 +102,6 @@ class CantoFetch():
             if not feed.feedparsed:
                 continue
 
+            self.shelf.open()
             self.shelf[feed.URL] = feed.feedparsed
+            self.shelf.close()

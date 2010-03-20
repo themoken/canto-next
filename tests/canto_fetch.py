@@ -22,6 +22,8 @@ def test_rate():
     cfg = config.CantoConfig("tests/good/fetch-test.conf", shelf)
     cfg.parse()
 
+    shelf.open()
+
     # This feed shouldn't get updated.
     f = shelf[cfg.feeds[0].URL]
     f["canto_update"] = time.time() - (cfg.feeds[0].rate - 1) * 60
@@ -31,6 +33,8 @@ def test_rate():
     f = shelf[cfg.feeds[1].URL]
     f["canto_update"] = time.time() - (cfg.feeds[1].rate + 1) * 60
     shelf[cfg.feeds[1].URL] = f
+
+    shelf.close()
 
     fetch = canto_fetch.CantoFetch(shelf, cfg.feeds)
     fetch.fetch()

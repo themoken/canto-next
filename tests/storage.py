@@ -21,6 +21,7 @@ def test():
 
     # Grab new, empty test shelf
     shelf = storage.CantoShelf(TEST_SHELF)
+    shelf.open()
 
     # Test  __contains__ fail
     if "test" in shelf:
@@ -46,6 +47,7 @@ def test():
         log.debug("just deleted key still in shelf!?")
         return 0
 
+    shelf.close()
     print "SHELF TEST PASSED"
     return 1
 
