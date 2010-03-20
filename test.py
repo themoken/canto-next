@@ -22,11 +22,13 @@ def run_tests():
     storage.test()
     config.test()
     canto_fetch.test()
+    format.test()
 
 def cleanup():
     storage.cleanup()
     config.cleanup()
     canto_fetch.cleanup()
+    format.cleanup()
 
 if __name__ == "__main__":
     run_tests()

@@ -1,1 +1,1 @@
-__all__ = ["storage", "config", "canto_fetch"]
+__all__ = ["storage", "config", "canto_fetch", "format"]
