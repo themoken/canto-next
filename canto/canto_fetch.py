@@ -11,6 +11,7 @@ from threading import Thread
 import feedparser
 import urllib2
 import logging
+import time
 
 log = logging.getLogger("CANTO-FETCH")
 
@@ -51,6 +52,13 @@ class CantoFetchThread(Thread):
                 self.feed.feedparsed = None
                 return
 
+            # Replace it if we ignore it, since exceptions
+            # are not pickle-able.
+            self.feed.feedparsed["bozo_exception"] = None
+
+        # Update timestamp
+        self.feed.feedparsed["canto_update"] = time.time()
+
         log.info("Parsed %s" % self.feed.URL)
 
 class CantoFetch():
@@ -59,12 +67,30 @@ class CantoFetch():
         self.feeds = feeds
 
     def fetch(self):
-        threads = []
+        self.threads = []
         for feed in self.feeds:
+            if feed.URL in self.shelf:
+                f = self.shelf[feed.URL]
+
+                # If not enough time has passed, don't bother
+                # starting up a thread.
+                passed = time.time() - f["canto_update"]
+                if passed < feed.rate * 60:
+                    log.debug("Not enough time passed on %s (only %sm)" %
+                            (feed.URL, passed / 60))
+                    continue
+
             thread = CantoFetchThread(feed)
             thread.start()
             log.debug("Started thread for feed %s" % feed.URL)
-            threads.append(thread)
+            self.threads.append((thread, feed))
 
-        for thread in threads:
+    def process(self):
+        for thread, feed in self.threads:
             thread.join()
+
+            # Skip any errored feeds
+            if not feed.feedparsed:
+                continue
+
+            self.shelf[feed.URL] = feed.feedparsed
