@@ -9,111 +9,83 @@
 
 from canto import config, storage, canto_fetch
 import threading
-import logging
+import unittest
 import time
-
-log = logging.getLogger("CF-TEST")
+import os
 
 FEED_SHELF = "feed.shelf"
 
-def test_rate():
-    shelf = storage.CantoShelf(FEED_SHELF)
+class Tests(unittest.TestCase):
 
-    cfg = config.CantoConfig("tests/good/fetch-test.conf", shelf)
-    cfg.parse()
+    def fresh_fetch(self, config_path):
+        if os.path.exists(FEED_SHELF):
+            os.unlink(FEED_SHELF)
 
-    shelf.open()
+        self.shelf = storage.CantoShelf(FEED_SHELF)
 
-    # This feed shouldn't get updated.
-    f = shelf[cfg.feeds[0].URL]
-    f["canto_update"] = time.time() - (cfg.feeds[0].rate - 1) * 60
-    shelf[cfg.feeds[0].URL] = f
+        self.cfg = config.CantoConfig(config_path, self.shelf)
+        self.cfg.parse()
 
-    # This feed should get updates.
-    f = shelf[cfg.feeds[1].URL]
-    f["canto_update"] = time.time() - (cfg.feeds[1].rate + 1) * 60
-    shelf[cfg.feeds[1].URL] = f
+        self.fetch = canto_fetch.CantoFetch(self.shelf, self.cfg.feeds)
+        self.fetch.fetch()
+        self.fetch.process()
 
-    shelf.close()
+    def test_good_fetch(self):
+        self.fresh_fetch("tests/good/fetch-test.conf")
 
-    fetch = canto_fetch.CantoFetch(shelf, cfg.feeds)
-    fetch.fetch()
+        # Make sure only the main "thread" is running.
+        self.assert_(not threading.activeCount() > 1)
 
-    # Make sure we're done with them all.
-    for thread, feed in fetch.threads:
-        thread.join()
+        # Make sure we got non-None parsed output.
+        self.shelf.open()
+        for feed in self.cfg.feeds:
+            self.assert_(feed.URL in self.shelf)
+        self.shelf.close()
 
-    if hasattr(cfg.feeds[0], "feedparsed"):
-        log.debug("Feed updated too quickly!")
-        return 0
+    def test_bad_fetch(self):
+        self.fresh_fetch("tests/bad/fetch-test.conf")
 
-    if not hasattr(cfg.feeds[1], "feedparsed"):
-        log.debug("Feed not updated fast enough!")
-        return 0
+        # Make sure only the main "thread" is running.
+        self.assert_(threading.activeCount() == 1)
 
-    return 1
+        # Make sure the bad feed didn't get parsed somehow
+        self.shelf.open()
+        for feed in self.cfg.feeds:
+            self.assert_(feed.URL not in self.shelf)
+        self.shelf.close()
 
-def test_good_fetch_test():
-    shelf = storage.CantoShelf(FEED_SHELF)
+    def test_rate(self):
+        self.fresh_fetch("tests/good/fetch-test.conf")
 
-    cfg = config.CantoConfig("tests/good/fetch-test.conf", shelf)
-    cfg.parse()
+        self.shelf.open()
 
-    fetch = canto_fetch.CantoFetch(shelf, cfg.feeds)
-    fetch.fetch()
-    fetch.process()
+        # This feed shouldn't get updated.
+        unupdated_time = time.time() - (self.cfg.feeds[0].rate - 1) * 60
 
-    # Make sure only the main "thread" is running.
-    if threading.activeCount() > 1:
-        log.debug("fetch returned, threads still active!")
-        return 0
+        f = self.shelf[self.cfg.feeds[0].URL]
+        f["canto_update"] = unupdated_time
+        self.shelf[self.cfg.feeds[0].URL] = f
 
-    # Make sure we got non-None parsed output.
-    for feed in cfg.feeds:
-        # Skip not-updated feeds
-        if not hasattr(feed, "feedparsed"):
-            continue
+        # This feed should get updates.
+        updated_time = time.time() - (self.cfg.feeds[1].rate + 1) * 60
 
-        if not feed.feedparsed:
-            log.debug("failed to get feedparser output!")
-            return 0
+        f = self.shelf[self.cfg.feeds[1].URL]
+        f["canto_update"] = updated_time
+        self.shelf[self.cfg.feeds[1].URL] = f
 
-    return 1
+        fetch = canto_fetch.CantoFetch(self.shelf, self.cfg.feeds)
+        fetch.fetch()
+        fetch.process()
 
-def test_bad_fetch_test():
-    shelf = storage.CantoShelf(FEED_SHELF)
+        # Make sure the expired feed has been updated and that
+        # the more recent feed has not.
 
-    cfg = config.CantoConfig("tests/bad/fetch-test.conf", shelf)
-    cfg.parse()
+        self.assert_(self.shelf[self.cfg.feeds[0].URL]["canto_update"] ==\
+                unupdated_time)
+        self.assert_(self.shelf[self.cfg.feeds[1].URL]["canto_update"] !=\
+                updated_time)
+        self.shelf.close()
 
-    fetch = canto_fetch.CantoFetch(shelf, cfg.feeds)
-    fetch.fetch()
-    fetch.process()
-
-    # Make sure only the main "thread" is running.
-    if threading.activeCount() > 1:
-        log.debug("fetch returned, threads still active!")
-        return 0
-
-    feed = cfg.feeds[0]
-    if feed.feedparsed:
-        log.debug("Got feedparser output for bad feed!?")
-        return 0
-
-    return 1
-
-def test():
-    if not test_good_fetch_test():
-        log.debug("FAILED test_good_fetch_test")
-        return
-    if not test_bad_fetch_test():
-        log.debug("FAILED test_bad_fetch_test")
-        return
-    if not test_rate():
-        log.debug("FAILED test_rate")
-        return
-
-    print "CANTO-FETCH TESTS PASSED"
-
-def cleanup():
-    pass
+    def tearDown(self):
+        # Cleanup test shelf.
+        os.unlink(FEED_SHELF)

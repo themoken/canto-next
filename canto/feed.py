@@ -17,3 +17,5 @@ class CantoFeed():
         self.URL = URL
         self.rate = rate
         self.keep = keep
+
+        self.update_contents = None

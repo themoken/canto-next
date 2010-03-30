@@ -27,37 +27,37 @@ class CantoFetchThread(Thread):
 
         # Handle non-password, non-script, non-file URLs
         try:
-            self.feed.feedparsed = feedparser.parse(\
+            self.feed.update_contents = feedparser.parse(\
                     feedparser.urllib2.urlopen(request))
         except Exception, e:
             log.info("ERROR: try to parse %s, got %s" % (self.feed.URL, e))
-            self.feed.feedparsed = None
+            self.feed.update_contents = None
             return
 
         # Interpret feedparser's bozo_exception, if there was an
         # error that resulted in no content, it's the same as
         # any other broken feed.
 
-        if "bozo_exception" in self.feed.feedparsed:
-            if self.feed.feedparsed["bozo_exception"] == urllib2.URLError:
+        if "bozo_exception" in self.feed.update_contents:
+            if self.feed.update_contents["bozo_exception"] == urllib2.URLError:
                 log.info("ERROR: couldn't grab %s : %s" %\
                         (self.feed.URL,\
-                        self.feed.feedparsed["bozo_exception"].reason))
-                self.feed.feedparsed = None
+                        self.feed.update_contents["bozo_exception"].reason))
+                self.feed.update_contents = None
                 return
-            elif len(self.feed.feedparsed["entries"]) == 0:
+            elif len(self.feed.update_contents["entries"]) == 0:
                 log.info("No content in %s: %s" %\
                         (self.feed.URL,\
-                        self.feed.feedparsed["bozo_exception"]))
-                self.feed.feedparsed = None
+                        self.feed.update_contents["bozo_exception"]))
+                self.feed.update_contents = None
                 return
 
             # Replace it if we ignore it, since exceptions
             # are not pickle-able.
-            self.feed.feedparsed["bozo_exception"] = None
+            self.feed.update_contents["bozo_exception"] = None
 
         # Update timestamp
-        self.feed.feedparsed["canto_update"] = time.time()
+        self.feed.update_contents["canto_update"] = time.time()
 
         log.info("Parsed %s" % self.feed.URL)
 
@@ -99,9 +99,10 @@ class CantoFetch():
             thread.join()
 
             # Skip any errored feeds
-            if not feed.feedparsed:
+            if not feed.update_contents:
                 continue
 
             self.shelf.open()
-            self.shelf[feed.URL] = feed.feedparsed
+            self.shelf[feed.URL] = feed.update_contents
             self.shelf.close()
+            feed.update_contents = None

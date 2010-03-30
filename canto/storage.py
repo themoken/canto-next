@@ -15,6 +15,7 @@ log = logging.getLogger("SHELF")
 class CantoShelf():
     def __init__(self, filename):
         self.filename = filename
+        self.refs = 0
 
     def __setitem__(self, name, value):
         log.debug("Set shelf[%s] = %s" % (name, value))
@@ -38,10 +39,19 @@ class CantoShelf():
         log.debug("deleted %s from shelf" % name)
 
     def open(self, *args):
-        log.debug("opened shelf")
-        self.shelf = shelve.open(self.filename, *args)
+        if not self.refs:
+            log.debug("opened shelf")
+            self.shelf = shelve.open(self.filename, *args)
+        else:
+            log.debug("incrementing shelf refs")
+        self.refs += 1
 
     def close(self):
-        log.debug("closed shelf")
-        self.shelf.close()
-        self.shelf = None
+        if self.refs == 1:
+            log.debug("closed shelf")
+            self.shelf.close()
+            self.shelf = None
+        else:
+            log.debug("decrementing shelf refs / sync")
+            self.shelf.sync()
+        self.refs -= 1

@@ -8,28 +8,35 @@
 #   it under the terms of the GNU General Public License version 2 as 
 #   published by the Free Software Foundation.
 
-from tests import *
+import tests.encoding
+import tests.canto_fetch
+import tests.storage
+import tests.config
+import tests.format
+
 import logging
+import unittest
 
-def run_tests():
-    logging.basicConfig(
-        filemode = "w",
-        format = "%(asctime)s : %(name)s -> %(message)s",
-        datefmt = "%H:%M:%S",
-        level = logging.DEBUG
-    )
-
-    storage.test()
-    config.test()
-    canto_fetch.test()
-    format.test()
-
-def cleanup():
-    storage.cleanup()
-    config.cleanup()
-    canto_fetch.cleanup()
-    format.cleanup()
+logging.basicConfig(
+    filemode = "w",
+    format = "%(asctime)s : %(name)s -> %(message)s",
+    datefmt = "%H:%M:%S",
+    level = logging.DEBUG
+)
 
 if __name__ == "__main__":
-    run_tests()
-    cleanup()
+    alltests = [tests.encoding.Tests('test_defaults'),
+                tests.encoding.Tests('test_set_encoding'),
+                tests.canto_fetch.Tests('test_good_fetch'),
+                tests.canto_fetch.Tests('test_bad_fetch'),
+                tests.canto_fetch.Tests('test_rate'),
+                tests.storage.Tests('test_basic_storage'),
+                tests.config.Tests('test_good_basic'),
+                tests.config.Tests('test_bad_basic'),
+                tests.format.Tests('test_basic_substitution'),
+                tests.format.Tests('test_escape'),
+                tests.format.Tests('test_unmapped_escape'),
+                tests.format.Tests('test_missing_mapping')]
+    suite = unittest.TestSuite()
+    suite.addTests(alltests)
+    unittest.TextTestRunner(verbosity=2).run(suite)

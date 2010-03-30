@@ -7,77 +7,44 @@
 #   it under the terms of the GNU General Public License version 2 as 
 #   published by the Free Software Foundation.
 
-from canto import config
-import logging
-
-log = logging.getLogger("TEST-SHELF")
+from canto import config, storage
+import unittest
 
 FEED_SHELF="feed.shelf"
 
-def test_good_basic():
-    # Test basic config
-    cfg = config.CantoConfig("tests/good/basic.conf", FEED_SHELF)
-    cfg.parse()
+class Tests(unittest.TestCase):
 
-    feed = cfg.feeds[0]
+    def fresh_parse(self, config_path):
+        # Shelf should be unused...
+        self.shelf = storage.CantoShelf(FEED_SHELF)
+        self.cfg = config.CantoConfig(config_path, self.shelf)
+        self.cfg.parse()
 
-    # Correct URL
-    if feed.URL != "http://science.reddit.com/.rss":
-        log.debug("Got wrong URL in basic.conf!")
-        return 0
+    def test_good_basic(self):
+        self.fresh_parse("tests/good/basic.conf")
+        feed = self.cfg.feeds[0]
 
-    # Rate inherited from defaults
-    if feed.rate != cfg.rate:
-        log.debug("Got wrong rate (non-default): %d", feed.rate)
-        return 0
+        # Right URL
+        self.assert_(feed.URL == "http://science.reddit.com/.rss")
 
-    # Keep overriding default
-    if feed.keep == cfg.keep:
-        log.debug("Got wrong keep (default): %d", feed.keep)
-        return 0
+        # Got rate from config
+        self.assert_(feed.rate == self.cfg.rate)
 
-    if feed.keep != 40:
-        log.debug("Got wrong keep (non-default): %d", feed.keep)
-        return 0
+        # *Didn't* get keep from config
+        self.assert_(feed.keep != self.cfg.keep)
+        self.assert_(feed.keep == 40)
 
-    if cfg.errors:
-        log.debug("Good config but cfg.errors")
-        return 0
+        # No errors in good config
+        self.assert_(not self.cfg.errors)
 
-    return 1
+    def test_bad_basic(self):
+        self.fresh_parse("tests/bad/basic.conf")
 
-def test_bad_basic():
-    # Test basic config
-    cfg = config.CantoConfig("tests/bad/basic.conf", FEED_SHELF)
+        # Make sure non of the invalid feeds made it through
+        self.assert_(not self.cfg.feeds)
 
-    cfg.parse()
+        # Make sure we fell back to default for malformed.
+        self.assert_(type(self.cfg.rate) == int)
 
-    # Make sure non of the invalid feeds made it through
-    if cfg.feeds:
-        log.debug("Got feeds despite no URL!")
-        return 0
-
-    # Make sure we fell back to default for malformed.
-    if type(cfg.rate) != int:
-        log.debug("Rate poisoned.")
-        return 0
-
-    # Make sure cfg.errors is set
-    if not cfg.errors:
-        log.debug("Bad config, but !cfg.errors")
-        return 0
-
-    return 1
-
-def test():
-    if not test_good_basic():
-        log.debug("FAILED test_good_basic")
-        return
-    if not test_bad_basic():
-        log.debug("FAILED test_bad_basic")
-        return
-
-    print "CONFIG TESTS PASSED"
-
-def cleanup():
-    pass
+        # Make sure cfg.errors is set
+        self.assert_(self.cfg.errors)

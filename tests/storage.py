@@ -8,51 +8,53 @@
 #   published by the Free Software Foundation.
 
 from canto import storage
-import logging
+import unittest
 import os
 
-log = logging.getLogger("TEST-SHELF")
-
 TEST_SHELF = "test.shelf"
-def test():
-    # Eliminate old test shelf
-    if os.path.exists(TEST_SHELF):
+
+class Tests(unittest.TestCase):
+
+    def setUp(self):
+        # Eliminate old test shelf
+        if os.path.exists(TEST_SHELF):
+            os.unlink(TEST_SHELF)
+
+        # Grab new, empty test shelf
+        self.shelf = storage.CantoShelf(TEST_SHELF)
+
+    def test_basic_storage(self):
+        # Test initial ref counting
+        self.shelf.open()
+        self.assert_(self.shelf.refs == 1)
+
+        # Test second ref
+        self.shelf.open()
+        self.assert_(self.shelf.refs == 2)
+
+        # Test  __contains__ fail
+        self.assert_("test" not in self.shelf)
+
+        # Test __setitem__
+        self.shelf["test"] = "123"
+
+        # Test ref counting close
+        self.shelf.close()
+        self.assert_(self.shelf.refs == 1)
+
+        # Test __contains__ pass
+        self.assert_("test" in self.shelf)
+
+        # Test __getitem__
+        self.assert_(self.shelf["test"] == "123")
+
+        # Test __delitem__
+        del self.shelf["test"]
+
+        self.assert_("test" not in self.shelf)
+
+        self.shelf.close()
+        self.assert_(self.shelf.refs == 0)
+
+    def tearDown(self):
         os.unlink(TEST_SHELF)
-
-    # Grab new, empty test shelf
-    shelf = storage.CantoShelf(TEST_SHELF)
-    shelf.open()
-
-    # Test  __contains__ fail
-    if "test" in shelf:
-        log.debug("key in empty shelf!?")
-        return 0
-
-    # Test __setitem__
-    shelf["test"] = "123"
-
-    # Test __getitem__
-    if shelf["test"] != "123":
-        log.debug("value differs from just inserted value!")
-        return 0
-
-    if "test" not in shelf:
-        log.debug("just inserted key not in shelf!?")
-        return 0
-
-    # Test __delitem__
-    del shelf["test"]
-
-    if "test" in shelf:
-        log.debug("just deleted key still in shelf!?")
-        return 0
-
-    shelf.close()
-    print "SHELF TEST PASSED"
-    return 1
-
-def cleanup():
-    try:
-        os.unlink(TEST_SHELF)
-    except:
-        pass

@@ -7,8 +7,6 @@
 #   it under the terms of the GNU General Public License version 2 as 
 #   published by the Free Software Foundation.
 
-import logging
-
 def get_formatter(fmt, keys):
     l = len(fmt)
     def formatter(dct):
