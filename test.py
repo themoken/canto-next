@@ -13,7 +13,8 @@ import tests.canto_fetch
 import tests.storage
 import tests.config
 import tests.format
-
+import tests.protocol
+import tests.comm
 import logging
 import unittest
 
@@ -36,7 +37,10 @@ if __name__ == "__main__":
                 tests.format.Tests('test_basic_substitution'),
                 tests.format.Tests('test_escape'),
                 tests.format.Tests('test_unmapped_escape'),
-                tests.format.Tests('test_missing_mapping')]
+                tests.format.Tests('test_missing_mapping'),
+                tests.protocol.Tests('test_socket_creation'),
+                tests.protocol.Tests('test_parser'),
+                tests.comm.Tests('test_communication')]
     suite = unittest.TestSuite()
     suite.addTests(alltests)
     unittest.TextTestRunner(verbosity=2).run(suite)
