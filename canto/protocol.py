@@ -84,7 +84,7 @@ class CantoSocket:
     # 2) None, if there was not enough data read.
     # 3) select.POLLHUP if the connection is dead.
 
-    def do_read(self, conn):
+    def do_read(self, conn, timeout=None):
 
         if self.fragment and PROTO_TERMINATOR in self.fragment:
             return self.parse(self.fragment)
@@ -93,7 +93,7 @@ class CantoSocket:
         self.read_mode(poll, conn)
 
         # We only care about the first (only) descriptor's event
-        p = poll.poll()
+        p = poll.poll(timeout)
         if not p:
             return
         e = p[0][1]

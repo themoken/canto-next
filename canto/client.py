@@ -25,8 +25,8 @@ class CantoClient(CantoSocket):
         self.do_write(self.conn, cmd, args)
 
     # Read a (cmd, args)
-    def read(self):
-        r = self.do_read(self.conn)
+    def read(self, timeout=None):
+        r = self.do_read(self.conn, timeout)
         if r == select.POLLHUP:
             self.hupped = 1
         return r

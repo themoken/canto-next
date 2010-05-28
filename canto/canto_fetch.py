@@ -1,3 +1,4 @@
+#!/usr/bin/python
 # -*- coding: utf-8 -*-
 
 #Canto - ncurses RSS reader
@@ -106,3 +107,19 @@ class CantoFetch():
             self.shelf[feed.URL] = feed.update_contents
             self.shelf.close()
             feed.update_contents = None
+
+if __name__ == "__main__":
+    from storage import CantoShelf
+    from config import CantoConfig
+    import os
+
+    shelf = CantoShelf(os.path.expanduser("~/.canto-ng/feeds"))
+    cfg = CantoConfig(os.path.expanduser("~/.canto-ng/conf"), shelf)
+    cfg.parse()
+
+    fetch = CantoFetch(shelf, cfg.feeds)
+
+    while 1:
+        fetch.fetch()
+        fetch.process()
+        time.sleep(60)
