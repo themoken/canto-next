@@ -8,8 +8,6 @@
 #   it under the terms of the GNU General Public License version 2 as 
 #   published by the Free Software Foundation.
 
-from subprocess import Popen, PIPE
-
 import tests.encoding
 import tests.canto_fetch
 import tests.storage

@@ -1,6 +1,4 @@
-#!/usr/bin/python
 # -*- coding: utf-8 -*-
-
 #Canto - ncurses RSS reader
 #   Copyright (C) 2010 Jack Miller <jack@codezen.org>
 #
@@ -25,9 +23,7 @@ logging.basicConfig(
         level = logging.DEBUG
 )
 
-log = logging.getLogger("CANTO-BACKEND")
-
-SOCKET_NAME=".canto_socket"
+log = logging.getLogger("CANTO-DAEMON")
 
 class CantoBackend(CantoServer):
 
@@ -44,7 +40,8 @@ class CantoBackend(CantoServer):
         if self.ensure_paths():
             sys.exit(-1)
 
-        CantoServer.__init__(self, SOCKET_NAME, Queue.Queue())
+        CantoServer.__init__(self, self.conf_dir + "/.canto_socket",\
+                Queue.Queue())
 
     def pong(self, socket, args):
         self.write(socket, "PONG", "")
@@ -102,17 +99,13 @@ class CantoBackend(CantoServer):
     def start(self):
         self.init()
         try:
-            back.run()
+            self.run()
         except KeyboardInterrupt:
             pass
-        except:
-            tb = traceback.format_stack()
+        except Exception, e:
+            tb = traceback.format_exc(e)
             log.error("Exiting on exception:")
             log.error("\n" + "".join(tb))
             return -1
-        back.exit()
+        self.exit()
         sys.exit(0)
-
-if __name__ == "__main__":
-    back = CantoBackend()
-    back.start()

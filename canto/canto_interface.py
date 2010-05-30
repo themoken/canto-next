@@ -1,6 +1,4 @@
-#!/usr/bin/python
 # -*- coding: utf-8 -*-
-
 #Canto - ncurses RSS reader
 #   Copyright (C) 2010 Jack Miller <jack@codezen.org>
 #
@@ -10,13 +8,12 @@
 
 from client import CantoClient
 from threading import Thread
-
-
-SOCKET_NAME=".canto_socket"
+import os
 
 class CantoInterface(CantoClient):
     def __init__(self):
-        CantoClient.__init__(self, SOCKET_NAME)
+        CantoClient.__init__(self, os.getenv("HOME") +
+            "/.canto-ng/.canto_socket")
         self.response_alive = False
 
     def response_thread(self):
@@ -33,7 +30,7 @@ class CantoInterface(CantoClient):
         thread.start()
 
         while not self.hupped:
-            cmd = raw_input("> ")
+            cmd = raw_input("")
 
             # Special command, wait for response...
             if cmd == "wait":
@@ -54,7 +51,3 @@ class CantoInterface(CantoClient):
 
         self.response_alive = False
         thread.join()
-
-if __name__ == "__main__":
-    interface = CantoInterface()
-    interface.run()
