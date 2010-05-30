@@ -18,6 +18,7 @@ import logging
 import getopt
 import Queue
 import fcntl
+import time
 import sys
 import os
 
@@ -67,6 +68,7 @@ class CantoBackend(CantoServer):
                 if cmd == "PING":
                     self.pong(socket, args)
             self.check_conns()
+            time.sleep(100)
 
     # This function parses and validates all of the command line arguments.
     def args(self, args=None):
