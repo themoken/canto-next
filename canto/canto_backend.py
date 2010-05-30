@@ -15,6 +15,7 @@ from encoding import encoder, decoder
 
 import traceback
 import logging
+import signal
 import getopt
 import Queue
 import fcntl
@@ -38,6 +39,11 @@ class CantoBackend(CantoServer):
         pass
 
     def init(self):
+        # Signal handlers
+        self.alarmed = 0
+        signal.signal(signal.SIGALRM, self.sig_alrm)
+        signal.alarm(1)
+
         # No bad arguments.
         if self.args():
             sys.exit(-1)
@@ -68,6 +74,11 @@ class CantoBackend(CantoServer):
                 if cmd == "PING":
                     self.pong(socket, args)
             self.check_conns()
+
+            if self.alarmed:
+                log.debug("Alarmed.")
+                self.alarmed = False
+
             time.sleep(100)
 
     # This function parses and validates all of the command line arguments.
@@ -92,6 +103,10 @@ class CantoBackend(CantoServer):
         log.debug("conf_dir = %s" % self.conf_dir)
         
         return 0
+
+    def sig_alrm(self, a, b):
+        self.alarmed = 1
+        signal.alarm(1)
 
     # This function makes sure that the configuration paths are all R/W or
     # creatable.
