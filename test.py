@@ -8,6 +8,8 @@
 #   it under the terms of the GNU General Public License version 2 as 
 #   published by the Free Software Foundation.
 
+from subprocess import Popen, PIPE
+
 import tests.encoding
 import tests.canto_fetch
 import tests.storage
@@ -15,8 +17,10 @@ import tests.config
 import tests.format
 import tests.protocol
 import tests.comm
+import tests.backend
 import logging
 import unittest
+import sys
 
 logging.basicConfig(
     filemode = "w",
@@ -40,7 +44,9 @@ if __name__ == "__main__":
                 tests.format.Tests('test_missing_mapping'),
                 tests.protocol.Tests('test_socket_creation'),
                 tests.protocol.Tests('test_parser'),
-                tests.comm.Tests('test_communication')]
+                tests.comm.Tests('test_communication'),
+                tests.backend.Tests('test_args'),
+                tests.backend.Tests('test_perms')]
     suite = unittest.TestSuite()
     suite.addTests(alltests)
     unittest.TextTestRunner(verbosity=2).run(suite)
