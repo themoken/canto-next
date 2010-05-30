@@ -104,7 +104,7 @@ class CantoBackend(CantoServer):
         return self.ensure_files()
 
     def ensure_files(self):
-        for f in [ "feeds", "conf", "log" ]:
+        for f in [ "feeds", "conf", "log", "pid"]:
             p = self.conf_dir + "/" + f
             if os.path.exists(p):
                 if not os.path.isfile(p):
