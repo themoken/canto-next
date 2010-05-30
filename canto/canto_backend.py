@@ -9,6 +9,8 @@
 # This Backend class is the core of the daemon's specific protocol.
 
 from server import CantoServer
+from config import CantoConfig
+from storage import CantoShelf
 from encoding import encoder, decoder
 
 import traceback
@@ -35,17 +37,20 @@ class CantoBackend(CantoServer):
         pass
 
     def init(self):
-        # Bad arguments.
+        # No bad arguments.
         if self.args():
             sys.exit(-1)
 
-        # Invalid paths.
+        # No invalid paths.
         if self.ensure_paths():
             sys.exit(-1)
 
         # Get pid lock
         if self.pid_lock():
             sys.exit(-1)
+
+        self.get_storage()
+        self.get_config()
 
         CantoServer.__init__(self, self.conf_dir + "/.canto_socket",\
                 Queue.Queue())
@@ -140,9 +145,22 @@ class CantoBackend(CantoServer):
         fcntl.flock(self.pidfile.fileno(), fcntl.LOCK_UN)
         self.pidfile.close()
 
+    # Bring up storage, the only errors possible at this point are 
+    # fatal and handled lower in CantoShelf.
+
+    def get_storage(self):
+        self.shelf = CantoShelf(self.conf_dir + "/feeds")
+
+    # Bring up config, the only errors possible at this point will
+    # be fatal and handled lower in CantoConfig.
+
+    def get_config(self):
+        self.conf = CantoConfig(self.conf_dir + "/conf", self.shelf)
+        self.conf.parse()
+
     def start(self):
-        self.init()
         try:
+            self.init()
             self.run()
 
         # Cleanly shutdown on ^C.
