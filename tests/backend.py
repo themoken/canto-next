@@ -53,3 +53,15 @@ class Tests(unittest.TestCase):
         self.assertTrue(os.path.exists(cpath))
         shutil.rmtree(cpath)
         self.assertFalse(os.path.exists(cpath))
+
+        fpath = os.getenv("PWD") + "/tests/perms/bad-files"
+        b.args(["-D", fpath])
+        self.assertEqual(b.ensure_paths(), None)
+
+        for f in [ "feeds", "conf", "log" ]:
+            os.chmod(fpath + "/" + f, 0222)
+            self.assertEqual(b.ensure_paths(), -1)
+            os.chmod(fpath + "/" + f, 0444)
+            self.assertEqual(b.ensure_paths(), -1)
+            os.chmod(fpath + "/" + f, 0666)
+            self.assertEqual(b.ensure_paths(), None)

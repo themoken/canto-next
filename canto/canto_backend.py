@@ -64,8 +64,7 @@ class CantoBackend(CantoServer):
             args = sys.argv[1:]
 
         try:
-            optlist = getopt.getopt(args, 'D:i',\
-                    ["dir=", "initonly"])[0]
+            optlist = getopt.getopt(args, 'D:', ["dir="])[0]
         except getopt.GetoptError, e:
             log.error("Error: %s" % e.msg)
             return -1
@@ -79,27 +78,43 @@ class CantoBackend(CantoServer):
                 self.conf_dir = os.path.realpath(self.conf_dir)
 
         log.debug("conf_dir = %s" % self.conf_dir)
-
+        
         return 0
 
-    # This function makes sure that each directory both exists and is R/Wable.
+    # This function makes sure that the configuration paths are all R/W or
+    # creatable.
+
     def ensure_paths(self):
-        for p in [self.conf_dir]:
+        if os.path.exists(self.conf_dir):
+            if not os.path.isdir(self.conf_dir):
+                log.error("Error: %s is not a directory." % self.conf_dir)
+                return -1
+            if not os.access(self.conf_dir, os.R_OK):
+                log.error("Error: %s is not readable." % self.conf_dir)
+                return -1
+            if not os.access(self.conf_dir, os.W_OK):
+                log.error("Error: %s is not writable." % self.conf_dir)
+                return -1
+        else:
+            try:
+                os.makedirs(self.conf_dir)
+            except e:
+                log.error("Exception making %s : %s" % (self.conf_dir, e.msg))
+                return -1
+        return self.ensure_files()
+
+    def ensure_files(self):
+        for f in [ "feeds", "conf", "log" ]:
+            p = self.conf_dir + "/" + f
             if os.path.exists(p):
-                if not os.path.isdir(p):
-                    log.error("Error: %s is not a directory." % p)
+                if not os.path.isfile(p):
+                    log.error("Error: %s is not a file." % p)
                     return -1
                 if not os.access(p, os.R_OK):
                     log.error("Error: %s is not readable." % p)
                     return -1
                 if not os.access(p, os.W_OK):
                     log.error("Error: %s is not writable." % p)
-                    return -1
-            else:
-                try:
-                    os.makedirs(p)
-                except e:
-                    log.error("Exception making %s : %s" % (p, e.msg))
                     return -1
         return None
 
