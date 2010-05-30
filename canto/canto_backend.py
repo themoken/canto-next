@@ -23,6 +23,7 @@ import time
 import sys
 import os
 
+# By default this will log to stderr.
 logging.basicConfig(
         filemode = "w",
         format = "%(asctime)s : %(name)s -> %(message)s",
@@ -125,7 +126,9 @@ class CantoBackend(CantoServer):
             if opt in ["-D", "--dir"]:
                 self.conf_dir = os.path.expanduser(decoder(arg))
                 self.conf_dir = os.path.realpath(self.conf_dir)
-            if opt in ["-v"]:
+
+            # -v increase verbosity
+            elif opt in ["-v"]:
                 self.verbosity += 1
 
         return 0
