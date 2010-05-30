@@ -15,6 +15,7 @@ import traceback
 import logging
 import getopt
 import Queue
+import fcntl
 import sys
 import os
 
@@ -40,6 +41,10 @@ class CantoBackend(CantoServer):
 
         # Invalid paths.
         if self.ensure_paths():
+            sys.exit(-1)
+
+        # Get pid lock
+        if self.pid_lock():
             sys.exit(-1)
 
         CantoServer.__init__(self, self.conf_dir + "/.canto_socket",\
@@ -118,6 +123,20 @@ class CantoBackend(CantoServer):
                     return -1
         return None
 
+    def pid_lock(self):
+        self.pidfile = open(self.conf_dir + "/pid", "a")
+        try:
+            fcntl.flock(self.pidfile.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+            log.debug("Got pid lock.")
+        except:
+            log.error("Error: Another canto-daemon is running here.")
+            return -1
+        return None
+
+    def pid_unlock(self):
+        fcntl.flock(self.pidfile.fileno(), fcntl.LOCK_UN)
+        self.pidfile.close()
+
     def start(self):
         self.init()
         try:
@@ -133,5 +152,7 @@ class CantoBackend(CantoServer):
             log.error("Exiting on exception:")
             log.error("\n" + "".join(tb))
             return -1
+
         self.exit()
+        self.pid_unlock()
         sys.exit(0)

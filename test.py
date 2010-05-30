@@ -44,7 +44,8 @@ if __name__ == "__main__":
                 tests.protocol.Tests('test_parser'),
                 tests.comm.Tests('test_communication'),
                 tests.backend.Tests('test_args'),
-                tests.backend.Tests('test_perms')]
+                tests.backend.Tests('test_perms'),
+                tests.backend.Tests('test_pid_lock')]
     suite = unittest.TestSuite()
     suite.addTests(alltests)
     unittest.TextTestRunner(verbosity=2).run(suite)

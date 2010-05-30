@@ -65,3 +65,18 @@ class Tests(unittest.TestCase):
             self.assertEqual(b.ensure_paths(), -1)
             os.chmod(fpath + "/" + f, 0666)
             self.assertEqual(b.ensure_paths(), None)
+
+    def test_pid_lock(self):
+        b = CantoBackend()
+        c = CantoBackend()
+
+        b.args(["-D", os.getenv("PWD") + "/tests/perms/good"])
+        b.ensure_paths()
+        self.assertEqual(b.pid_lock(), None)
+
+        c.args(["-D", os.getenv("PWD") + "/tests/perms/good"])
+        c.ensure_paths()
+        self.assertEqual(c.pid_lock(), -1)
+
+        b.pid_unlock()
+        self.assertEqual(c.pid_lock(), None)
