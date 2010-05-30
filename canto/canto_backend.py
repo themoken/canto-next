@@ -44,6 +44,12 @@ class CantoBackend(CantoServer):
         signal.signal(signal.SIGALRM, self.sig_alrm)
         signal.alarm(1)
 
+        # Log verbosity
+        # 0 = normal operation
+        # 1 = log all debug messages
+        # 2 = log all debug messages AND signals
+        self.verbosity = 1
+
         # No bad arguments.
         if self.args():
             sys.exit(-1)
@@ -68,9 +74,13 @@ class CantoBackend(CantoServer):
         # Previous to this line, all output is just error messages to stderr.
         self.set_log()
 
+        # Initial log chatter.
         log.info("Canto Daemon started.")
+        if self.verbosity:
+            log.debug("verbosity = %d" % self.verbosity)
         log.debug("conf_dir = %s" % self.conf_dir)
 
+        # Actual start.
         self.get_storage()
         self.get_config()
 
@@ -91,7 +101,8 @@ class CantoBackend(CantoServer):
             self.check_conns()
 
             if self.alarmed:
-                log.debug("Alarmed.")
+                if self.verbosity > 1:
+                    log.debug("Alarmed.")
                 self.alarmed = False
 
             time.sleep(100)
@@ -102,7 +113,7 @@ class CantoBackend(CantoServer):
             args = sys.argv[1:]
 
         try:
-            optlist = getopt.getopt(args, 'D:', ["dir="])[0]
+            optlist = getopt.getopt(args, 'D:v', ["dir="])[0]
         except getopt.GetoptError, e:
             log.error("Error: %s" % e.msg)
             return -1
@@ -114,6 +125,9 @@ class CantoBackend(CantoServer):
             if opt in ["-D", "--dir"]:
                 self.conf_dir = os.path.expanduser(decoder(arg))
                 self.conf_dir = os.path.realpath(self.conf_dir)
+            if opt in ["-v"]:
+                self.verbosity += 1
+
         return 0
 
     def sig_alrm(self, a, b):
