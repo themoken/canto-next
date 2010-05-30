@@ -52,9 +52,24 @@ class CantoBackend(CantoServer):
         if self.ensure_paths():
             sys.exit(-1)
 
-        # Get pid lock
+        # These paths are now guaranteed to valid.
+        # Keep in mind though the above *doesn't* test whether feeds
+        # or conf are *valid*, just that we have permissions on them.
+
+        self.feed_path = self.conf_dir + "/feeds"
+        self.pid_path = self.conf_dir + "/pid"
+        self.log_path = self.conf_dir + "/daemon-log"
+        self.conf_path = self.conf_dir + "/conf"
+
+        # Get pid lock.
         if self.pid_lock():
             sys.exit(-1)
+
+        # Previous to this line, all output is just error messages to stderr.
+        self.set_log()
+
+        log.info("Canto Daemon started.")
+        log.debug("conf_dir = %s" % self.conf_dir)
 
         self.get_storage()
         self.get_config()
@@ -99,9 +114,6 @@ class CantoBackend(CantoServer):
             if opt in ["-D", "--dir"]:
                 self.conf_dir = os.path.expanduser(decoder(arg))
                 self.conf_dir = os.path.realpath(self.conf_dir)
-
-        log.debug("conf_dir = %s" % self.conf_dir)
-        
         return 0
 
     def sig_alrm(self, a, b):
@@ -131,7 +143,7 @@ class CantoBackend(CantoServer):
         return self.ensure_files()
 
     def ensure_files(self):
-        for f in [ "feeds", "conf", "log", "pid"]:
+        for f in [ "feeds", "conf", "daemon-log", "pid"]:
             p = self.conf_dir + "/" + f
             if os.path.exists(p):
                 if not os.path.isfile(p):
@@ -146,10 +158,9 @@ class CantoBackend(CantoServer):
         return None
 
     def pid_lock(self):
-        self.pidfile = open(self.conf_dir + "/pid", "a")
+        self.pidfile = open(self.pid_path, "a")
         try:
             fcntl.flock(self.pidfile.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
-            log.debug("Got pid lock.")
             self.pidfile.seek(0)
             self.pidfile.write("%d" % os.getpid())
             self.pidfile.flush()
@@ -162,17 +173,22 @@ class CantoBackend(CantoServer):
         fcntl.flock(self.pidfile.fileno(), fcntl.LOCK_UN)
         self.pidfile.close()
 
+    # Reset basic log info to log to the right file.
+    def set_log(self):
+        f = open(self.log_path, "w")
+        os.dup2(f.fileno(), sys.stderr.fileno())
+
     # Bring up storage, the only errors possible at this point are 
     # fatal and handled lower in CantoShelf.
 
     def get_storage(self):
-        self.shelf = CantoShelf(self.conf_dir + "/feeds")
+        self.shelf = CantoShelf(self.feed_path)
 
     # Bring up config, the only errors possible at this point will
     # be fatal and handled lower in CantoConfig.
 
     def get_config(self):
-        self.conf = CantoConfig(self.conf_dir + "/conf", self.shelf)
+        self.conf = CantoConfig(self.conf_path, self.shelf)
         self.conf.parse()
 
     def start(self):

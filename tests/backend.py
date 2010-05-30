@@ -58,7 +58,7 @@ class Tests(unittest.TestCase):
         b.args(["-D", fpath])
         self.assertEqual(b.ensure_paths(), None)
 
-        for f in [ "feeds", "conf", "log", "pid" ]:
+        for f in [ "feeds", "conf", "daemon-log", "pid" ]:
             os.chmod(fpath + "/" + f, 0222)
             self.assertEqual(b.ensure_paths(), -1)
             os.chmod(fpath + "/" + f, 0444)
