@@ -128,6 +128,9 @@ class CantoBackend(CantoServer):
         try:
             fcntl.flock(self.pidfile.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
             log.debug("Got pid lock.")
+            self.pidfile.seek(0)
+            self.pidfile.write("%d" % os.getpid())
+            self.pidfile.flush()
         except:
             log.error("Error: Another canto-daemon is running here.")
             return -1
