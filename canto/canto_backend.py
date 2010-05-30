@@ -6,6 +6,8 @@
 #   it under the terms of the GNU General Public License version 2 as 
 #   published by the Free Software Foundation.
 
+# This Backend class is the core of the daemon's specific protocol.
+
 from server import CantoServer
 from encoding import encoder, decoder
 
@@ -32,20 +34,22 @@ class CantoBackend(CantoServer):
         pass
 
     def init(self):
-        # Bad arguments
+        # Bad arguments.
         if self.args():
             sys.exit(-1)
 
-        # Invalid paths
+        # Invalid paths.
         if self.ensure_paths():
             sys.exit(-1)
 
         CantoServer.__init__(self, self.conf_dir + "/.canto_socket",\
                 Queue.Queue())
 
+    # Simple PING response, PONG.
     def pong(self, socket, args):
         self.write(socket, "PONG", "")
 
+    # The workhorse that maps all requests to their handlers.
     def run(self):
         while 1:
             if not self.queue.empty():
@@ -54,6 +58,7 @@ class CantoBackend(CantoServer):
                     self.pong(socket, args)
             self.check_conns()
 
+    # This function parses and validates all of the command line arguments.
     def args(self, args=None):
         if not args:
             args = sys.argv[1:]
@@ -68,6 +73,7 @@ class CantoBackend(CantoServer):
         self.conf_dir = os.path.expanduser(u"~/.canto-ng/")
 
         for opt, arg in optlist:
+            # -D base configuration directory. Highest priority.
             if opt in ["-D", "--dir"]:
                 self.conf_dir = os.path.expanduser(decoder(arg))
                 self.conf_dir = os.path.realpath(self.conf_dir)
@@ -76,6 +82,7 @@ class CantoBackend(CantoServer):
 
         return 0
 
+    # This function makes sure that each directory both exists and is R/Wable.
     def ensure_paths(self):
         for p in [self.conf_dir]:
             if os.path.exists(p):
@@ -100,8 +107,12 @@ class CantoBackend(CantoServer):
         self.init()
         try:
             self.run()
+
+        # Cleanly shutdown on ^C.
         except KeyboardInterrupt:
             pass
+
+        # Pretty print any non-Keyboard exceptions.
         except Exception, e:
             tb = traceback.format_exc(e)
             log.error("Exiting on exception:")
