@@ -9,7 +9,7 @@
 #   published by the Free Software Foundation.
 
 import tests.encoding
-import tests.canto_fetch
+import tests.fetch
 import tests.storage
 import tests.config
 import tests.format
@@ -30,9 +30,9 @@ logging.basicConfig(
 if __name__ == "__main__":
     alltests = [tests.encoding.Tests('test_defaults'),
                 tests.encoding.Tests('test_set_encoding'),
-                tests.canto_fetch.Tests('test_good_fetch'),
-                tests.canto_fetch.Tests('test_bad_fetch'),
-                tests.canto_fetch.Tests('test_rate'),
+                tests.fetch.Tests('test_good_fetch'),
+                tests.fetch.Tests('test_bad_fetch'),
+                tests.fetch.Tests('test_rate'),
                 tests.storage.Tests('test_basic_storage'),
                 tests.config.Tests('test_good_basic'),
                 tests.config.Tests('test_bad_basic'),

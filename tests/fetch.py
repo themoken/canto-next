@@ -7,7 +7,7 @@
 #   it under the terms of the GNU General Public License version 2 as 
 #   published by the Free Software Foundation.
 
-from canto import config, storage, canto_fetch
+from canto import config, storage, fetch
 import threading
 import unittest
 import time
@@ -26,7 +26,7 @@ class Tests(unittest.TestCase):
         self.cfg = config.CantoConfig(config_path, self.shelf)
         self.cfg.parse()
 
-        self.fetch = canto_fetch.CantoFetch(self.shelf, self.cfg.feeds)
+        self.fetch = fetch.CantoFetch(self.shelf, self.cfg.feeds)
         self.fetch.fetch()
         self.fetch.process()
 
@@ -73,9 +73,9 @@ class Tests(unittest.TestCase):
         f["canto_update"] = updated_time
         self.shelf[self.cfg.feeds[1].URL] = f
 
-        fetch = canto_fetch.CantoFetch(self.shelf, self.cfg.feeds)
-        fetch.fetch()
-        fetch.process()
+        myfetch = fetch.CantoFetch(self.shelf, self.cfg.feeds)
+        myfetch.fetch()
+        myfetch.process()
 
         # Make sure the expired feed has been updated and that
         # the more recent feed has not.

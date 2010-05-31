@@ -8,7 +8,7 @@
 
 # This Backend class is the core of the daemon's specific protocol.
 
-from canto_fetch import CantoFetch
+from fetch import CantoFetch
 from server import CantoServer
 from config import CantoConfig
 from storage import CantoShelf
@@ -60,15 +60,6 @@ class CantoBackend(CantoServer):
         # No invalid paths.
         if self.ensure_paths():
             sys.exit(-1)
-
-        # These paths are now guaranteed to valid.
-        # Keep in mind though the above *doesn't* test whether feeds
-        # or conf are *valid*, just that we have permissions on them.
-
-        self.feed_path = self.conf_dir + "/feeds"
-        self.pid_path = self.conf_dir + "/pid"
-        self.log_path = self.conf_dir + "/daemon-log"
-        self.conf_path = self.conf_dir + "/conf"
 
         # Get pid lock.
         if self.pid_lock():
@@ -197,6 +188,16 @@ class CantoBackend(CantoServer):
                 if not os.access(p, os.W_OK):
                     log.error("Error: %s is not writable." % p)
                     return -1
+
+        # These paths are now guaranteed to valid.
+        # Keep in mind though the above *doesn't* test whether feeds
+        # or conf are *valid*, just that we have permissions on them.
+
+        self.feed_path = self.conf_dir + "/feeds"
+        self.pid_path = self.conf_dir + "/pid"
+        self.log_path = self.conf_dir + "/daemon-log"
+        self.conf_path = self.conf_dir + "/conf"
+
         return None
 
     def pid_lock(self):
