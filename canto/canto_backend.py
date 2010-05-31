@@ -200,10 +200,11 @@ class CantoBackend(CantoServer):
         return None
 
     def pid_lock(self):
-        self.pidfile = open(self.pid_path, "a")
+        self.pidfile = open(self.pid_path, "a+")
         try:
             fcntl.flock(self.pidfile.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
-            self.pidfile.seek(0)
+            self.pidfile.seek(0, 0)
+            self.pidfile.truncate()
             self.pidfile.write("%d" % os.getpid())
             self.pidfile.flush()
         except:
