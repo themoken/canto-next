@@ -189,9 +189,7 @@ class CantoBackend(CantoServer):
                     log.error("Error: %s is not writable." % p)
                     return -1
 
-        # These paths are now guaranteed to valid.
-        # Keep in mind though the above *doesn't* test whether feeds
-        # or conf are *valid*, just that we have permissions on them.
+        # These paths are now guaranteed to read/writable.
 
         self.feed_path = self.conf_dir + "/feeds"
         self.pid_path = self.conf_dir + "/pid"
