@@ -23,7 +23,7 @@ class CantoShelf():
 
     def __getitem__(self, name):
         r = self.shelf[name]
-        log.debug("Got shelf[%s] -> %s" % (name, r))
+        log.debug("Got shelf[%s]" % name)
         return r
 
     def __contains__(self, name):

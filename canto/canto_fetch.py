@@ -53,17 +53,19 @@ class CantoFetchThread(Thread):
 
             # Replace it if we ignore it, since exceptions
             # are not pickle-able.
+
             self.feed.update_contents["bozo_exception"] = None
 
         # Update timestamp
         self.feed.update_contents["canto_update"] = time.time()
 
-        log.info("Parsed %s" % self.feed.URL)
+        log.debug("Parsed %s" % self.feed.URL)
 
 class CantoFetch():
     def __init__(self, shelf, feeds):
         self.shelf = shelf
         self.feeds = feeds
+        self.threads = []
 
     def needs_update(self, feed):
         needs_update = True
@@ -93,6 +95,13 @@ class CantoFetch():
             log.debug("Started thread for feed %s" % feed.URL)
             self.threads.append((thread, feed))
 
+    # Return whether all the threads are ready for reaping.
+    def threads_ready(self):
+        for thread, feed in self.threads:
+            if thread.isAlive():
+                return False
+        return True
+
     def process(self):
         for thread, feed in self.threads:
             thread.join()
@@ -105,19 +114,3 @@ class CantoFetch():
             self.shelf[feed.URL] = feed.update_contents
             self.shelf.close()
             feed.update_contents = None
-
-if __name__ == "__main__":
-    from storage import CantoShelf
-    from config import CantoConfig
-    import os
-
-    shelf = CantoShelf(os.path.expanduser("~/.canto-ng/feeds"))
-    cfg = CantoConfig(os.path.expanduser("~/.canto-ng/conf"), shelf)
-    cfg.parse()
-
-    fetch = CantoFetch(shelf, cfg.feeds)
-
-    while 1:
-        fetch.fetch()
-        fetch.process()
-        time.sleep(60)

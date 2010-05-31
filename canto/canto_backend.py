@@ -8,6 +8,7 @@
 
 # This Backend class is the core of the daemon's specific protocol.
 
+from canto_fetch import CantoFetch
 from server import CantoServer
 from config import CantoConfig
 from storage import CantoShelf
@@ -40,16 +41,17 @@ class CantoBackend(CantoServer):
         pass
 
     def init(self):
-        # Signal handlers
-        self.alarmed = 0
-        signal.signal(signal.SIGALRM, self.sig_alrm)
-        signal.alarm(1)
-
         # Log verbosity
         # 0 = normal operation
         # 1 = log all debug messages
         # 2 = log all debug messages AND signals
         self.verbosity = 1
+
+        # Shelf for feeds:
+        self.fetch = None
+        self.fetch_timer = 0
+
+        self.shelf = None
 
         # No bad arguments.
         if self.args():
@@ -84,9 +86,15 @@ class CantoBackend(CantoServer):
         # Actual start.
         self.get_storage()
         self.get_config()
+        self.get_fetch()
 
         CantoServer.__init__(self, self.conf_dir + "/.canto_socket",\
                 Queue.Queue())
+
+        # Signal handlers kickoff after everything else is init'd
+        self.alarmed = 0
+        signal.signal(signal.SIGALRM, self.sig_alrm)
+        signal.alarm(1)
 
     # Simple PING response, PONG.
     def pong(self, socket, args):
@@ -101,9 +109,26 @@ class CantoBackend(CantoServer):
                     self.pong(socket, args)
             self.check_conns()
 
+            # If the threads are ready, process them and
+            # write them to disk.
+
+            if self.fetch.threads_ready():
+                self.fetch.process()
+
             if self.alarmed:
+                # Decrement all timers
+                self.fetch_timer -= 1
+
                 if self.verbosity > 1:
                     log.debug("Alarmed.")
+
+                # Check whether feeds need to be updated and fetch
+                # them if necessary.
+
+                if self.fetch_timer <= 0:
+                    self.fetch.fetch()
+                    self.fetch_timer = 60
+
                 self.alarmed = False
 
             time.sleep(100)
@@ -207,6 +232,9 @@ class CantoBackend(CantoServer):
     def get_config(self):
         self.conf = CantoConfig(self.conf_path, self.shelf)
         self.conf.parse()
+
+    def get_fetch(self):
+        self.fetch = CantoFetch(self.shelf, self.conf.feeds)
 
     def start(self):
         try:
