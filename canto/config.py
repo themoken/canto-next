@@ -70,7 +70,7 @@ class CantoConfig():
 
         rate = self.get("int", section, "rate", self.rate)
         keep = self.get("int", section, "keep", self.keep)
-        self.feeds.append(CantoFeed(self.shelf, URL, rate, keep))
+        self.feeds.append(CantoFeed(self.shelf, section, URL, rate, keep))
 
     def parse(self):
         env = { "home" : os.getenv("HOME"),

@@ -12,8 +12,9 @@ import logging
 log = logging.getLogger("FEED")
 
 class CantoFeed():
-    def __init__(self, shelf, URL, rate, keep):
+    def __init__(self, shelf, name, URL, rate, keep):
         self.shelf = shelf
+        self.name = name
         self.URL = URL
         self.rate = rate
         self.keep = keep

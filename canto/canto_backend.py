@@ -91,6 +91,13 @@ class CantoBackend(CantoServer):
     def pong(self, socket, args):
         self.write(socket, "PONG", "")
 
+    # LISTFEEDS -> (tag, URL) for all feeds
+    def listfeeds(self, socket, args):
+        feeds = []
+        for feed in self.conf.feeds:
+            feeds.append((feed.name, feed.URL))
+        self.write(socket, "LISTFEEDS", "%s" % feeds)
+
     # The workhorse that maps all requests to their handlers.
     def run(self):
         while 1:
@@ -98,6 +105,8 @@ class CantoBackend(CantoServer):
                 (socket, (cmd, args)) = self.queue.get()
                 if cmd == "PING":
                     self.pong(socket, args)
+                elif cmd == "LISTFEEDS":
+                    self.listfeeds(socket, args)
             self.check_conns()
 
             # If the threads are ready, process them and
