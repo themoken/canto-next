@@ -40,7 +40,7 @@ class CantoBackend(CantoServer):
     def __init__(self):
         pass
 
-    def init(self):
+    def init(self, args=None):
         # Log verbosity
         # 0 = normal operation
         # 1 = log all debug messages
@@ -54,7 +54,7 @@ class CantoBackend(CantoServer):
         self.shelf = None
 
         # No bad arguments.
-        if self.args():
+        if self.args(args):
             sys.exit(-1)
 
         # No invalid paths.
@@ -107,6 +107,12 @@ class CantoBackend(CantoServer):
                     self.pong(socket, args)
                 elif cmd == "LISTFEEDS":
                     self.listfeeds(socket, args)
+                elif cmd == "DIE":
+                    log.info("Received DIE.")
+                    return
+                else:
+                    self.info("Got unknown command: %s" % (cmd))
+
             self.check_conns()
 
             # If the threads are ready, process them and
@@ -245,10 +251,11 @@ class CantoBackend(CantoServer):
     def get_fetch(self):
         self.fetch = CantoFetch(self.shelf, self.conf.feeds)
 
-    def start(self):
+    def start(self, args=None):
         try:
-            self.init()
+            self.init(args)
             self.run()
+            log.info("Exiting cleanly.")
 
         # Cleanly shutdown on ^C.
         except KeyboardInterrupt:
@@ -259,7 +266,6 @@ class CantoBackend(CantoServer):
             tb = traceback.format_exc(e)
             log.error("Exiting on exception:")
             log.error("\n" + "".join(tb))
-            return -1
 
         self.exit()
         self.pid_unlock()

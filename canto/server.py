@@ -83,8 +83,5 @@ class CantoServer(CantoSocket):
 
     # For testing, step through
     def get_one_cmd(self):
-        while not self.connections:
+        while self.queue.empty():
             self.check_conns()
-
-        while self.connections:
-            self.no_dead_conns()

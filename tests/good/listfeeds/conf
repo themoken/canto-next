@@ -1,0 +1,9 @@
+[defaults]
+rate = 10
+
+[Reddit Science]
+URL = http://science.reddit.com/.rss
+keep = 40
+
+[Canto]
+URL = http://codezen.org/static/canto.xml

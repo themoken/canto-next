@@ -45,7 +45,8 @@ if __name__ == "__main__":
                 tests.comm.Tests('test_communication'),
                 tests.backend.Tests('test_args'),
                 tests.backend.Tests('test_perms'),
-                tests.backend.Tests('test_pid_lock')]
+                tests.backend.Tests('test_pid_lock'),
+                tests.backend.Tests('test_list_feeds')]
     suite = unittest.TestSuite()
     suite.addTests(alltests)
     unittest.TextTestRunner(verbosity=2).run(suite)

@@ -17,9 +17,16 @@ from threading import Thread
 import os
 
 class CantoInterface(CantoClient):
-    def __init__(self):
-        CantoClient.__init__(self, os.getenv("HOME") +
-            "/.canto-ng/.canto_socket")
+    def __init__(self, human = True, socket_path = None, **kwargs):
+        self.human = human
+        if not human:
+            self.cmds = kwargs["commands"]
+            self.responses = kwargs["responses"]
+        if not socket_path:
+            socket_path = os.getenv("HOME") +\
+                    "/.canto-ng/.canto_socket"
+
+        CantoClient.__init__(self, socket_path)
         self.response_alive = False
 
     # Read any input from the socket and print it.
@@ -31,7 +38,10 @@ class CantoInterface(CantoClient):
             if r == 16:
                 break
             if r:
-                print r
+                if self.human:
+                    print r
+                else:
+                    self.responses.append(r)
 
     def run(self):
         # Start response printing thread
@@ -40,7 +50,15 @@ class CantoInterface(CantoClient):
         thread.start()
 
         while not self.hupped:
-            cmd = raw_input("")
+            if self.human:
+                cmd = raw_input("")
+            else:
+                if self.cmds:
+                    cmd = self.cmds[0]
+                    self.cmds = self.cmds[1:]
+                else:
+                    thread.join()
+                    return
 
             # The only special command at this point.
             if cmd == "exit":

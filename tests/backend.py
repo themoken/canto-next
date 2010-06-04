@@ -7,10 +7,13 @@
 #   it under the terms of the GNU General Public License version 2 as 
 #   published by the Free Software Foundation.
 
+from canto.canto_interface import CantoInterface
 from canto.canto_backend import CantoBackend
 
 import unittest
+import signal
 import shutil
+import time
 import os
 
 class Tests(unittest.TestCase):
@@ -80,3 +83,32 @@ class Tests(unittest.TestCase):
 
         b.pid_unlock()
         self.assertEqual(c.pid_lock(), None)
+
+    def protocol(self, conf_dir, commands, responses):
+        pid = os.fork()
+        if not pid:
+            b = CantoBackend()
+            try:
+                b.start(["-D", conf_dir])
+            except SystemExit:
+                os._exit(0)
+        else:
+            print "Forked: %d" % pid
+
+        time.sleep(2)
+        socket_path = conf_dir + "/.canto_socket"
+        i = CantoInterface(False, socket_path,\
+                commands=commands, responses=responses)
+        i.run()
+
+    def test_list_feeds(self):
+        conf_dir = os.getenv("PWD") + "/tests/good/listfeeds"
+        commands = ["LISTFEEDS ", "DIE "]
+        responses = []
+
+        self.protocol(conf_dir, commands, responses)
+        print responses
+        self.assertTrue(responses[0][0] == "LISTFEEDS")
+        self.assertTrue(eval(responses[0][1]) ==
+                [ ('Canto', 'http://codezen.org/static/canto.xml'),
+                  ('Reddit Science', 'http://science.reddit.com/.rss') ])

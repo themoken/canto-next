@@ -50,15 +50,11 @@ class CantoSocket:
 
     # Setup poll.poll() object to watch for read status on conn.
     def read_mode(self, poll, conn):
-
-        log.debug("READ MODE")
         poll.register(conn.fileno(),\
                 select.POLLIN | select.POLLHUP | select.POLLERR)
 
     # Setup poll.poll() object to watch for write status on conn.
     def write_mode(self, poll, conn):
-
-        log.debug("WRITE MODE")
         poll.register(conn.fileno(),\
                 select.POLLOUT | select.POLLHUP | select.POLLERR)
 
@@ -85,9 +81,9 @@ class CantoSocket:
     # 3) select.POLLHUP if the connection is dead.
 
     def do_read(self, conn, timeout=None):
-
         if self.fragment and PROTO_TERMINATOR in self.fragment:
-            return self.parse(self.fragment)
+            log.info("retrieving next command from self.fragment")
+            return self.parse("") # <- already uses self.fragment
 
         poll = select.poll()
         self.read_mode(poll, conn)
