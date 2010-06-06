@@ -9,12 +9,6 @@ import logging
 
 log = logging.getLogger("TAG")
 
-class CantoTag(set):
-    def __init__(self, name):
-        self.name = name
-
-        set.__init__(self)
-
 class CantoTags():
     def __init__(self):
         self.tags = {}
@@ -22,7 +16,7 @@ class CantoTags():
     def add_tag(self, id, name):
         # Create tag if no tag exists
         if name not in self.tags:
-            self.tags[name] = CantoTag(name)
+            self.tags[name] = set()
 
         # Add to tag.
         self.tags[name].add(id)
@@ -32,7 +26,12 @@ class CantoTags():
             if id in self.tags[tag]:
                 self.tags[tag].remove(id)
 
-    def reset(id):
+    def get_tag(self, tag):
+        if tag in self.tags.keys():
+            return self.tags[tag]
+        return []
+
+    def reset(self):
         self.tags = {}
 
 alltags = CantoTags()

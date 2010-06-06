@@ -49,9 +49,13 @@ if __name__ == "__main__":
                 tests.backend.Tests('test_perms'),
                 tests.backend.Tests('test_pid_lock'),
                 tests.backend.Tests('test_list_feeds'),
+                tests.backend.Tests('test_items'),
                 tests.feed.Tests('test_first_update'),
                 tests.feed.Tests('test_attribute_passthru'),
+                tests.feed.Tests('test_id_hierarchy'),
+                tests.feed.Tests('test_unique_id'),
                 tests.tag.Tests('test_add_tag'),
+                tests.tag.Tests('test_get_tag'),
                 tests.tag.Tests('test_remove_id')]
     suite = unittest.TestSuite()
     suite.addTests(alltests)

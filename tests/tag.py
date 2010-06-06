@@ -7,7 +7,7 @@
 #   it under the terms of the GNU General Public License version 2 as 
 #   published by the Free Software Foundation.
 
-from canto.tag import alltags, CantoTag
+from canto.tag import alltags
 import unittest
 
 class Tests(unittest.TestCase):
@@ -18,6 +18,8 @@ class Tests(unittest.TestCase):
         self.id1_again = ("someURL", "someID")
 
     def test_add_tag(self):
+        alltags.reset()
+
         self.assertTrue(alltags.tags == {})
 
         alltags.add_tag(self.id1, "tag1")
@@ -43,6 +45,17 @@ class Tests(unittest.TestCase):
         self.assertTrue(len(alltags.tags.keys()) == 2)
         self.assertTrue(self.id2 in alltags.tags["tag2"])
         self.assertTrue(self.id1 not in alltags.tags["tag2"])
+
+    def test_get_tag(self):
+        tag1 = alltags.get_tag("tag1")
+        tag2 = alltags.get_tag("tag2")
+        tag3 = alltags.get_tag("tag3")
+
+        self.assertTrue(tag1 ==\
+                set([("someURL", "someID"),("someURL", "someID2")]))
+        self.assertTrue(tag2 ==\
+                set([("someURL", "someID2")]))
+        self.assertTrue(tag3 == [])
 
     def test_remove_id(self):
         alltags.remove_id(self.id1)

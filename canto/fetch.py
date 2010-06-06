@@ -68,8 +68,11 @@ class CantoFetch():
         self.threads = []
 
     def needs_update(self, feed):
-        needs_update = True
+        if not feed.items:
+            log.debug("Empty feed, attempt to update.")
+            return True
 
+        needs_update = True
         self.shelf.open()
         if feed.URL in self.shelf:
             f = self.shelf[feed.URL]

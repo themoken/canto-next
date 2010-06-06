@@ -9,6 +9,7 @@
 
 from canto.canto_interface import CantoInterface
 from canto.canto_backend import CantoBackend
+from canto.tag import alltags
 
 import unittest
 import signal
@@ -103,12 +104,27 @@ class Tests(unittest.TestCase):
 
     def test_list_feeds(self):
         conf_dir = os.getenv("PWD") + "/tests/good/listfeeds"
-        commands = ["LISTFEEDS ", "DIE "]
+        commands = [u"LISTFEEDS ", u"DIE "]
         responses = []
 
         self.protocol(conf_dir, commands, responses)
-        print responses
         self.assertTrue(responses[0][0] == "LISTFEEDS")
-        self.assertTrue(eval(responses[0][1]) ==
+        self.assertTrue(responses[0][1] ==
                 [ ('Canto', 'http://codezen.org/static/canto.xml'),
                   ('Reddit Science', 'http://science.reddit.com/.rss') ])
+
+    def test_items(self):
+        resolved_url = "file://" + os.getenv("PWD") + "/tests/good/items/test1.xml"
+        conf_dir = os.getenv("PWD") + "/tests/good/items"
+        commands = [u"ITEMS Test 1", u"DIE "]
+        responses = []
+
+        self.protocol(conf_dir, commands, responses)
+
+        print alltags.tags.keys()
+
+        print responses
+        self.assertTrue(responses[0][0] == "ITEMS")
+        self.assertTrue(responses[0][1] ==
+                {"Test 1": set([(resolved_url, "http://example.com/item/1")])})
+

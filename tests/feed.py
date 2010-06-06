@@ -61,3 +61,47 @@ class Tests(unittest.TestCase):
 
         self.assertTrue("canto_test" in shelf[TEST_URL]["entries"][0])
         self.assertTrue(shelf[TEST_URL]["entries"][0]["canto_test"] == "abc")
+
+    def test_id_hierarchy(self):
+        shelf = StubShelf()
+        feed = CantoFeed(shelf, "Example", TEST_URL, 5, 100)
+
+        # Item has no ID property, but has link and title.
+        feed.update_contents = \
+                { "entries" :
+                  # First entry has title and link, no ID
+                [ { "link" : "testlink",
+                    "title" : "Item 1",
+                    "canto_update" : "different" },
+                  # Second entry has title, no link or ID
+                  { "title" : "Item 2",
+                    "canto_update" : "different" },
+                  # Third is a crap entry, with nothing
+                  { "other_att" : "crap",
+                    "canto_update" : "crapcrap" }
+                ]
+                }
+
+        feed.index()
+
+        self.assertTrue(feed.update_contents == None)
+        self.assertTrue(len(feed.items) == 2)
+        self.assertTrue(feed.items[0] == { "id" : (TEST_URL, "testlink") })
+        self.assertTrue(feed.items[1] == { "id" : (TEST_URL, "Item 2") })
+
+    def test_unique_id(self):
+        shelf = StubShelf()
+        feed = CantoFeed(shelf, "Example", TEST_URL, 5, 100)
+
+        # Empty items.
+        self.assertTrue(feed.unique_item({"id" : "anyid" }) == True)
+
+        feed.update_contents = { "entries" : [ { "id" : "anyid" },
+                                               { "id" : "anyid" }
+                                             ]
+                               }
+        feed.index()
+
+        self.assertTrue(feed.unique_item({"id" : "anyid" }) == False)
+        self.assertTrue(len(feed.items) == 1)
+        self.assertTrue(feed.items[0] == { "id" : (TEST_URL, "anyid") } )

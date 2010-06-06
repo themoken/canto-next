@@ -45,8 +45,7 @@ class CantoSocket:
             self.socket.connect(socket_name)
 
         # Holster for partial reads.
-        self.fragment = ""
-
+        self.fragment = u""
 
     # Setup poll.poll() object to watch for read status on conn.
     def read_mode(self, poll, conn):

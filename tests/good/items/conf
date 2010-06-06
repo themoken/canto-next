@@ -1,0 +1,2 @@
+[Test 1]
+URL = file://%(cwd)s/tests/good/items/test1.xml

@@ -13,6 +13,7 @@ from server import CantoServer
 from config import CantoConfig
 from storage import CantoShelf
 from encoding import encoder, decoder
+from tag import alltags
 
 import traceback
 import logging
@@ -89,29 +90,51 @@ class CantoBackend(CantoServer):
 
     # Simple PING response, PONG.
     def pong(self, socket, args):
-        self.write(socket, "PONG", "")
+        self.write(socket, "PONG", u"")
 
     # LISTFEEDS -> (tag, URL) for all feeds
     def listfeeds(self, socket, args):
         feeds = []
         for feed in self.conf.feeds:
             feeds.append((feed.name, feed.URL))
-        self.write(socket, "LISTFEEDS", "%s" % feeds)
+        self.write(socket, "LISTFEEDS", feeds)
+
+    # ITEMS tag -> id for all items in tag
+    def items(self, socket, args):
+        ids = []
+
+        if type(args) == unicode:
+            tags = [ args ]
+        elif type(args) == list:
+            tags = args
+        else:
+            log.error("Invalid type: %s" % type(args))
+            return
+
+        response = {}
+        for tag in tags:
+            # get_tag returns a list invariably, but may be empty.
+            response[tag] = alltags.get_tag(tag)
+
+        self.write(socket, "ITEMS", response)
 
     # The workhorse that maps all requests to their handlers.
     def run(self):
         while 1:
             if not self.queue.empty():
                 (socket, (cmd, args)) = self.queue.get()
+
                 if cmd == "PING":
                     self.pong(socket, args)
                 elif cmd == "LISTFEEDS":
                     self.listfeeds(socket, args)
+                elif cmd == "ITEMS":
+                    self.items(socket, args)
                 elif cmd == "DIE":
                     log.info("Received DIE.")
                     return
                 else:
-                    self.info("Got unknown command: %s" % (cmd))
+                    log.info("Got unknown command: %s" % (cmd))
 
             self.check_conns()
 
@@ -250,6 +273,7 @@ class CantoBackend(CantoServer):
 
     def get_fetch(self):
         self.fetch = CantoFetch(self.shelf, self.conf.feeds)
+        self.fetch.fetch()
 
     def start(self, args=None):
         try:
