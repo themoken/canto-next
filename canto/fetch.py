@@ -105,12 +105,4 @@ class CantoFetch():
     def process(self):
         for thread, feed in self.threads:
             thread.join()
-
-            # Skip any errored feeds
-            if not feed.update_contents:
-                continue
-
-            self.shelf.open()
-            self.shelf[feed.URL] = feed.update_contents
-            self.shelf.close()
-            feed.update_contents = None
+            feed.index()
