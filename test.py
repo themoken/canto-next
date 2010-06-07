@@ -29,35 +29,65 @@ logging.basicConfig(
     level = logging.DEBUG
 )
 
+all_modules = {
+        "encoding" : tests.encoding.Tests,
+        "fetch" : tests.fetch.Tests,
+        "storage" : tests.storage.Tests,
+        "config" : tests.config.Tests,
+        "format" : tests.format.Tests,
+        "protocol" : tests.protocol.Tests,
+        "comm" : tests.comm.Tests,
+        "backend" : tests.backend.Tests,
+        "feed" : tests.feed.Tests,
+        "tag" : tests.tag.Tests }
+
+all_tests = {
+        "test_defaults" : tests.encoding.Tests,
+        "test_set_encoding" : tests.encoding.Tests,
+        "test_good_fetch" : tests.fetch.Tests,
+        "test_bad_fetch" : tests.fetch.Tests,
+        "test_rate" : tests.fetch.Tests,
+        "test_basic_storage" : tests.storage.Tests,
+        "test_good_basic" : tests.config.Tests,
+        "test_bad_basic" : tests.config.Tests,
+        "test_basic_substitution" : tests.format.Tests,
+        "test_escape" : tests.format.Tests,
+        "test_unmapped_escape" : tests.format.Tests,
+        "test_missing_mapping" : tests.format.Tests,
+        "test_socket_creation" : tests.protocol.Tests,
+        "test_parser" : tests.protocol.Tests,
+        "test_communication" : tests.comm.Tests,
+        "test_args" : tests.backend.Tests,
+        "test_perms" : tests.backend.Tests,
+        "test_pid_lock" : tests.backend.Tests,
+        "test_list_feeds" : tests.backend.Tests,
+        "test_items" : tests.backend.Tests,
+        "test_first_update" : tests.feed.Tests,
+        "test_attribute_passthru" : tests.feed.Tests,
+        "test_id_hierarchy" : tests.feed.Tests,
+        "test_unique_id" : tests.feed.Tests,
+        "test_clear_tags" : tests.feed.Tests,
+        "test_add_tag" : tests.tag.Tests,
+        "test_get_tag" : tests.tag.Tests,
+        "test_remove_id" : tests.tag.Tests }
+
+
 if __name__ == "__main__":
-    alltests = [tests.encoding.Tests('test_defaults'),
-                tests.encoding.Tests('test_set_encoding'),
-                tests.fetch.Tests('test_good_fetch'),
-                tests.fetch.Tests('test_bad_fetch'),
-                tests.fetch.Tests('test_rate'),
-                tests.storage.Tests('test_basic_storage'),
-                tests.config.Tests('test_good_basic'),
-                tests.config.Tests('test_bad_basic'),
-                tests.format.Tests('test_basic_substitution'),
-                tests.format.Tests('test_escape'),
-                tests.format.Tests('test_unmapped_escape'),
-                tests.format.Tests('test_missing_mapping'),
-                tests.protocol.Tests('test_socket_creation'),
-                tests.protocol.Tests('test_parser'),
-                tests.comm.Tests('test_communication'),
-                tests.backend.Tests('test_args'),
-                tests.backend.Tests('test_perms'),
-                tests.backend.Tests('test_pid_lock'),
-                tests.backend.Tests('test_list_feeds'),
-                tests.backend.Tests('test_items'),
-                tests.feed.Tests('test_first_update'),
-                tests.feed.Tests('test_attribute_passthru'),
-                tests.feed.Tests('test_id_hierarchy'),
-                tests.feed.Tests('test_unique_id'),
-                tests.feed.Tests('test_clear_tags'),
-                tests.tag.Tests('test_add_tag'),
-                tests.tag.Tests('test_get_tag'),
-                tests.tag.Tests('test_remove_id')]
+    t = []
+    if len(sys.argv) == 1:
+        for key in all_tests:
+            t.append(all_tests[key](key))
+    else:
+        for arg in sys.argv[1:]:
+            if arg in all_tests:
+                t.append(all_tests[arg](arg))
+            elif arg in all_modules:
+                for k in all_tests:
+                    if all_tests[k] == all_modules[arg]:
+                        t.append(all_tests[k](k))
+            else:
+                print "Unknown arg: %s" % arg
+
     suite = unittest.TestSuite()
-    suite.addTests(alltests)
+    suite.addTests(t)
     unittest.TextTestRunner(verbosity=2).run(suite)

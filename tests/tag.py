@@ -46,7 +46,19 @@ class Tests(unittest.TestCase):
         self.assertTrue(self.id2 in alltags.tags["tag2"])
         self.assertTrue(self.id1 not in alltags.tags["tag2"])
 
+    # Basic setup for following (non-add_tag) tests.
+    def basic_setup(self):
+        alltags.reset()
+
+        alltags.add_tag(self.id1, "tag1")
+        alltags.add_tag(self.id1_again, "tag1")
+        alltags.add_tag(self.id2, "tag1")
+        alltags.add_tag(self.id2, "tag1")
+        alltags.add_tag(self.id2, "tag2")
+
     def test_get_tag(self):
+        self.basic_setup()
+
         tag1 = alltags.get_tag("tag1")
         tag2 = alltags.get_tag("tag2")
         tag3 = alltags.get_tag("tag3")
@@ -58,6 +70,8 @@ class Tests(unittest.TestCase):
         self.assertTrue(tag3 == [])
 
     def test_remove_id(self):
+        self.basic_setup()
+
         alltags.remove_id(self.id1)
         for tag in alltags.tags:
             self.assertTrue(self.id1 not in alltags.tags[tag])
