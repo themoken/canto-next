@@ -54,6 +54,7 @@ if __name__ == "__main__":
                 tests.feed.Tests('test_attribute_passthru'),
                 tests.feed.Tests('test_id_hierarchy'),
                 tests.feed.Tests('test_unique_id'),
+                tests.feed.Tests('test_clear_tags'),
                 tests.tag.Tests('test_add_tag'),
                 tests.tag.Tests('test_get_tag'),
                 tests.tag.Tests('test_remove_id')]

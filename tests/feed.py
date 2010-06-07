@@ -8,6 +8,8 @@
 #   published by the Free Software Foundation.
 
 from canto.feed import CantoFeed
+from canto.tag import alltags
+
 import unittest
 
 class StubShelf(dict):
@@ -105,3 +107,33 @@ class Tests(unittest.TestCase):
         self.assertTrue(feed.unique_item({"id" : "anyid" }) == False)
         self.assertTrue(len(feed.items) == 1)
         self.assertTrue(feed.items[0] == { "id" : (TEST_URL, "anyid") } )
+
+    def test_clear_tags(self):
+        alltags.reset()
+
+        shelf = StubShelf()
+        feed = CantoFeed(shelf, "Example", TEST_URL, 5, 100)
+
+        id1 = (TEST_URL, "item1")
+        id2 = (TEST_URL, "item2")
+
+        alltags.add_tag(id1, "Example")
+        alltags.add_tag(id2, "Example")
+        alltags.add_tag(id1, "othertag1")
+        alltags.add_tag(id2, "othertag2")
+
+        self.assertTrue(id1 in alltags.tags["Example"])
+        self.assertTrue(id2 in alltags.tags["Example"])
+        self.assertTrue(id1 in alltags.tags["othertag1"])
+        self.assertTrue(id2 in alltags.tags["othertag2"])
+
+        feed.olditems = [ { "id" : (TEST_URL, "item1") },
+                          { "id" : (TEST_URL, "item2") }]
+        feed.items = [ { "id" : (TEST_URL, "item2") } ]
+
+        feed.clear_tags()
+
+        self.assertTrue(id1 not in alltags.tags["Example"])
+        self.assertTrue(id1 not in alltags.tags["othertag1"])
+        self.assertTrue(id2 in alltags.tags["Example"])
+        self.assertTrue(id2 in alltags.tags["othertag2"])
