@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+    <channel>
+        <title>Test 2</title>
+        <link>http://example.com/rss</link>
+        <description></description>           
+        <item>               
+            <title>Item 1</title>               
+            <link>http://example.com/item/1</link>
+        </item>
+    </channel>
+</rss>

@@ -111,6 +111,7 @@ class CantoBackend(CantoServer):
             log.error("Invalid type: %s" % type(args))
             return
 
+        log.debug("TAGS: %s" % tags)
         response = {}
         for tag in tags:
             # get_tag returns a list invariably, but may be empty.

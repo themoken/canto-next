@@ -101,6 +101,7 @@ class Tests(unittest.TestCase):
         i = CantoInterface(False, socket_path,\
                 commands=commands, responses=responses)
         i.run()
+        os.waitpid(pid, 0)
 
     def test_list_feeds(self):
         conf_dir = os.getenv("PWD") + "/tests/good/listfeeds"
@@ -114,9 +115,13 @@ class Tests(unittest.TestCase):
                   ('Reddit Science', 'http://science.reddit.com/.rss') ])
 
     def test_items(self):
-        resolved_url = "file://" + os.getenv("PWD") + "/tests/good/items/test1.xml"
+        resolved_url1 = "file://" + os.getenv("PWD") +\
+                "/tests/good/items/test1.xml"
+        resolved_url2 = "file://" + os.getenv("PWD") +\
+                "/tests/good/items/test2.xml"
+
         conf_dir = os.getenv("PWD") + "/tests/good/items"
-        commands = [u"ITEMS Test 1", u"DIE "]
+        commands = [u"ITEMS u'Test 1'", u"DIE "]
         responses = []
 
         self.protocol(conf_dir, commands, responses)
@@ -126,5 +131,15 @@ class Tests(unittest.TestCase):
         print responses
         self.assertTrue(responses[0][0] == "ITEMS")
         self.assertTrue(responses[0][1] ==
-                {"Test 1": set([(resolved_url, "http://example.com/item/1")])})
+                {"Test 1": set([(resolved_url1, "http://example.com/item/1")])})
 
+        commands = [u"ITEMS [ u'Test 1', u'Test 2' ]", u"DIE "]
+        responses = []
+
+        self.protocol(conf_dir, commands, responses)
+
+        self.assertTrue(responses[0][0] == "ITEMS")
+        self.assertTrue(responses[0][1] ==
+                {"Test 1" : set([(resolved_url1, "http://example.com/item/1")]),
+                 "Test 2" : set([(resolved_url2, "http://example.com/item/1")])
+                })

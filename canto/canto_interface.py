@@ -70,6 +70,9 @@ class CantoInterface(CantoClient):
                 print "Bad command"
                 continue
 
+            if parsed[1]:
+                parsed[1] = eval(parsed[1])
+
             self.write(parsed[0], parsed[1])
 
         self.response_alive = False

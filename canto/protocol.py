@@ -70,6 +70,7 @@ class CantoSocket:
 
         try:
             cmd, args = message.split(' ', 1)
+            log.info("EVAL'd args = %s (%s)" % (eval(args), type(eval(args))))
             return (cmd, eval(args))
         except:
             log.info("Failed to parse message: %s" % message)
