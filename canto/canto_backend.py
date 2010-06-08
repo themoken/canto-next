@@ -21,6 +21,7 @@ import signal
 import getopt
 import Queue
 import fcntl
+import errno
 import time
 import sys
 import os
@@ -245,9 +246,11 @@ class CantoBackend(CantoServer):
             self.pidfile.truncate()
             self.pidfile.write("%d" % os.getpid())
             self.pidfile.flush()
-        except:
-            log.error("Error: Another canto-daemon is running here.")
-            return -1
+        except IOError, e:
+            if e.errno == errno.EAGAIN:
+                log.error("Error: Another canto-daemon is running here.")
+                return -1
+            raise
         return None
 
     def pid_unlock(self):
