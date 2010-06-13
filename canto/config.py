@@ -8,6 +8,7 @@
 #   published by the Free Software Foundation.
 
 from feed import CantoFeed
+from encoding import decoder
 
 import ConfigParser
 import logging
@@ -57,6 +58,10 @@ class CantoConfig():
             log.info("Unhandled exception getting %s from section %s: %s" %
                     (option, section, e))
             raise
+
+        if type(r) == str:
+            r = decoder(r)
+
         log.debug("\t%s.%s = %s" % (section, option, r))
         return r
 
@@ -70,6 +75,14 @@ class CantoConfig():
 
         rate = self.get("int", section, "rate", self.rate)
         keep = self.get("int", section, "keep", self.keep)
+
+        # All strings obtained from the config outside of the self.get function
+        # must be converted to Unicode. The section name is the only obvious
+        # example at this point.
+
+        if type(section) == str:
+            section = decoder(section)
+
         self.feeds.append(CantoFeed(self.shelf, section, URL, rate, keep))
 
     def parse(self):

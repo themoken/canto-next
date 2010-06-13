@@ -18,15 +18,18 @@ class CantoShelf():
         self.refs = 0
 
     def __setitem__(self, name, value):
+        name = name.encode("UTF-8")
         log.debug("Set shelf[%s] = %s" % (name, value))
         self.shelf[name] = value
 
     def __getitem__(self, name):
+        name = name.encode("UTF-8")
         r = self.shelf[name]
         log.debug("Got shelf[%s]" % name)
         return r
 
     def __contains__(self, name):
+        name = name.encode("UTF-8")
         r = name in self.shelf
         if r:
             log.debug("shelf contains %s" % name)
@@ -35,6 +38,7 @@ class CantoShelf():
         return r
 
     def __delitem__(self, name):
+        name = name.encode("UTF-8")
         del self.shelf[name]
         log.debug("deleted %s from shelf" % name)
 

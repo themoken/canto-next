@@ -11,6 +11,8 @@ from threading import Thread
 import logging
 import socket
 import select
+import errno
+import time
 import os
 
 PROTO_TERMINATOR='\x00'
@@ -42,7 +44,16 @@ class CantoSocket:
             self.socket.bind(socket_name)
             self.socket.listen(5)
         else:
-            self.socket.connect(socket_name)
+            tries = 3
+            while tries > 0:
+                try:
+                    self.socket.connect(socket_name)
+                    break
+                except Exception, e:
+                    if e[0] != errno.ECONNREFUSED or tries == 1:
+                        raise
+                time.sleep(1)
+                tries -= 1
 
         # Holster for partial reads.
         self.fragment = u""

@@ -162,7 +162,7 @@ class CantoBackend(CantoServer):
 
                 self.alarmed = False
 
-            time.sleep(100)
+            time.sleep(0.01)
 
     # This function parses and validates all of the command line arguments.
     def args(self, args=None):
