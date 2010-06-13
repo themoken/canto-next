@@ -137,3 +137,19 @@ class Tests(unittest.TestCase):
         self.assertTrue(id1 not in alltags.tags["othertag1"])
         self.assertTrue(id2 in alltags.tags["Example"])
         self.assertTrue(id2 in alltags.tags["othertag2"])
+
+    # Particularly, index() with no update_contents set and not feed.items
+    def test_initial_index(self):
+        alltags.reset()
+        shelf = StubShelf()
+
+        shelf[TEST_URL] = { "entries" : [ { "id" : "1" },
+                                          { "id" : "2" },
+                                          { "id" : "3" }  ] }
+
+        # This should call index() initially
+        feed = CantoFeed(shelf, "Example", TEST_URL, 5, 100)
+
+        self.assertTrue({ "id" : (TEST_URL, "1")} in feed.items)
+        self.assertTrue({ "id" : (TEST_URL, "2")} in feed.items)
+        self.assertTrue({ "id" : (TEST_URL, "3")} in feed.items)

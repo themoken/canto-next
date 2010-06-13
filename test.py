@@ -67,6 +67,7 @@ all_tests = {
         "test_id_hierarchy" : tests.feed.Tests,
         "test_unique_id" : tests.feed.Tests,
         "test_clear_tags" : tests.feed.Tests,
+        "test_initial_index" : tests.feed.Tests,
         "test_add_tag" : tests.tag.Tests,
         "test_get_tag" : tests.tag.Tests,
         "test_remove_id" : tests.tag.Tests }

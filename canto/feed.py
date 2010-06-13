@@ -27,6 +27,9 @@ class CantoFeed():
         self.items = []
         self.olditems = []
 
+        # Pull items from disk on instantiation.
+        self.index()
+
     # Return whether item, if added, would have a unique ID
     def unique_item(self, item):
         for cur_item in self.items:
@@ -46,10 +49,21 @@ class CantoFeed():
                 alltags.remove_id(olditem["id"])
 
     # Re-index contents
+    # If we have self.update_contents, use that
+    # If not, at least populate self.items from disk.
+
     def index(self):
-        # We errored on the last update, bail
+
         if not self.update_contents:
-            return
+            self.shelf.open()
+            try:
+                if not self.items and self.URL in self.shelf:
+                    self.update_contents = self.shelf[self.URL]
+                else:
+                    # No update yet, no disk presence, nothing to do
+                    return
+            finally:
+                self.shelf.close()
 
         self.shelf.open()
         if self.URL not in self.shelf:
@@ -60,6 +74,10 @@ class CantoFeed():
             self.old_contents = self.shelf[self.URL]
             log.debug("Fetched previous content.")
         self.shelf.close()
+
+        # BEWARE: At this point, update_contents could either be
+        # fresh from feedparser or fresh from disk, so it's possible that the
+        # old contents and the new contents are identical.
 
         self.olditems = self.items
         self.items = []
