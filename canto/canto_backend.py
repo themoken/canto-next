@@ -126,6 +126,8 @@ class CantoBackend(CantoServer):
 
     def attributes(self, socket, args):
 
+        log.debug("ATTRIBUTE args: %s" % args)
+
         ret = {}
         for i in args.keys():
             # i[0] = URL, i[1] = feed id

@@ -143,3 +143,33 @@ class Tests(unittest.TestCase):
                 {"Test 1" : set([(resolved_url1, "http://example.com/item/1")]),
                  "Test 2" : set([(resolved_url2, "http://example.com/item/1")])
                 })
+
+    def test_attributes(self):
+        resolved_url1 = "file://" + os.getenv("PWD") +\
+                "/tests/good/items/test1.xml"
+        resolved_url2 = "file://" + os.getenv("PWD") +\
+                "/tests/good/items/test2.xml"
+        link = "http://example.com/item/1"
+
+        item1 = (resolved_url1, link)
+        item2 = (resolved_url2, link)
+
+        attrs = [ "link", "title" ]
+
+        conf_dir = os.getenv("PWD") + "/tests/good/items"
+        commands = [u"ATTRIBUTES { %s : %s, %s : %s }" % (item1, attrs, item2, attrs), u"DIE "]
+        responses = []
+
+        self.protocol(conf_dir, commands, responses)
+
+        self.assertTrue(responses[0][0] == "ATTRIBUTES")
+        self.assertTrue(len(responses[0][1].keys()) == 2)
+        self.assertTrue(item1 in responses[0][1])
+        self.assertTrue(item2 in responses[0][1])
+        for item in [item1, item2]:
+            for attr in attrs:
+                self.assertTrue(attr in responses[0][1][item])
+                if attr == "link":
+                    self.assertTrue(responses[0][1][item][attr] == link)
+                elif attr == "title":
+                    self.assertTrue(responses[0][1][item][attr] == "Item 1")

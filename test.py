@@ -62,6 +62,7 @@ all_tests = {
         "test_pid_lock" : tests.backend.Tests,
         "test_list_feeds" : tests.backend.Tests,
         "test_items" : tests.backend.Tests,
+        "test_attributes" : tests.backend.Tests,
         "test_first_update" : tests.feed.Tests,
         "test_attribute_passthru" : tests.feed.Tests,
         "test_id_hierarchy" : tests.feed.Tests,
