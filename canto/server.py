@@ -65,8 +65,15 @@ class CantoServer(CantoSocket):
                 Thread(target = self.queue_loop,\
                 args = (conn[0],))))
 
+        # Connection threads are "daemons" so that
+        # if the main thread receives DIE, it sys.exit()s
+        # and takes all of them down too and subsequent
+        # connected clients receive HUP instead of just hanging
+        # on the dead threads.
+
+        self.connections[-1][1].daemon = True
         self.connections[-1][1].start()
-        log.debug("Spawning new thread.")
+        log.debug("Spawned new thread.")
 
     # Write a (cmd, args) to a single connection.
     def write(self, conn, cmd, args):
