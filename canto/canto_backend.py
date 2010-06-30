@@ -14,6 +14,7 @@ from config import CantoConfig
 from storage import CantoShelf
 from encoding import encoder, decoder
 from tag import alltags
+from feed import allfeeds
 
 import traceback
 import logging
@@ -100,7 +101,7 @@ class CantoBackend(CantoServer):
             feeds.append((feed.name, feed.URL))
         self.write(socket, "LISTFEEDS", feeds)
 
-    # ITEMS tag -> id for all items in tag
+    # ITEMS tag|[tags] -> { tag : [ ids ], tag2 : ... }
     def items(self, socket, args):
         ids = []
 
@@ -120,6 +121,20 @@ class CantoBackend(CantoServer):
 
         self.write(socket, "ITEMS", response)
 
+    # ATTRIBUTES { id : [ attribs .. ] .. } ->
+    # { id : { attribute : value } ... }
+
+    def attributes(self, socket, args):
+
+        ret = {}
+        for i in args.keys():
+            # i[0] = URL, i[1] = feed id
+
+            f = allfeeds[i[0]]
+            ret[i] = f.get_attributes(i, args[i])
+
+        self.write(socket, "ATTRIBUTES", ret)
+
     # The workhorse that maps all requests to their handlers.
     def run(self):
         while 1:
@@ -132,6 +147,8 @@ class CantoBackend(CantoServer):
                     self.listfeeds(socket, args)
                 elif cmd == "ITEMS":
                     self.items(socket, args)
+                elif cmd == "ATTRIBUTES":
+                    self.attributes(socket, args)
                 elif cmd == "DIE":
                     log.info("Received DIE.")
                     return
@@ -254,8 +271,10 @@ class CantoBackend(CantoServer):
         return None
 
     def pid_unlock(self):
+        log.debug("Unlocking pidfile.")
         fcntl.flock(self.pidfile.fileno(), fcntl.LOCK_UN)
         self.pidfile.close()
+        log.debug("Unlocked.")
 
     # Reset basic log info to log to the right file.
     def set_log(self):

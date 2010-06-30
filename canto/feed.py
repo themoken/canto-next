@@ -12,11 +12,11 @@ import logging
 
 log = logging.getLogger("FEED")
 
-allfeeds = []
+allfeeds = {}
 
 class CantoFeed():
     def __init__(self, shelf, name, URL, rate, keep):
-        allfeeds.append(self)
+        allfeeds[URL] = self
         self.shelf = shelf
         self.name = name
         self.URL = URL
@@ -48,9 +48,48 @@ class CantoFeed():
             else:
                 alltags.remove_id(olditem["id"])
 
+    # Return { id : { attribute : value .. } .. }
+    def get_attributes(self, i, attributes):
+        atts = {}
+
+        # Grab cached item
+        for idx, ci in enumerate(self.items):
+            if ci["id"] == i:
+                item_cache = ci
+                item_idx = idx
+                break
+        else:
+            raise Exception, "%s not found in self.items" % (i,)
+
+        # Get attributes
+        for a in attributes:
+
+            # Cached attribute
+            if a in item_cache:
+                atts[a] = ci[a]
+
+            # Disk attribute
+            else:
+                self.shelf.open()
+                d = self.shelf[self.URL]
+                self.shelf.close()
+
+                # NOTE: This relies on self.items maintaining
+                # the identical order to the entries on disk.
+                # Must be enforced by self.index()
+
+                disk_item = d["entries"][item_idx]
+                if a in disk_item:
+                    atts[a] = disk_item[a]
+                else:
+                    atts[a] = ""
+        return atts
+
     # Re-index contents
     # If we have self.update_contents, use that
     # If not, at least populate self.items from disk.
+
+    # MUST GUARANTEE self.items is in same order as entries on disk.
 
     def index(self):
 
