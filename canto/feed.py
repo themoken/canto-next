@@ -48,18 +48,19 @@ class CantoFeed():
             else:
                 alltags.remove_id(olditem["id"])
 
+    def lookup_by_id(self, i):
+        for idx, ci in enumerate(self.items):
+            if ci["id"] == i:
+                return (ci, idx)
+        else:
+            raise Exception, "%s not found in self.items" % (i,)
+
     # Return { id : { attribute : value .. } .. }
     def get_attributes(self, i, attributes):
         atts = {}
 
         # Grab cached item
-        for idx, ci in enumerate(self.items):
-            if ci["id"] == i:
-                item_cache = ci
-                item_idx = idx
-                break
-        else:
-            raise Exception, "%s not found in self.items" % (i,)
+        item_cache, item_idx = self.lookup_by_id(i)
 
         # Get attributes
         for a in attributes:
@@ -84,6 +85,24 @@ class CantoFeed():
                 else:
                     atts[a] = ""
         return atts
+
+    # Given an ID and a dict of attributes, update the disk.
+    def set_attributes(self, i, attributes):
+
+        item_cache, item_idx = self.lookup_by_id(i)
+
+        self.shelf.open()
+        d = self.shelf[self.URL]
+
+        # NOTE: This relies on self.items maintaining
+        # the identical order to the entries on disk.
+        # Must be enforced by self.index()
+
+        for a in attributes:
+            d["entries"][item_idx][a] = attributes[a]
+
+        self.shelf[self.URL] = d
+        self.shelf.close()
 
     # Re-index contents
     # If we have self.update_contents, use that

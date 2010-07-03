@@ -126,7 +126,7 @@ class CantoBackend(CantoServer):
 
     def attributes(self, socket, args):
 
-        log.debug("ATTRIBUTE args: %s" % args)
+        log.debug("ATTRIBUTES args: %s" % args)
 
         ret = {}
         for i in args.keys():
@@ -136,6 +136,17 @@ class CantoBackend(CantoServer):
             ret[i] = f.get_attributes(i, args[i])
 
         self.write(socket, "ATTRIBUTES", ret)
+
+    # SETATTRIBUTES { id : { attribute : value } ... } -> None
+
+    def setattributes(self, socket, args):
+        log.debug("SETATTRIBUTES %s" % args)
+
+        ret = {}
+        for i in args.keys():
+            # i[0] = URL, i[1] = feed id
+            f = allfeeds[i[0]]
+            f.set_attributes(i, args[i])
 
     # The workhorse that maps all requests to their handlers.
     def run(self):
@@ -151,6 +162,8 @@ class CantoBackend(CantoServer):
                     self.items(socket, args)
                 elif cmd == "ATTRIBUTES":
                     self.attributes(socket, args)
+                elif cmd == "SETATTRIBUTES":
+                    self.setattributes(socket, args)
                 elif cmd == "DIE":
                     log.info("Received DIE.")
                     return
