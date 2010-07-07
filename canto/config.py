@@ -7,6 +7,7 @@
 #   it under the terms of the GNU General Public License version 2 as 
 #   published by the Free Software Foundation.
 
+from filter import CantoPersistentFilter, CantoSimpleFilter
 from feed import CantoFeed
 from encoding import decoder
 
@@ -99,9 +100,14 @@ class CantoConfig():
             log.debug("Parsing defaults:")
             self.rate = self.get("int", "defaults", "rate", 5)
             self.keep = self.get("int", "defaults", "keep", 0)
+
+            gf =  self.get("", "defaults", "global_filter", None)
+            f = CantoPersistentFilter()
+            self.global_filter = f.init(gf)
         else:
             self.rate = 5
             self.keep = 0
+            self.global_filter = None
 
         for section in self.cfg.sections():
             if section in self.special_sections:

@@ -90,6 +90,10 @@ class CantoBackend(CantoServer):
         signal.signal(signal.SIGALRM, self.sig_alrm)
         signal.alarm(1)
 
+    def apply_filters(self, tag):
+        log.debug("Applying filter: %s" % self.conf.global_filter.path)
+        return self.conf.global_filter(tag)
+
     # Simple PING response, PONG.
     def pong(self, socket, args):
         self.write(socket, "PONG", u"")
@@ -117,7 +121,7 @@ class CantoBackend(CantoServer):
         response = {}
         for tag in tags:
             # get_tag returns a list invariably, but may be empty.
-            response[tag] = alltags.get_tag(tag)
+            response[tag] = self.apply_filters(alltags.get_tag(tag))
 
         self.write(socket, "ITEMS", response)
 

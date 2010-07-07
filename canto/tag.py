@@ -16,10 +16,11 @@ class CantoTags():
     def add_tag(self, id, name):
         # Create tag if no tag exists
         if name not in self.tags:
-            self.tags[name] = set()
+            self.tags[name] = []
 
         # Add to tag.
-        self.tags[name].add(id)
+        if id not in self.tags[name]:
+            self.tags[name].append(id)
 
     def remove_id(self, id):
         for tag in self.tags:

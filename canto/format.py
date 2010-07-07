@@ -23,7 +23,7 @@ def get_formatter(fmt, keys):
                 if key not in dct:
                     i += 1
                     continue
-                s += dct[key]
+                s += repr(dct[key])
             elif fmt[i] == '\\':
                 s += fmt[i + 1]
                 i += 1
@@ -31,5 +31,4 @@ def get_formatter(fmt, keys):
                 s += fmt[i]
             i += 1
         return s
-
     return formatter
