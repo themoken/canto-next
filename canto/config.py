@@ -32,6 +32,10 @@ class CantoConfig():
         # Config's feed objects (non-special sections)
         self.feeds = []
 
+        self.default_rate = 5
+        self.default_keep = 0
+        self.global_filter = None
+
     def get(self, otype, section, option, default, required = 0):
         # Use otype to get the right get_* function
         if hasattr(self.cfg, "get" + otype):
@@ -74,8 +78,8 @@ class CantoConfig():
             log.info("ERROR: Missing URL for feed %s" % section)
             return
 
-        rate = self.get("int", section, "rate", self.rate)
-        keep = self.get("int", section, "keep", self.keep)
+        rate = self.get("int", section, "rate", self.default_rate)
+        keep = self.get("int", section, "keep", self.default_keep)
 
         # All strings obtained from the config outside of the self.get function
         # must be converted to Unicode. The section name is the only obvious
@@ -98,16 +102,16 @@ class CantoConfig():
 
         if self.cfg.has_section("defaults"):
             log.debug("Parsing defaults:")
-            self.rate = self.get("int", "defaults", "rate", 5)
-            self.keep = self.get("int", "defaults", "keep", 0)
+            self.default_rate = self.get("int", "defaults", "rate",\
+                    self.default_rate)
+            self.default_keep = self.get("int", "defaults", "keep",\
+                    self.default_keep)
 
+            #XXX: Differentiate between simple and persistent filters.
             gf =  self.get("", "defaults", "global_filter", None)
+
             f = CantoPersistentFilter()
             self.global_filter = f.init(gf)
-        else:
-            self.rate = 5
-            self.keep = 0
-            self.global_filter = None
 
         for section in self.cfg.sections():
             if section in self.special_sections:
