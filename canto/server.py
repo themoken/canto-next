@@ -9,6 +9,7 @@
 
 from protocol import CantoSocket
 
+from socket import SHUT_RDWR
 from threading import Thread
 import logging
 import select
@@ -65,13 +66,6 @@ class CantoServer(CantoSocket):
                 Thread(target = self.queue_loop,\
                 args = (conn[0],))))
 
-        # Connection threads are "daemons" so that
-        # if the main thread receives DIE, it sys.exit()s
-        # and takes all of them down too and subsequent
-        # connected clients receive HUP instead of just hanging
-        # on the dead threads.
-
-        self.connections[-1][1].daemon = True
         self.connections[-1][1].start()
         log.debug("Spawned new thread.")
 
@@ -87,6 +81,10 @@ class CantoServer(CantoSocket):
 
     def exit(self):
         self.alive = False
+        for conn, t in self.connections:
+            conn.shutdown(SHUT_RDWR)
+            conn.close()
+            t.join()
 
     # For testing, step through
     def get_one_cmd(self):
