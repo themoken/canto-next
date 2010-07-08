@@ -10,7 +10,7 @@ from canto.format import get_formatter
 from canto.feed import allfeeds
 from canto.encoding import encoder, decoder
 
-from subprocess import Popen, PIPE
+from subprocess import Popen, PIPE, call
 import traceback
 import logging
 import shlex
@@ -107,8 +107,12 @@ class CantoPersistentFilter(CantoFilter):
 
 class CantoSimpleFilter(CantoFilter):
     def init (self, path):
-        CantoFilter.init(self, path)
+        r = CantoFilter.init(self, path)
+        if not r:
+            return r
+
         self.formatter = get_formatter(self.args, self.format_map)
+        return self
 
     def __call__(self, tag):
         res = []
@@ -119,6 +123,6 @@ class CantoSimpleFilter(CantoFilter):
             command_line = self.formatter(d)
             full = self.path + " " + command_line
 
-            if subprocess.call(shlex.split(encoder(full))) == 1:
+            if call(shlex.split(encoder(full))) == 1:
                 res.append(i)
         return res

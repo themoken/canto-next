@@ -109,9 +109,15 @@ class CantoConfig():
 
             #XXX: Differentiate between simple and persistent filters.
             gf =  self.get("", "defaults", "global_filter", None)
+            if gf:
+                t = self.get("","defaults","global_filter_type", "persistent")
+                log.debug("T == %s" % t)
+                if t == "simple":
+                    f = CantoSimpleFilter()
+                elif t == "persistent":
+                    f = CantoPersistentFilter()
 
-            f = CantoPersistentFilter()
-            self.global_filter = f.init(gf)
+                self.global_filter = f.init(gf)
 
         for section in self.cfg.sections():
             if section in self.special_sections:
