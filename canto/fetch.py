@@ -87,7 +87,6 @@ class CantoFetch():
         return needs_update
 
     def fetch(self):
-        self.threads = []
         for feed in self.feeds:
             # If feed doesn't need an update, don't fire off a thread.
             if not self.needs_update(feed):
@@ -109,3 +108,4 @@ class CantoFetch():
         for thread, feed in self.threads:
             thread.join()
             feed.index()
+        self.threads = []
