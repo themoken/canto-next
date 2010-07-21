@@ -137,7 +137,11 @@ class CantoBackend(CantoServer):
             # i[0] = URL, i[1] = feed id
 
             f = allfeeds[i[0]]
-            ret[i] = f.get_attributes(i, args[i])
+            try:
+                ret[i] = f.get_attributes(i, args[i])
+            except:
+                # Item not found
+                ret[i] = None
 
         self.write(socket, "ATTRIBUTES", ret)
 
@@ -150,7 +154,11 @@ class CantoBackend(CantoServer):
         for i in args.keys():
             # i[0] = URL, i[1] = feed id
             f = allfeeds[i[0]]
-            f.set_attributes(i, args[i])
+            try:
+                f.set_attributes(i, args[i])
+            except:
+                # Item not found.
+                pass
 
     # The workhorse that maps all requests to their handlers.
     def run(self):
