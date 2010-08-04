@@ -18,6 +18,20 @@ import os
 
 log = logging.getLogger("CONFIG")
 
+default_config = """\
+[Feed Canto]
+url = http://codezen.org/static/canto.xml
+order = 0
+
+[Feed Slashdot]
+url = http://rss.slashdot.org/slashdot/Slashdot
+order = 1
+
+[Feed Reddit]
+url = http://reddit.com/.rss
+order = 2
+"""
+
 class CantoConfig():
     def __init__(self, filename, shelf):
         self.filename = filename
@@ -90,11 +104,12 @@ class CantoConfig():
         return r
 
     def parse_feed(self, section):
-        log.debug("Found feed: %s" % section)
+        name = section[5:]
+        log.debug("Found feed: %s" % name)
         try:
             URL = self.get("", section, "URL", "", 1)
         except:
-            log.info("ERROR: Missing URL for feed %s" % section)
+            log.info("ERROR: Missing URL for feed %s" % name)
             return
 
         rate = self.get("int", section, "rate", self.default_rate)
@@ -107,13 +122,20 @@ class CantoConfig():
         if type(section) == str:
             section = decoder(section)
 
-        self.feeds.append(CantoFeed(self.shelf, section, URL, rate, keep))
+        self.feeds.append(CantoFeed(self.shelf, name, URL, rate, keep))
 
     def parse(self):
         env = { "home" : os.getenv("HOME"),
                 "cwd"  : os.getcwd() }
+
         self.cfg = ConfigParser.SafeConfigParser(env)
         log.debug("New Parser with env: %s" % env)
+
+        if not os.path.exists(self.filename):
+            log.debug("No config found, writing default.")
+            f = open(self.filename, "w")
+            f.write(default_config)
+            f.close()
 
         self.cfg.read(self.filename)
         log.debug("Read %s" % self.filename)
@@ -138,10 +160,10 @@ class CantoConfig():
 
                 self.global_filter = f.init(gf)
 
+        # Grab feeds
         for section in self.cfg.sections():
-            if section in self.special_sections:
-                continue
-            self.parse_feed(section)
+            if section.startswith("Feed "):
+                self.parse_feed(section)
 
     def write(self):
         log.debug("writing config to disk")
