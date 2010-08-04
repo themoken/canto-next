@@ -162,6 +162,35 @@ class CantoBackend(CantoServer):
                 # Item not found.
                 pass
 
+    # CONFIGS [ config.options ] -> { "option" : "value" ... }
+
+    def configs(self, socket, args):
+        log.debug("CONFIGS %s" % args)
+
+        ret = {}
+        for opt in args:
+            if "." not in opt:
+                ret[opt] = self.conf.get_section(opt)
+                continue
+
+            section, setting = opt.split(".", 1)
+            try:
+                ret[opt] = self.conf.get("", section, setting, None, 0)
+            except:
+                log.debug("Exception getting option %s" % opt)
+
+        self.write(socket, "CONFIGS", ret)
+
+    # SETCONFIGS { "option" : "value" }
+
+    def setconfigs(self, socket, args):
+        for k in args.keys():
+            if "." not in k:
+                continue
+            section, setting = k.split(".", 1)
+            self.conf.set(section, setting, args[k])
+        self.conf.write()
+
     # The workhorse that maps all requests to their handlers.
     def run(self):
         while 1:
@@ -178,6 +207,10 @@ class CantoBackend(CantoServer):
                     self.attributes(socket, args)
                 elif cmd == "SETATTRIBUTES":
                     self.setattributes(socket, args)
+                elif cmd == "CONFIGS":
+                    self.configs(socket, args)
+                elif cmd == "SETCONFIGS":
+                    self.setconfigs(socket, args)
                 elif cmd == "DIE":
                     log.info("Received DIE.")
                     return

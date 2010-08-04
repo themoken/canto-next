@@ -36,6 +36,19 @@ class CantoConfig():
         self.default_keep = 0
         self.global_filter = None
 
+    def set(self, section, option, value):
+        log.debug("setting %s.%s = %s" % (section, option, value))
+        return self.cfg.set(section, option, value.replace("%","%%"))
+
+    def get_section(self, section):
+        r = {}
+        if not self.cfg.has_section(section):
+            return r
+
+        for opt in self.cfg.options(section):
+            r[opt] = self.get("", section, opt, None, 0)
+        return r
+
     def get(self, otype, section, option, default, required = 0):
         # Use otype to get the right get_* function
         if hasattr(self.cfg, "get" + otype):
@@ -46,6 +59,12 @@ class CantoConfig():
         # Wrap the get_x function in logs
         try:
             r = fn(section, option)
+        except ConfigParser.NoSectionError:
+            if not required:
+                return default
+            self.errors = True
+            log.info("ERROR: Missing section %s" % section)
+            raise
         except ConfigParser.NoOptionError:
             if not required:
                 return default
@@ -123,3 +142,11 @@ class CantoConfig():
             if section in self.special_sections:
                 continue
             self.parse_feed(section)
+
+    def write(self):
+        log.debug("writing config to disk")
+        try:
+            f = open(self.filename, "wb")
+            self.cfg.write(f)
+        finally:
+            f.close()
