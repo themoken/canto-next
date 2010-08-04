@@ -28,6 +28,9 @@ import os
 # at all.
 
 class CantoFilter():
+    def __str__(self):
+        return "Filter: %s" % self.path
+
     def init(self, path):
         if not path:
             return None

@@ -91,8 +91,10 @@ class CantoBackend(CantoServer):
         signal.alarm(1)
 
     def apply_filters(self, tag):
-        log.debug("Applying filter: %s" % self.conf.global_filter.path)
-        return self.conf.global_filter(tag)
+        log.debug("Applying filter: %s" % self.conf.global_filter)
+        if self.conf.global_filter:
+            return self.conf.global_filter(tag)
+        return tag
 
     # Simple PING response, PONG.
     def pong(self, socket, args):
