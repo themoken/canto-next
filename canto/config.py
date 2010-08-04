@@ -40,11 +40,8 @@ class CantoConfig():
         # For user notification
         self.errors = False
 
-        # Config Sections that aren't feeds
-        self.special_sections = ["defaults"]
-
-        # Config's feed objects (non-special sections)
         self.feeds = []
+        self.unordered_feeds = []
 
         self.default_rate = 5
         self.default_keep = 0
@@ -112,17 +109,28 @@ class CantoConfig():
             log.info("ERROR: Missing URL for feed %s" % name)
             return
 
-        rate = self.get("int", section, "rate", self.default_rate)
-        keep = self.get("int", section, "keep", self.default_keep)
-
-        # All strings obtained from the config outside of the self.get function
-        # must be converted to Unicode. The section name is the only obvious
-        # example at this point.
-
         if type(section) == str:
             section = decoder(section)
 
-        self.feeds.append(CantoFeed(self.shelf, name, URL, rate, keep))
+        rate = self.get("int", section, "rate", self.default_rate)
+        keep = self.get("int", section, "keep", self.default_keep)
+
+        order = self.get("int", section, "order", None)
+
+        feed = CantoFeed(self.shelf, name, URL, rate, keep)
+
+        # If the list isn't long enough, make it so.
+        if order:
+            if order >= len(self.feeds):
+                self.feeds += [None] * (order - (len(self.feeds) - 1))
+
+            # All strings obtained from the config outside of the self.get
+            # function must be converted to Unicode. The section name is the
+            # only obvious example at this point.
+
+            self.feeds[order] = feed
+        else:
+            self.unordered_feeds.append(feed)
 
     def parse(self):
         env = { "home" : os.getenv("HOME"),
@@ -164,6 +172,15 @@ class CantoConfig():
         for section in self.cfg.sections():
             if section.startswith("Feed "):
                 self.parse_feed(section)
+
+        # Compress feeds in case we have empty spaces
+        # due to strange 'order' settings.
+
+        self.feeds = [f for f in self.feeds if f ]
+
+        # Append feeds lacking 'order' setting.
+        self.feeds += self.unordered_feeds
+        self.unordered_feeds = []
 
     def write(self):
         log.debug("writing config to disk")
