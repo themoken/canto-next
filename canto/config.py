@@ -7,7 +7,7 @@
 #   it under the terms of the GNU General Public License version 2 as 
 #   published by the Free Software Foundation.
 
-from filter import CantoPersistentFilter, CantoSimpleFilter
+from transform import CantoPersistentItemTransform, CantoSimpleItemTransform
 from feed import CantoFeed
 from encoding import decoder
 
@@ -119,8 +119,8 @@ class CantoConfig():
 
         feed = CantoFeed(self.shelf, name, URL, rate, keep)
 
-        # If the list isn't long enough, make it so.
         if order:
+            # If the list isn't long enough, make it so.
             if order >= len(self.feeds):
                 self.feeds += [None] * (order - (len(self.feeds) - 1))
 
@@ -162,9 +162,9 @@ class CantoConfig():
                 t = self.get("","defaults","global_filter_type", "persistent")
                 log.debug("T == %s" % t)
                 if t == "simple":
-                    f = CantoSimpleFilter()
+                    f = CantoSimpleItemTransform()
                 elif t == "persistent":
-                    f = CantoPersistentFilter()
+                    f = CantoPersistentItemTransform()
 
                 self.global_filter = f.init(gf)
 
