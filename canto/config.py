@@ -7,7 +7,7 @@
 #   it under the terms of the GNU General Public License version 2 as 
 #   published by the Free Software Foundation.
 
-from transform import CantoPersistentItemTransform, CantoSimpleItemTransform
+from transform import eval_transform
 from feed import CantoFeed
 from encoding import decoder
 
@@ -45,7 +45,7 @@ class CantoConfig():
 
         self.default_rate = 5
         self.default_keep = 0
-        self.global_filter = None
+        self.global_transform = None
 
     def set(self, section, option, value):
         log.debug("setting %s.%s = %s" % (section, option, value))
@@ -156,17 +156,9 @@ class CantoConfig():
             self.default_keep = self.get("int", "defaults", "keep",\
                     self.default_keep)
 
-            #XXX: Differentiate between simple and persistent filters.
-            gf =  self.get("", "defaults", "global_filter", None)
+            gf =  self.get("", "defaults", "global_transform", None)
             if gf:
-                t = self.get("","defaults","global_filter_type", "persistent")
-                log.debug("T == %s" % t)
-                if t == "simple":
-                    f = CantoSimpleItemTransform()
-                elif t == "persistent":
-                    f = CantoPersistentItemTransform()
-
-                self.global_filter = f.init(gf)
+                self.global_transform = eval_transform(gf)
 
         # Grab feeds
         for section in self.cfg.sections():

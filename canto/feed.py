@@ -14,6 +14,17 @@ log = logging.getLogger("FEED")
 
 allfeeds = {}
 
+def items_to_feeds(items):
+    log.debug("i2f got %s" % items)
+    f = {}
+    for i in items:
+        feed = allfeeds[i[0]]
+        if feed in f:
+            f[feed].append(i)
+        else:
+            f[feed] = [i]
+    return f
+
 class CantoFeed():
     def __init__(self, shelf, name, URL, rate, keep):
         allfeeds[URL] = self
@@ -56,50 +67,68 @@ class CantoFeed():
             raise Exception, "%s not found in self.items" % (i,)
 
     # Return { id : { attribute : value .. } .. }
-    def get_attributes(self, i, attributes):
-        atts = {}
+    def get_attributes(self, items, attributes):
+        r = {}
 
-        # Grab cached item
-        item_cache, item_idx = self.lookup_by_id(i)
+        for i in items:
+            attrs = {}
 
-        # Get attributes
-        for a in attributes:
+            # Grab cached item
+            try:
+                item_cache, item_idx = self.lookup_by_id(i)
+            except:
+                log.debug("get_attributes: couldn't find %s" % (i,))
+                continue
 
-            # Cached attribute
-            if a in item_cache:
-                atts[a] = ci[a]
+            # Potential fetched disk data.
+            d = None
 
-            # Disk attribute
-            else:
-                self.shelf.open()
-                d = self.shelf[self.URL]
-                self.shelf.close()
+            # Get attributes
+            for a in attributes[i]:
 
-                # NOTE: This relies on self.items maintaining
-                # the identical order to the entries on disk.
-                # Must be enforced by self.index()
+                # Cached attribute
+                if a in item_cache:
+                    attrs[a] = ci[a]
 
-                disk_item = d["entries"][item_idx]
-                if a in disk_item:
-                    atts[a] = disk_item[a]
+                # Disk attribute
                 else:
-                    atts[a] = ""
-        return atts
+
+                    # If we haven't already grabbed the disk content, do so.
+                    if not d:
+                        self.shelf.open()
+                        d = self.shelf[self.URL]
+                        self.shelf.close()
+
+                    # NOTE: This relies on self.items maintaining
+                    # the identical order to the entries on disk.
+                    # Must be enforced by self.index()
+
+                    disk_item = d["entries"][item_idx]
+                    if a in disk_item:
+                        attrs[a] = disk_item[a]
+                    else:
+                        attrs[a] = ""
+            r[i] = attrs
+        return r
 
     # Given an ID and a dict of attributes, update the disk.
-    def set_attributes(self, i, attributes):
-
-        item_cache, item_idx = self.lookup_by_id(i)
+    def set_attributes(self, items, attributes):
 
         self.shelf.open()
         d = self.shelf[self.URL]
 
-        # NOTE: This relies on self.items maintaining
-        # the identical order to the entries on disk.
-        # Must be enforced by self.index()
+        for i in items:
+            try:
+                item_cache, item_idx = self.lookup_by_id(i)
+            except:
+                continue
 
-        for a in attributes:
-            d["entries"][item_idx][a] = attributes[a]
+            # NOTE: This relies on self.items maintaining
+            # the identical order to the entries on disk.
+            # Must be enforced by self.index()
+
+            for a in attributes[i]:
+                d["entries"][item_idx][a] = attributes[i][a]
 
         self.shelf[self.URL] = d
         self.shelf.close()

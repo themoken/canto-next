@@ -14,7 +14,7 @@ from config import CantoConfig
 from storage import CantoShelf
 from encoding import encoder, decoder
 from tag import alltags
-from feed import allfeeds
+from feed import allfeeds, items_to_feeds
 
 import traceback
 import logging
@@ -91,9 +91,9 @@ class CantoBackend(CantoServer):
         signal.alarm(1)
 
     def apply_filters(self, tag):
-        log.debug("Applying filter: %s" % self.conf.global_filter)
-        if self.conf.global_filter:
-            return self.conf.global_filter(tag)
+        log.debug("Applying transform: %s" % self.conf.global_transform)
+        if self.conf.global_transform:
+            return self.conf.global_transform(tag)
         return tag
 
     # Simple PING response, PONG.
@@ -135,15 +135,10 @@ class CantoBackend(CantoServer):
         log.debug("ATTRIBUTES args: %s" % args)
 
         ret = {}
-        for i in args.keys():
-            # i[0] = URL, i[1] = feed id
 
-            f = allfeeds[i[0]]
-            try:
-                ret[i] = f.get_attributes(i, args[i])
-            except:
-                # Item not found
-                ret[i] = None
+        feeds = items_to_feeds(args.keys())
+        for f in feeds:
+            ret.update(f.get_attributes(feeds[f], args))
 
         self.write(socket, "ATTRIBUTES", ret)
 
@@ -153,14 +148,10 @@ class CantoBackend(CantoServer):
         log.debug("SETATTRIBUTES %s" % args)
 
         ret = {}
-        for i in args.keys():
-            # i[0] = URL, i[1] = feed id
-            f = allfeeds[i[0]]
-            try:
-                f.set_attributes(i, args[i])
-            except:
-                # Item not found.
-                pass
+
+        feeds = items_to_feeds(args.keys())
+        for f in feeds:
+            f.set_attributes(feeds[f], args)
 
     # CONFIGS [ config.options ] -> { "option" : "value" ... }
 

@@ -6,139 +6,110 @@
 #   it under the terms of the GNU General Public License version 2 as 
 #   published by the Free Software Foundation.
 
-from canto.format import get_formatter
-from canto.feed import allfeeds
-from canto.encoding import encoder, decoder
+from feed import allfeeds, items_to_feeds
 
-from subprocess import Popen, PIPE, call
-import traceback
 import logging
-import shlex
+import re
 
 log = logging.getLogger("TRANSFORM")
 
-import os
+transform_locals = { }
 
-class CantoItemTransform():
-    def init(self, name):
+class CantoTransform():
+    def __init__(self, name):
         self.name = name
 
-        self.format_map = {"t" : "title",
-                  "s" : "canto-state",
-                  "l" : "link",
-                  "d" : "description"}
-
-        self.format_attributes = [self.format_map[k] for k in self.format_map]
+    def __str__(self):
+        return self.name
 
     def __call__(self, tag):
-        r = []
-        for item in tag:
-            f = allfeeds[item[0]]
-            d = f.get_attributes(item, self.format_attributes)
-            d["id"] = item
-            r.append(d)
+        a = {}
+        f = items_to_feeds(tag)
+        needed = self.needed_attributes(tag)
 
-        return [d["id"] for d in self.transform(r)]
+        for feed in f:
+            attrs = {}
+            for i in f[feed]:
+                attrs[i] = needed
+            a.update(feed.get_attributes(f[feed], attrs))
+        return self.transform(tag, a)
 
-    def transform(self, items):
+    def needed_attributes(self, tag):
+        return []
+
+    def transform(self, items, attrs):
         return items
 
-# The base CantoBinaryItemTransform, gets the basic path and arguments, ensures the path is
-# valid and executable.
+class StateFilter(CantoTransform):
+    def __init__(self, state):
+        CantoTransform.__init__(self, "Filter state: %s" % state)
+        self.state = state
 
-# CantoBinaryItemTransform init functions return None if there was a problem and `self` if
-# there wasn't. So setting a variable like myitem transform = CantoBinaryItemTransform("/somepath")
-# will either yield a working item transform or None as if there was no item transform specified
-# at all.
+    def needed_attributes(self, tag):
+        return ["canto-state"]
 
-class CantoBinaryItemTransform(CantoItemTransform):
-    def __str__(self):
-        return "Binary Item Transform: %s" % self.path
+    def transform(self, items, attrs):
+        if self.state[0] == "-":
+            state = self.state[1:]
+            keep = True
+        else:
+            state = self.state
+            keep = False
 
-    def init(self, path):
-        CantoItemTransform.init(self, path)
+        log.debug("attrs: %s" % attrs)
+        return [ i for i in items if \
+                (state in attrs[i]["canto-state"]) == keep]
 
-        if not path:
-            return None
+class ContentFilterRegex(CantoTransform):
+    def __init__(self, attribute, regex):
+        CantoTransform.__init__(self, "Filter %s in %s" % (attribute, regex))
+        self.attribute = attribute
+        try:
+            self.match = re.compile(regex)
+        except:
+            self.match = None
+            log.error("Couldn't compile regex: %s" % regex)
 
-        parsed = shlex.split(encoder(path))
-        self.path = decoder(parsed[0])
-        self.args = path[len(self.path):]
+    def needed_attributes(self, tag):
+        if not self.match:
+            return []
+        log.debug("returning: %s" % [ self.attribute ])
+        return [ self.attribute ]
 
-        if self.ensure_perms() < 0:
-            return None
+    def transform(self, items, attrs):
+        log.debug("items: %s, attrs: %s" % (items, attrs))
+        if not self.match:
+            return item
 
-        return self
-
-    def ensure_perms(self):
-        if not os.path.exists(self.path):
-            log.debug("ItemTransform path %s doesn't exist!" % self.path)
-            return -1
-        if not os.path.isfile(self.path):
-            log.debug("ItemTransform path %s is not a file!" % self.path)
-            return -1
-        if not os.access(self.path, os.X_OK):
-            log.debug("ItemTransform path %s is not executable!" % self.path)
-            return -1
-        return 0
-
-# A "persistent" item transform implementation. The subprocess is forked exactly once
-# and is given it's arguments in a set order separated by \0s on STDIN. For each
-# set of arguments, it writes "0" or "1" (ASCII) to STDOUT.
-
-# XXX: Eventually this should cleanly timeout on malformed item transforms, or
-# apply_item transforms could never return.
-
-class CantoPersistentItemTransform(CantoBinaryItemTransform):
-    def init(self, path):
-        r = CantoBinaryItemTransform.init(self, path)
-        if not r:
-            return r
-
-        self.args = self.args.lstrip()
-        self.args = self.args.replace(" ", "\0") + "\0"
-
-        self.formatter = get_formatter(self.args, self.format_map)
-
-        self.process = Popen(self.path, stdin=PIPE, stdout=PIPE)
-
-        return self
-
-    def transform(self, items):
-        res = []
+        r = []
         for item in items:
-            format_line = self.formatter(item)
-            self.process.stdin.write(format_line)
+           a = attrs[item]
+           if self.attribute not in a:
+               r.append(item)
+               continue
+           if type(a[self.attribute]) != unicode:
+               log.error("Can't match non-string!")
+               continue
 
-        message = self.process.stdout.read(len(items))
-        for i, c in enumerate(message):
-            if c == "1":
-                res.append(items[i])
+           if not self.match.match(a[self.attribute]):
+               r.append(item)
+        return r
 
-        return res
+class ContentFilter(ContentFilterRegex):
+    def __init__(self, attribute, string):
+        string = ".*" + re.escape(string) + ".*"
+        ContentFilterRegex.__init__(self, attribute, string)
 
-# A "simple" item transform implementation. This is sort of naive in that the binary is
-# forked *for every single item*. It's rather lacking in performance, but since
-# (outside of the client init sequence) item transforming is done transparently in the
-# background, it's okay for extremely simple item transforms implemented in a language
-# that doesn't handle reading / writing well, but arguments are trivial (i.e.
-# Bash).
+transform_locals["StateFilter"] = StateFilter
+transform_locals["ContentFilter"] = ContentFilter
+transform_locals["filter_read"] = StateFilter("read")
 
-class CantoSimpleItemTransform(CantoBinaryItemTransform):
-    def init (self, path):
-        r = CantoBinaryItemTransform.init(self, path)
-        if not r:
-            return r
-
-        self.formatter = get_formatter(self.args, self.format_map)
-        return self
-
-    def transform(self, items):
-        res = []
-        for item in items:
-            command_line = self.formatter(item)
-            full = self.path + " " + command_line
-
-            if call(shlex.split(encoder(full))) == 1:
-                res.append(i)
-        return res
+def eval_transform(transform_name):
+    try:
+        return eval(transform_name, {}, transform_locals)
+    except Exception, e:
+        import traceback
+        tb = traceback.format_exc(e)
+        log.error("Couldn't figure out transform: %s" % transform_name)
+        log.error("\n" + "".join(tb))
+        return None
