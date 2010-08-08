@@ -15,6 +15,13 @@ log = logging.getLogger("TRANSFORM")
 
 transform_locals = { }
 
+# A Transform is generically any form of manipulation of the number of items
+# (filter) or order of those items (sort) based on some criteria.
+
+# The CantoTransform class serves as the base of all Transforms. It takes the
+# elements returned by a class' `needed_attributes()`, populates a dict of
+# these elements from cache/disk, and then gives them to the `transform()` call.
+
 class CantoTransform():
     def __init__(self, name):
         self.name = name
@@ -40,6 +47,9 @@ class CantoTransform():
     def transform(self, items, attrs):
         return items
 
+# A StateFilter will filter out items that match a particular state. Supports
+# using "-tag" to indicate to filter out those missing the tag.
+
 class StateFilter(CantoTransform):
     def __init__(self, state):
         CantoTransform.__init__(self, "Filter state: %s" % state)
@@ -59,6 +69,8 @@ class StateFilter(CantoTransform):
         log.debug("attrs: %s" % attrs)
         return [ i for i in items if \
                 (state in attrs[i]["canto-state"]) == keep]
+
+# Filter out items whose [attribute] content matches an arbitrary regex.
 
 class ContentFilterRegex(CantoTransform):
     def __init__(self, attribute, regex):
@@ -95,14 +107,25 @@ class ContentFilterRegex(CantoTransform):
                r.append(item)
         return r
 
+# Simple basic-string abstraction of the above.
+
 class ContentFilter(ContentFilterRegex):
     def __init__(self, attribute, string):
         string = ".*" + re.escape(string) + ".*"
         ContentFilterRegex.__init__(self, attribute, string)
 
+# Transform_locals is a list of elements that we pass to the eval() call when
+# evaluating a transform line from the config. Passing these into the local
+# scope allows simple filters to be created on the fly.
+
 transform_locals["StateFilter"] = StateFilter
+transform_locals["ContentFilterRegex"] = ContentFilterRegex
 transform_locals["ContentFilter"] = ContentFilter
 transform_locals["filter_read"] = StateFilter("read")
+
+# So now lines line `global_transform = ContentFilter('title', 'AMA')` can be
+# simply, safely, parsed with the Python interpreter. As well as supporting the
+# simple syntax `global_transform = filter_read` etc.
 
 def eval_transform(transform_name):
     try:
