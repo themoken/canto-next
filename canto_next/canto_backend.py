@@ -14,7 +14,7 @@ from config import CantoConfig
 from storage import CantoShelf
 from encoding import encoder, decoder
 from tag import alltags
-from feed import allfeeds, items_to_feeds
+from feed import allfeeds, items_to_feeds, protect, unprotect
 
 import traceback
 import logging
@@ -119,11 +119,13 @@ class CantoBackend(CantoServer):
             log.error("Invalid type: %s" % type(args))
             return
 
-        log.debug("TAGS: %s" % tags)
+        unprotect(socket)
+
         response = {}
         for tag in tags:
             # get_tag returns a list invariably, but may be empty.
             response[tag] = self.apply_filters(alltags.get_tag(tag))
+            protect(response[tag], socket)
 
         self.write(socket, "ITEMS", response)
 

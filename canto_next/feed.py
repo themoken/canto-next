@@ -7,12 +7,55 @@
 #   it under the terms of the GNU General Public License version 2 as 
 #   published by the Free Software Foundation.
 
+from server import allsockets
 from tag import alltags
+
 import logging
 
 log = logging.getLogger("FEED")
 
 allfeeds = {}
+
+# The Guardian class keeps a list of IDs that
+# are 'protected' based on the fact that they've
+# been given to clients and subsequent information
+# requests shouldn't fail, regardless.
+
+class Guardian():
+    def __init__(self):
+        self.prot = {}
+
+    def refresh(self):
+        # Weed out any protection
+        # associated with dead sockets.
+        for s in self.prot.keys():
+            if s not in allsockets:
+                log.debug("socket disappeared!")
+                del self.prot[s]
+
+    def protected(self, item):
+        for s in self.prot.keys():
+            if item in self.prot[s]:
+                log.debug("item %s is protected." % (item,))
+                return True
+
+        log.debug("item %s is not protected." % (item,))
+        return False
+
+    def protect(self, items, socket):
+        if socket in self.prot:
+            self.prot[socket] += items[:]
+        else:
+            self.prot[socket] = items[:]
+        log.debug("protected: %s" % self.prot)
+
+    def unprotect(self, socket):
+        if socket in self.prot:
+            del self.prot[socket]
+
+_guardian = Guardian()
+protect = _guardian.protect
+unprotect = _guardian.unprotect
 
 def items_to_feeds(items):
     log.debug("i2f got %s" % items)
@@ -209,6 +252,34 @@ class CantoFeed():
             # Other cache-able values should be added here.
 
             self.items.append(cacheitem)
+
+        # Keep items that have been given to clients from
+        # disappearing from the disk. This ensures that even if
+        # an item has been sitting in an active client for days
+        # requests for more information won't fail.
+
+        # Weed out dead sockets from the prot dict
+        # in order to ensure that the following _protected
+        # calls are accurate.
+
+        _guardian.refresh()
+
+        log.debug("olditems: %s" % self.olditems)
+
+        for i, olditem in enumerate(self.olditems):
+            log.debug("item(%d): %s" % (i, olditem))
+            if _guardian.protected(olditem["id"]):
+                log.debug("protected.")
+                for item in self.items:
+                    if olditem["id"] == item["id"]:
+                        log.debug("still in self.items")
+                        break
+                else:
+                    log.debug("Saving committed item: %s" % olditem)
+                    self.items.append(olditem)
+                    self.update_contents["entries"].append(\
+                            self.old_contents["entries"][i])
+
 
         # Commit the updates to disk.
         self.shelf.open()
