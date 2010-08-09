@@ -49,7 +49,9 @@ class CantoConfig():
 
     def set(self, section, option, value):
         log.debug("setting %s.%s = %s" % (section, option, value))
-        return self.cfg.set(section, option, value.replace("%","%%"))
+        if type(value) in [unicode, str]:
+            value = value.replace("%","%%")
+        return self.cfg.set(section, option, value)
 
     def get_section(self, section):
         r = {}
