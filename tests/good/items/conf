@@ -1,5 +1,0 @@
-[Test 1]
-URL = file://%(cwd)s/tests/good/items/test1.xml
-
-[Test 2]
-URL = file://%(cwd)s/tests/good/items/test2.xml

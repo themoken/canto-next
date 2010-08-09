@@ -6,6 +6,6 @@ setup(name='Canto',
       author='Jack Miller',
       author_email='jack@codezen.org',
       url='http://codezen.org/canto',
-      packages=['canto'],
+      packages=['canto_next'],
       scripts=['bin/canto-daemon'],
      )
