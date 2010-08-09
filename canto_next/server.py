@@ -16,6 +16,8 @@ import select
 
 log = logging.getLogger("SERVER")
 
+allsockets = []
+
 class CantoServer(CantoSocket):
     def __init__(self, socket_name, queue, testing = False):
         CantoSocket.__init__(self, socket_name, server=True)
@@ -46,6 +48,10 @@ class CantoServer(CantoSocket):
             if t.isAlive():
                 live_conns.append((c,t))
             else:
+                global allsockets
+                log.debug("removing socket %s" % c)
+                allsockets.remove(c)
+                log.debug("allsockets: %s" % allsockets)
                 t.join()
         self.connections = live_conns
 
@@ -60,6 +66,11 @@ class CantoServer(CantoSocket):
             conn = self.socket.accept()
         except:
             return # No new connection, we're done.
+
+        log.debug("adding socket %s" % conn[0])
+        global allsockets
+        allsockets.append(conn[0])
+        log.debug("allsockets: %s" % allsockets)
 
         # New connection == Spawn a queue_loop thread.
         self.connections.append((conn[0],\
