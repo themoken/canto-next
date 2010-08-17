@@ -8,13 +8,15 @@
 
 # This Backend class is the core of the daemon's specific protocol.
 
-from fetch import CantoFetch
+from feed import allfeeds, items_to_feeds
+from encoding import encoder, decoder
+from protect import protection
 from server import CantoServer
 from config import CantoConfig
 from storage import CantoShelf
-from encoding import encoder, decoder
+from fetch import CantoFetch
+from hooks import on_hook
 from tag import alltags
-from feed import allfeeds, items_to_feeds, protect, unprotect
 
 import traceback
 import logging
@@ -82,6 +84,8 @@ class CantoBackend(CantoServer):
         self.get_config()
         self.get_fetch()
 
+        self.setup_hooks()
+
         CantoServer.__init__(self, self.conf_dir + "/.canto_socket",\
                 Queue.Queue())
 
@@ -90,42 +94,53 @@ class CantoBackend(CantoServer):
         signal.signal(signal.SIGALRM, self.sig_alrm)
         signal.alarm(1)
 
-    def apply_filters(self, tag):
+    # If a socket dies, revoke any protection associated with it.
+
+    def on_kill_socket(self, socket):
+        log.debug("on_kill_socket")
+        protection.unprotect(socket)
+
+    # We need to be alerted on certain events, ensure
+    # we get notified about them.
+
+    def setup_hooks(self):
+        on_hook("kill_socket", self.on_kill_socket)
+        log.debug("Hooks setup.")
+
+    # Return list of item tuples after global transforms have
+    # been performed on them.
+
+    def apply_transforms(self, tag):
         log.debug("Applying transform: %s" % self.conf.global_transform)
         if self.conf.global_transform:
             return self.conf.global_transform(tag)
         return tag
 
-    # Simple PING response, PONG.
+    # PING -> PONG
+
     def pong(self, socket, args):
         self.write(socket, "PONG", u"")
 
-    # LISTFEEDS -> (tag, URL) for all feeds
+    # LISTFEEDS -> [ (tag, URL) for all feeds ]
+
     def listfeeds(self, socket, args):
         feeds = []
         for feed in self.conf.feeds:
             feeds.append((feed.name, feed.URL))
         self.write(socket, "LISTFEEDS", feeds)
 
-    # ITEMS tag|[tags] -> { tag : [ ids ], tag2 : ... }
+    # ITEMS [tags] -> { tag : [ ids ], tag2 : ... }
+
     def items(self, socket, args):
         ids = []
 
-        if type(args) == unicode:
-            tags = [ args ]
-        elif type(args) == list:
-            tags = args
-        else:
-            log.error("Invalid type: %s" % type(args))
-            return
-
-        unprotect(socket)
+        protection.unprotect(socket)
 
         response = {}
-        for tag in tags:
+        for tag in args:
             # get_tag returns a list invariably, but may be empty.
-            response[tag] = self.apply_filters(alltags.get_tag(tag))
-            protect(response[tag], socket)
+            response[tag] = self.apply_transforms(alltags.get_tag(tag))
+            protection.protect(socket, response[tag])
 
         self.write(socket, "ITEMS", response)
 

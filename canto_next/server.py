@@ -8,6 +8,7 @@
 #   published by the Free Software Foundation.
 
 from protocol import CantoSocket
+from hooks import call_hook
 
 from socket import SHUT_RDWR
 from threading import Thread
@@ -15,8 +16,6 @@ import logging
 import select
 
 log = logging.getLogger("SERVER")
-
-allsockets = []
 
 class CantoServer(CantoSocket):
     def __init__(self, socket_name, queue, testing = False):
@@ -48,10 +47,8 @@ class CantoServer(CantoSocket):
             if t.isAlive():
                 live_conns.append((c,t))
             else:
-                global allsockets
-                log.debug("removing socket %s" % c)
-                allsockets.remove(c)
-                log.debug("allsockets: %s" % allsockets)
+                # Notify watchers about dead socket.
+                call_hook("kill_socket", [c])
                 t.join()
         self.connections = live_conns
 
@@ -67,10 +64,8 @@ class CantoServer(CantoSocket):
         except:
             return # No new connection, we're done.
 
-        log.debug("adding socket %s" % conn[0])
-        global allsockets
-        allsockets.append(conn[0])
-        log.debug("allsockets: %s" % allsockets)
+        # Notify watchers about new socket.
+        call_hook("new_socket", [conn[0]])
 
         # New connection == Spawn a queue_loop thread.
         self.connections.append((conn[0],\
@@ -96,8 +91,3 @@ class CantoServer(CantoSocket):
             conn.shutdown(SHUT_RDWR)
             conn.close()
             t.join()
-
-    # For testing, step through
-    def get_one_cmd(self):
-        while self.queue.empty():
-            self.check_conns()
