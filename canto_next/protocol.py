@@ -100,9 +100,16 @@ class CantoSocket:
         self.read_mode(poll, conn)
 
         # We only care about the first (only) descriptor's event
-        p = poll.poll(timeout)
+        try:
+            p = poll.poll(timeout)
+
+        # For example, errno 4, interrupted syscall
+        except select.error:
+            return
+
         if not p:
             return
+
         e = p[0][1]
 
         log.debug("E: %d" % e)
