@@ -123,7 +123,7 @@ class CantoConfig():
 
         feed = CantoFeed(self.shelf, name, URL, rate, keep)
 
-        if order:
+        if order != None:
             # If the list isn't long enough, make it so.
             if order >= len(self.feeds):
                 self.feeds += [None] * (order - (len(self.feeds) - 1))
