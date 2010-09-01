@@ -41,11 +41,7 @@ log = logging.getLogger("CANTO-DAEMON")
 
 class CantoBackend(CantoServer):
 
-    # We don't do init on instantiation for testing purposes.
-    def __init__(self):
-        pass
-
-    def init(self, args=None):
+    def init(self):
         # Log verbosity
         # 0 = normal operation
         # 1 = log all debug messages
@@ -59,7 +55,7 @@ class CantoBackend(CantoServer):
         self.shelf = None
 
         # No bad arguments.
-        if self.args(args):
+        if self.args():
             sys.exit(-1)
 
         # No invalid paths.
@@ -252,12 +248,9 @@ class CantoBackend(CantoServer):
             time.sleep(0.01)
 
     # This function parses and validates all of the command line arguments.
-    def args(self, args=None):
-        if not args:
-            args = sys.argv[1:]
-
+    def args(self):
         try:
-            optlist = getopt.getopt(args, 'D:v', ["dir="])[0]
+            optlist = getopt.getopt(sys.argv[1:], 'D:v', ["dir="])[0]
         except getopt.GetoptError, e:
             log.error("Error: %s" % e.msg)
             return -1
@@ -368,9 +361,9 @@ class CantoBackend(CantoServer):
         self.fetch = CantoFetch(self.shelf, self.conf.feeds)
         self.fetch.fetch()
 
-    def start(self, args=None):
+    def start(self):
         try:
-            self.init(args)
+            self.init()
             self.run()
             log.info("Exiting cleanly.")
 
@@ -387,3 +380,6 @@ class CantoBackend(CantoServer):
         self.exit()
         self.pid_unlock()
         sys.exit(0)
+
+    def __init__(self):
+        self.start()
