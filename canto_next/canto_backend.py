@@ -15,7 +15,7 @@ from server import CantoServer
 from config import CantoConfig
 from storage import CantoShelf
 from fetch import CantoFetch
-from hooks import on_hook
+from hooks import on_hook, call_hook
 from tag import alltags
 
 import traceback
@@ -51,6 +51,8 @@ class CantoBackend(CantoServer):
         # Shelf for feeds:
         self.fetch = None
         self.fetch_timer = 0
+
+        self.watches = {}
 
         self.shelf = None
 
@@ -90,16 +92,29 @@ class CantoBackend(CantoServer):
         signal.signal(signal.SIGALRM, self.sig_alrm)
         signal.alarm(1)
 
-    # If a socket dies, revoke any protection associated with it.
+    # Propagate config changes to watching sockets.
+
+    def on_config_change(self, change):
+        log.debug("occ: %s" % change)
+        if "config" in self.watches:
+            for socket in self.watches["config"]:
+                self.configs(socket, change.keys())
+
+    # If a socket dies, it's not longer watching any events and
+    # revoke any protection associated with it
 
     def on_kill_socket(self, socket):
         log.debug("on_kill_socket")
+        for k in self.watches.keys():
+            if socket in self.watches[k]:
+                self.watches[k].remove(socket)
         protection.unprotect(socket)
 
     # We need to be alerted on certain events, ensure
     # we get notified about them.
 
     def setup_hooks(self):
+        on_hook("config_change", self.on_config_change)
         on_hook("kill_socket", self.on_kill_socket)
         log.debug("Hooks setup.")
 
@@ -191,12 +206,25 @@ class CantoBackend(CantoServer):
     # SETCONFIGS { "option" : "value" }
 
     def setconfigs(self, socket, args):
+        changes = {}
         for k in args.keys():
             if "." not in k:
                 continue
             section, setting = k.split(".", 1)
             self.conf.set(section, setting, args[k])
+
+            changes.update({ section : { setting : args[k] } })
+
         self.conf.write()
+        call_hook("config_change", [changes])
+
+    # WATCHCONFIGS
+
+    def watchconfigs(self, socket, args):
+        if "config" in self.watches:
+            self.watches["config"].append(socket)
+        else:
+            self.watches["config"] = [socket]
 
     # The workhorse that maps all requests to their handlers.
     def run(self):
@@ -218,6 +246,8 @@ class CantoBackend(CantoServer):
                     self.configs(socket, args)
                 elif cmd == "SETCONFIGS":
                     self.setconfigs(socket, args)
+                elif cmd == "WATCHCONFIGS":
+                    self.watchconfigs(socket, args)
                 elif cmd == "DIE":
                     log.info("Received DIE.")
                     return
