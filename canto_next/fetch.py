@@ -86,10 +86,18 @@ class CantoFetch():
         self.shelf.close()
         return needs_update
 
+    def still_working(self, feed):
+        for thread, workingfeed in self.threads:
+            if feed == workingfeed:
+                return True
+        return False
+
     def fetch(self):
         for feed in self.feeds:
-            # If feed doesn't need an update, don't fire off a thread.
             if not self.needs_update(feed):
+                continue
+
+            if self.still_working(feed):
                 continue
 
             thread = CantoFetchThread(feed)
@@ -97,15 +105,11 @@ class CantoFetch():
             log.debug("Started thread for feed %s" % feed.URL)
             self.threads.append((thread, feed))
 
-    # Return whether all the threads are ready for reaping.
-    def threads_ready(self):
-        for thread, feed in self.threads:
-            if thread.isAlive():
-                return False
-        return True
-
     def process(self):
         for thread, feed in self.threads:
+            if thread.isAlive():
+                continue
             thread.join()
             feed.index()
-        self.threads = []
+
+        self.threads = [ t for t in self.threads if t[0].isAlive() ]

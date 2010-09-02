@@ -223,11 +223,8 @@ class CantoBackend(CantoServer):
 
             self.check_conns()
 
-            # If the threads are ready, process them and
-            # write them to disk.
-
-            if self.fetch.threads_ready():
-                self.fetch.process()
+            # Process any possible feed updates.
+            self.fetch.process()
 
             if self.alarmed:
                 # Decrement all timers
