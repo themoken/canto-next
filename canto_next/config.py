@@ -64,6 +64,15 @@ class CantoConfig():
             r[opt] = self.get("", section, opt, None, 0)
         return r
 
+    def get_sections(self, sections=None):
+        if not sections:
+            sections = self.cfg.sections()
+
+        r = {}
+        for section in sections:
+            r[section] = self.get_section(section)
+        return r
+
     def get(self, otype, section, option, default, required = 0):
         # Use otype to get the right get_* function
         if hasattr(self.cfg, "get" + otype):

@@ -171,17 +171,20 @@ class CantoBackend(CantoServer):
     def configs(self, socket, args):
         log.debug("CONFIGS %s" % args)
 
-        ret = {}
-        for opt in args:
-            if "." not in opt:
-                ret[opt] = self.conf.get_section(opt)
-                continue
+        if args:
+            ret = {}
+            for opt in args:
+                if "." not in opt:
+                    ret[opt] = self.conf.get_section(opt)
+                    continue
 
-            section, setting = opt.split(".", 1)
-            try:
-                ret[opt] = self.conf.get("", section, setting, None, 0)
-            except:
-                log.debug("Exception getting option %s" % opt)
+                section, setting = opt.split(".", 1)
+                try:
+                    ret[opt] = self.conf.get("", section, setting, None, 0)
+                except:
+                    log.debug("Exception getting option %s" % opt)
+        else:
+            ret = self.conf.get_sections()
 
         self.write(socket, "CONFIGS", ret)
 
