@@ -203,17 +203,15 @@ class CantoBackend(CantoServer):
 
         self.write(socket, "CONFIGS", ret)
 
-    # SETCONFIGS { "option" : "value" }
+    # SETCONFIGS { "section" : {"option" : "value" } ... }
 
     def setconfigs(self, socket, args):
         changes = {}
-        for k in args.keys():
-            if "." not in k:
-                continue
-            section, setting = k.split(".", 1)
-            self.conf.set(section, setting, args[k])
-
-            changes.update({ section : { setting : args[k] } })
+        for section in args.keys():
+            for setting in args[section]:
+                self.conf.set(section, setting, args[section][setting])
+                changes.update({ section :\
+                        { setting : args[section][setting]}})
 
         self.conf.write()
         call_hook("config_change", [changes])
