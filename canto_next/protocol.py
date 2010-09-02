@@ -102,12 +102,12 @@ class CantoSocket:
         # We only care about the first (only) descriptor's event
         try:
             p = poll.poll(timeout)
+        except select.error as (err, strerror):
+            if err == errno.EINTR:
+                return
+            raise
 
-        # For example, errno 4, interrupted syscall
-        except select.error:
-            return
-
-        if not p:
+        if timeout and not p:
             return
 
         e = p[0][1]

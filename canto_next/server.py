@@ -12,16 +12,16 @@ from hooks import call_hook
 
 from socket import SHUT_RDWR
 from threading import Thread
+import traceback
 import logging
 import select
 
 log = logging.getLogger("SERVER")
 
 class CantoServer(CantoSocket):
-    def __init__(self, socket_name, queue, testing = False):
+    def __init__(self, socket_name, queue):
         CantoSocket.__init__(self, socket_name, server=True)
         self.queue = queue
-        self.testing = testing
         self.connections = [] # (socket, thread) tuples
         self.alive = True
 
@@ -29,15 +29,19 @@ class CantoServer(CantoSocket):
     # for a complete command, toss it on the shared Queue.Queue
 
     def queue_loop(self, conn):
-        while self.alive:
-            d = self.do_read(conn)
-            if d:
-                if d == select.POLLHUP:
-                    log.info("Connection ended.")
-                    return 0
-                self.queue.put((conn, d))
-                if self.testing:
-                    break
+        try:
+            while self.alive:
+                d = self.do_read(conn)
+                if d:
+                    if d == select.POLLHUP:
+                        log.info("Connection ended.")
+                        return
+                    self.queue.put((conn, d))
+        except Exception, e:
+            tb = traceback.format_exc(e)
+            log.error("Response thread dead on exception:")
+            log.error("\n" + "".join(tb))
+            return
 
     # Remove dead connection threads.
 
