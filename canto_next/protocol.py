@@ -102,9 +102,10 @@ class CantoSocket:
         # We only care about the first (only) descriptor's event
         try:
             p = poll.poll(timeout)
-        except select.error as (err, strerror):
-            if err == errno.EINTR:
+        except select.error, e:
+            if e[0] == errno.EINTR:
                 return
+            log.debug("Raising error: %s" % e[1])
             raise
 
         if timeout and not p:
