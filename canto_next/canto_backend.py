@@ -195,7 +195,11 @@ class CantoBackend(CantoServer):
 
                 section, setting = opt.split(".", 1)
                 try:
-                    ret[opt] = self.conf.get("", section, setting, None, 0)
+                    val = self.conf.get("", section, setting, None, 0)
+                    if section in ret:
+                        ret[section].update({ setting : val })
+                    else:
+                        ret[section] = { setting : val }
                 except:
                     log.debug("Exception getting option %s" % opt)
         else:

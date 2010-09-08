@@ -7,5 +7,5 @@ setup(name='Canto',
       author_email='jack@codezen.org',
       url='http://codezen.org/canto',
       packages=['canto_next'],
-      scripts=['bin/canto-daemon'],
+      scripts=['bin/canto-daemon','bin/canto-remote'],
      )
