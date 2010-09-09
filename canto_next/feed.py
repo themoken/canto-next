@@ -16,21 +16,36 @@ log = logging.getLogger("FEED")
 class CantoFeeds():
     def __init__(self):
         self.feeds = {}
+        self.dead_feeds = {}
 
     def add_feed(self, URL, feed):
         self.feeds[URL] = feed
+        if URL in self.dead_feeds:
+            del self.dead_feeds[URL]
 
     def items_to_feeds(self, items):
         f = {}
         for i in items:
-            feed = self.feeds[i[0]]
+            if i[0] in self.feeds:
+                feed = self.feeds[i[0]]
+            elif i[0] in self.dead_feeds:
+                feed = self.dead_feeds[i[0]]
+            else:
+                raise Exception("Can't find feed: %s" % i[0])
+
             if feed in f:
                 f[feed].append(i)
             else:
                 f[feed] = [i]
         return f
 
+    def really_dead(self, feed):
+        if feed.URL in self.dead_feeds:
+            del self.dead_feeds[feed.URL]
+        feed.destroy()
+
     def reset(self):
+        self.dead_feeds = self.feeds
         self.feeds = {}
 
 allfeeds = CantoFeeds()
@@ -252,3 +267,8 @@ class CantoFeed():
 
         # No more updates
         self.update_contents = None
+
+    def destroy(self):
+        self.shelf.open()
+        del self.shelf[self.URL]
+        self.shelf.close()

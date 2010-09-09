@@ -92,6 +92,16 @@ class CantoBackend(CantoServer):
         signal.signal(signal.SIGALRM, self.sig_alrm)
         signal.alarm(1)
 
+    def check_dead_feeds(self):
+        for URL in allfeeds.dead_feeds.keys():
+            feed = allfeeds.dead_feeds[URL]
+            for item in feed.items:
+                if protection.protected(item["id"]):
+                    log.debug("Dead feed %s still committed." % feed.URL)
+                    break
+            else:
+                allfeeds.really_dead(feed)
+
     # Propagate config changes to watching sockets.
 
     def on_config_change(self, change):
@@ -99,6 +109,8 @@ class CantoBackend(CantoServer):
         if "config" in self.watches:
             for socket in self.watches["config"]:
                 self.configs(socket, change.keys())
+        self.conf.parse()
+        self.check_dead_feeds()
 
     # If a socket dies, it's not longer watching any events and
     # revoke any protection associated with it
@@ -109,6 +121,7 @@ class CantoBackend(CantoServer):
             if socket in self.watches[k]:
                 self.watches[k].remove(socket)
         protection.unprotect(socket)
+        self.check_dead_feeds()
 
     # We need to be alerted on certain events, ensure
     # we get notified about them.

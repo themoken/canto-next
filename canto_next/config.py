@@ -8,7 +8,7 @@
 #   published by the Free Software Foundation.
 
 from transform import eval_transform
-from feed import CantoFeed
+from feed import allfeeds, CantoFeed
 from tag import alltags
 from encoding import decoder
 
@@ -152,6 +152,9 @@ class CantoConfig():
             self.unordered_feeds.append(feed)
 
     def parse(self):
+        # Clear feeds and tags.
+        allfeeds.reset()
+        alltags.reset()
 
         env = { "home" : os.getenv("HOME"),
                 "cwd"  : os.getcwd() }
