@@ -75,8 +75,22 @@ class CantoRemote(CantoClient):
         self.write("CONFIGS", gets)
 
         r = None
-        while not r or r[0] != "CONFIGS":
+        while True:
             r = self.read()
+            if type(r) == int:
+                if r == 16:
+                    print "Server hung up."
+                else:
+                    print "Got code: %d" % r
+                print "Please check daemon-log for exception."
+                return
+            elif type(r) == tuple:
+                if r[0] == "CONFIGS":
+                    break
+                continue
+            else:
+                print "Unknown return: %s" % r
+                break
 
         for section in r[1].keys():
             for secvar in r[1][section].keys():
