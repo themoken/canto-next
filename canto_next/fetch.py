@@ -6,6 +6,8 @@
 #   it under the terms of the GNU General Public License version 2 as 
 #   published by the Free Software Foundation.
 
+from feed import allfeeds
+
 from threading import Thread
 import feedparser
 import urllib2
@@ -62,9 +64,9 @@ class CantoFetchThread(Thread):
         log.debug("Parsed %s" % self.feed.URL)
 
 class CantoFetch():
-    def __init__(self, shelf, feeds):
+    def __init__(self, shelf, conf):
         self.shelf = shelf
-        self.feeds = feeds
+        self.conf = conf
         self.threads = []
 
     def needs_update(self, feed):
@@ -86,30 +88,36 @@ class CantoFetch():
         self.shelf.close()
         return needs_update
 
-    def still_working(self, feed):
-        for thread, workingfeed in self.threads:
-            if feed == workingfeed:
+    def still_working(self, URL):
+        for thread, workingURL in self.threads:
+            if URL == workingURL:
                 return True
         return False
 
     def fetch(self):
-        for feed in self.feeds:
+        for feed in self.conf.feeds:
             if not self.needs_update(feed):
                 continue
 
-            if self.still_working(feed):
+            if self.still_working(feed.URL):
                 continue
 
             thread = CantoFetchThread(feed)
             thread.start()
             log.debug("Started thread for feed %s" % feed.URL)
-            self.threads.append((thread, feed))
+            self.threads.append((thread, feed.URL))
 
     def process(self):
-        for thread, feed in self.threads:
+        for thread, URL in self.threads:
             if thread.isAlive():
                 continue
             thread.join()
-            feed.index()
+
+            # Feed could've disappeared between
+            # fetch() and process()
+
+            feed = allfeeds.get_feed(URL)
+            if feed:
+                feed.index()
 
         self.threads = [ t for t in self.threads if t[0].isAlive() ]

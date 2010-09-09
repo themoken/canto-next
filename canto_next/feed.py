@@ -23,6 +23,12 @@ class CantoFeeds():
         if URL in self.dead_feeds:
             del self.dead_feeds[URL]
 
+    def get_feed(self, URL):
+        if URL in self.feeds:
+            return self.feeds[URL]
+        if URL in self.dead_feeds:
+            return self.dead_feeds[URL]
+
     def items_to_feeds(self, items):
         f = {}
         for i in items:

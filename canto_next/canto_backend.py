@@ -403,7 +403,7 @@ class CantoBackend(CantoServer):
         self.conf.parse()
 
     def get_fetch(self):
-        self.fetch = CantoFetch(self.shelf, self.conf.feeds)
+        self.fetch = CantoFetch(self.shelf, self.conf)
         self.fetch.fetch()
 
     def start(self):
