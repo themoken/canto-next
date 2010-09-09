@@ -9,6 +9,7 @@
 
 from transform import eval_transform
 from feed import CantoFeed
+from tag import alltags
 from encoding import decoder
 
 import ConfigParser
@@ -151,6 +152,7 @@ class CantoConfig():
             self.unordered_feeds.append(feed)
 
     def parse(self):
+
         env = { "home" : os.getenv("HOME"),
                 "cwd"  : os.getcwd() }
 

@@ -13,22 +13,31 @@ import logging
 
 log = logging.getLogger("FEED")
 
-allfeeds = {}
+class CantoFeeds():
+    def __init__(self):
+        self.feeds = {}
 
-def items_to_feeds(items):
-    log.debug("i2f got %s" % items)
-    f = {}
-    for i in items:
-        feed = allfeeds[i[0]]
-        if feed in f:
-            f[feed].append(i)
-        else:
-            f[feed] = [i]
-    return f
+    def add_feed(self, URL, feed):
+        self.feeds[URL] = feed
+
+    def items_to_feeds(self, items):
+        f = {}
+        for i in items:
+            feed = self.feeds[i[0]]
+            if feed in f:
+                f[feed].append(i)
+            else:
+                f[feed] = [i]
+        return f
+
+    def reset(self):
+        self.feeds = {}
+
+allfeeds = CantoFeeds()
 
 class CantoFeed():
     def __init__(self, shelf, name, URL, rate, keep):
-        allfeeds[URL] = self
+        allfeeds.add_feed(URL, self)
         self.shelf = shelf
         self.name = name
         self.URL = URL

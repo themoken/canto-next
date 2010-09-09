@@ -8,7 +8,7 @@
 
 # This Backend class is the core of the daemon's specific protocol.
 
-from feed import allfeeds, items_to_feeds
+from feed import allfeeds
 from encoding import encoder, decoder
 from protect import protection
 from server import CantoServer
@@ -164,7 +164,7 @@ class CantoBackend(CantoServer):
 
         ret = {}
 
-        feeds = items_to_feeds(args.keys())
+        feeds = allfeeds.items_to_feeds(args.keys())
         for f in feeds:
             ret.update(f.get_attributes(feeds[f], args))
 
@@ -177,7 +177,7 @@ class CantoBackend(CantoServer):
 
         ret = {}
 
-        feeds = items_to_feeds(args.keys())
+        feeds = allfeeds.items_to_feeds(args.keys())
         for f in feeds:
             f.set_attributes(feeds[f], args)
 

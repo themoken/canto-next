@@ -6,7 +6,7 @@
 #   it under the terms of the GNU General Public License version 2 as 
 #   published by the Free Software Foundation.
 
-from feed import allfeeds, items_to_feeds
+from feed import allfeeds
 
 import logging
 import re
@@ -31,7 +31,7 @@ class CantoTransform():
 
     def __call__(self, tag):
         a = {}
-        f = items_to_feeds(tag)
+        f = allfeeds.items_to_feeds(tag)
         needed = self.needed_attributes(tag)
 
         for feed in f:
