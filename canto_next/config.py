@@ -38,15 +38,8 @@ class CantoConfig():
         self.filename = filename
         self.shelf = shelf
 
-        # For user notification
-        self.errors = False
-
-        self.feeds = []
-        self.unordered_feeds = []
-
         self.default_rate = 5
         self.default_keep = 0
-        self.global_transform = None
 
     def set(self, section, option, value):
         log.debug("setting %s.%s = %s" % (section, option, value))
@@ -155,6 +148,13 @@ class CantoConfig():
         # Clear feeds and tags.
         allfeeds.reset()
         alltags.reset()
+
+        self.feeds = []
+        self.unordered_feeds = []
+
+        self.errors = False
+
+        self.global_transform = None
 
         env = { "home" : os.getenv("HOME"),
                 "cwd"  : os.getcwd() }
