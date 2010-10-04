@@ -52,7 +52,8 @@ class CantoBackend(CantoServer):
         self.fetch = None
         self.fetch_timer = 0
 
-        self.watches = {}
+        self.watches = { "config" : [],
+                         "tags" : {} }
 
         self.shelf = None
 
@@ -105,22 +106,33 @@ class CantoBackend(CantoServer):
     # Propagate config changes to watching sockets.
 
     def on_config_change(self, change):
-        log.debug("occ: %s" % change)
         if "config" in self.watches:
             for socket in self.watches["config"]:
                 self.configs(socket, change.keys())
         self.conf.parse()
         self.check_dead_feeds()
 
+    # Propagate tag changes to watching sockets.
+
+    def on_tag_change(self, tag):
+        log.debug("otc: %s" % tag)
+        if tag in self.watches["tags"]:
+            for socket in self.watches["tags"][tag]:
+                self.write(socket, "TAGCHANGE", tag)
+
     # If a socket dies, it's not longer watching any events and
     # revoke any protection associated with it
 
     def on_kill_socket(self, socket):
         log.debug("on_kill_socket")
-        for k in self.watches.keys():
-            if socket in self.watches[k]:
-                self.watches[k].remove(socket)
-        protection.unprotect(socket)
+        if socket in self.watches["config"]:
+            self.watches["config"].remove(socket)
+
+        for tag in self.watches["tags"]:
+            if socket in self.watches["tags"][tag]:
+                self.watches["tags"][tag].remove(socket)
+
+        protection.unprotect((socket, "auto"))
         self.check_dead_feeds()
 
     # We need to be alerted on certain events, ensure
@@ -128,6 +140,7 @@ class CantoBackend(CantoServer):
 
     def setup_hooks(self):
         on_hook("config_change", self.on_config_change)
+        on_hook("tag_change", self.on_tag_change)
         on_hook("kill_socket", self.on_kill_socket)
         log.debug("Hooks setup.")
 
@@ -157,14 +170,17 @@ class CantoBackend(CantoServer):
 
     def items(self, socket, args):
         ids = []
-
-        protection.unprotect(socket)
-
         response = {}
+
         for tag in args:
             # get_tag returns a list invariably, but may be empty.
             response[tag] = self.apply_transforms(alltags.get_tag(tag))
-            protection.protect(socket, response[tag])
+
+            # ITEMS must protect all given items automatically to
+            # avoid instances where an item disappears before a PROTECT
+            # call can be made by the client.
+
+            protection.protect((socket, "auto"), response[tag])
 
         self.write(socket, "ITEMS", response)
 
@@ -236,10 +252,30 @@ class CantoBackend(CantoServer):
     # WATCHCONFIGS
 
     def watchconfigs(self, socket, args):
-        if "config" in self.watches:
-            self.watches["config"].append(socket)
-        else:
-            self.watches["config"] = [socket]
+        self.watches["config"].append(socket)
+
+    # WATCHTAGS [ "tag", ... ]
+
+    def watchtags(self, socket, args):
+        for tag in args:
+            log.debug("socket %s watching tag %s" % (socket, tag))
+            if tag in self.watches["tags"]:
+                self.watches["tags"][tag].append(socket)
+            else:
+                self.watches["tags"][tag] = [socket]
+
+    # PROTECT { "reason" : [ id, ... ], ... }
+
+    def protect(self, socket, args):
+        for reason in args:
+            protection.protect((socket, reason), args[reason])
+
+    # UNPROTECT { "reason" : [ id, ... ], ... }
+
+    def unprotect(self, socket, args):
+        for reason in args:
+            for id in args[reason]:
+                protection.unprotect_one((socket, reason), id)
 
     # The workhorse that maps all requests to their handlers.
     def run(self):
@@ -263,6 +299,12 @@ class CantoBackend(CantoServer):
                     self.setconfigs(socket, args)
                 elif cmd == "WATCHCONFIGS":
                     self.watchconfigs(socket, args)
+                elif cmd == "WATCHTAGS":
+                    self.watchtags(socket, args)
+                elif cmd == "PROTECT":
+                    self.protect(socket, args)
+                elif cmd == "UNPROTECT":
+                    self.unprotect(socket, args)
                 elif cmd == "DIE":
                     log.info("Received DIE.")
                     return

@@ -49,7 +49,7 @@ class Protection():
     # Unprotect all items under the protection of key.
 
     def unprotect(self, key):
-        log.debug("unprotecting: %s" % key)
+        log.debug("unprotecting: %s" % (key,))
         if key in self.prot:
             del self.prot[key]
         log.debug("prot: %s" % self.prot)
