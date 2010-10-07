@@ -108,7 +108,7 @@ class CantoBackend(CantoServer):
     def on_config_change(self, change):
         if "config" in self.watches:
             for socket in self.watches["config"]:
-                self.configs(socket, change.keys())
+                self.cmd_configs(socket, change.keys())
         self.conf.parse()
         self.check_dead_feeds()
 
@@ -155,12 +155,12 @@ class CantoBackend(CantoServer):
 
     # PING -> PONG
 
-    def pong(self, socket, args):
+    def cmd_ping(self, socket, args):
         self.write(socket, "PONG", u"")
 
     # LISTFEEDS -> [ (tag, URL) for all feeds ]
 
-    def listfeeds(self, socket, args):
+    def cmd_listfeeds(self, socket, args):
         feeds = []
         for feed in self.conf.feeds:
             feeds.append((feed.name, feed.URL))
@@ -168,7 +168,7 @@ class CantoBackend(CantoServer):
 
     # ITEMS [tags] -> { tag : [ ids ], tag2 : ... }
 
-    def items(self, socket, args):
+    def cmd_items(self, socket, args):
         ids = []
         response = {}
 
@@ -187,7 +187,7 @@ class CantoBackend(CantoServer):
     # ATTRIBUTES { id : [ attribs .. ] .. } ->
     # { id : { attribute : value } ... }
 
-    def attributes(self, socket, args):
+    def cmd_attributes(self, socket, args):
 
         log.debug("ATTRIBUTES args: %s" % args)
 
@@ -201,7 +201,7 @@ class CantoBackend(CantoServer):
 
     # SETATTRIBUTES { id : { attribute : value } ... } -> None
 
-    def setattributes(self, socket, args):
+    def cmd_setattributes(self, socket, args):
         log.debug("SETATTRIBUTES %s" % args)
 
         ret = {}
@@ -212,7 +212,7 @@ class CantoBackend(CantoServer):
 
     # CONFIGS [ config.options ] -> { "option" : "value" ... }
 
-    def configs(self, socket, args):
+    def cmd_configs(self, socket, args):
         log.debug("CONFIGS %s" % args)
 
         if args:
@@ -238,7 +238,7 @@ class CantoBackend(CantoServer):
 
     # SETCONFIGS { "section" : {"option" : "value" } ... }
 
-    def setconfigs(self, socket, args):
+    def cmd_setconfigs(self, socket, args):
         changes = {}
         for section in args.keys():
             for setting in args[section]:
@@ -251,12 +251,12 @@ class CantoBackend(CantoServer):
 
     # WATCHCONFIGS
 
-    def watchconfigs(self, socket, args):
+    def cmd_watchconfigs(self, socket, args):
         self.watches["config"].append(socket)
 
     # WATCHTAGS [ "tag", ... ]
 
-    def watchtags(self, socket, args):
+    def cmd_watchtags(self, socket, args):
         for tag in args:
             log.debug("socket %s watching tag %s" % (socket, tag))
             if tag in self.watches["tags"]:
@@ -266,13 +266,13 @@ class CantoBackend(CantoServer):
 
     # PROTECT { "reason" : [ id, ... ], ... }
 
-    def protect(self, socket, args):
+    def cmd_protect(self, socket, args):
         for reason in args:
             protection.protect((socket, reason), args[reason])
 
     # UNPROTECT { "reason" : [ id, ... ], ... }
 
-    def unprotect(self, socket, args):
+    def cmd_unprotect(self, socket, args):
         for reason in args:
             for id in args[reason]:
                 protection.unprotect_one((socket, reason), id)
@@ -283,31 +283,14 @@ class CantoBackend(CantoServer):
             if not self.queue.empty():
                 (socket, (cmd, args)) = self.queue.get()
 
-                if cmd == "PING":
-                    self.pong(socket, args)
-                elif cmd == "LISTFEEDS":
-                    self.listfeeds(socket, args)
-                elif cmd == "ITEMS":
-                    self.items(socket, args)
-                elif cmd == "ATTRIBUTES":
-                    self.attributes(socket, args)
-                elif cmd == "SETATTRIBUTES":
-                    self.setattributes(socket, args)
-                elif cmd == "CONFIGS":
-                    self.configs(socket, args)
-                elif cmd == "SETCONFIGS":
-                    self.setconfigs(socket, args)
-                elif cmd == "WATCHCONFIGS":
-                    self.watchconfigs(socket, args)
-                elif cmd == "WATCHTAGS":
-                    self.watchtags(socket, args)
-                elif cmd == "PROTECT":
-                    self.protect(socket, args)
-                elif cmd == "UNPROTECT":
-                    self.unprotect(socket, args)
-                elif cmd == "DIE":
+                if cmd == "DIE":
                     log.info("Received DIE.")
                     return
+
+                cmdf = "cmd_" + cmd.lower()
+                if hasattr(self, cmdf):
+                    func = getattr(self, cmdf)
+                    func(socket, args)
                 else:
                     log.info("Got unknown command: %s" % (cmd))
 
