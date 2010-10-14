@@ -33,6 +33,7 @@ class CantoClient(CantoSocket):
             optlist = getopt.getopt(sys.argv[1:], 'D:', ["dir="])[0]
         except getopt.GetoptError, e:
             log.error("Error: %s" % e.msg)
+            return -1
 
         self.conf_dir = os.path.expanduser(u"~/.canto-ng/")
 

@@ -262,7 +262,6 @@ class CantoFeed():
                     self.update_contents["entries"].append(\
                             self.old_contents["entries"][i])
 
-
         # Commit the updates to disk.
         self.shelf.open()
         self.shelf[self.URL] = self.update_contents
