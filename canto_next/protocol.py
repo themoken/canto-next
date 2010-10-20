@@ -44,7 +44,7 @@ class CantoSocket:
             self.socket.bind(socket_name)
             self.socket.listen(5)
         else:
-            tries = 3
+            tries = 10
             while tries > 0:
                 try:
                     self.socket.connect(socket_name)
