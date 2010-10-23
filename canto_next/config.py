@@ -116,7 +116,7 @@ class CantoConfig():
         name = section[5:]
         log.debug("Found feed: %s" % name)
         try:
-            URL = self.get("", section, "URL", "", 1)
+            URL = self.get("", section, "url", "", 1)
         except:
             log.info("ERROR: Missing URL for feed %s" % name)
             return
@@ -160,6 +160,10 @@ class CantoConfig():
                 "cwd"  : os.getcwd() }
 
         self.cfg = ConfigParser.SafeConfigParser(env)
+
+        # Make sure we are case sensitive
+        self.cfg.optionxform = str
+
         log.debug("New Parser with env: %s" % env)
 
         if not os.path.exists(self.filename):
