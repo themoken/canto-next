@@ -144,6 +144,81 @@ class CantoConfig():
         else:
             self.unordered_feeds.append(feed)
 
+    def get_transform_by_name(self, ident):
+        for transform in self.transforms:
+            if ident in [transform["name"], transform["idx"]]:
+                log.debug("found transform: %s\n", ident)
+                return transform["func"]
+
+    def get_transform(self, ident):
+        r = self.get_transform_by_name(ident)
+        if r:
+            return r
+
+        # Failing find by name, try to compile it on the fly.
+        try:
+            return eval_transform(ident)
+        except:
+            log.debug("Couldn't find or eval transform: %s" % ident)
+            return None
+
+    # Setup global_transform / transform list.
+    def parse_transforms(self):
+        ptransforms = []
+        for opt in self.cfg.options("defaults"):
+            if not opt.startswith("transform."):
+                continue
+
+            end = opt[len("transform."):]
+            if "." not in end:
+                log.info("Unknown transform config ignored: %s" % opt)
+                continue
+
+            idx, end = end.split(".", 1)
+            try:
+                idx = int(idx)
+            except:
+                log.info("Second transform part must be int index, not %s" %
+                        idx)
+                continue
+
+            if end not in ["name","func"]:
+                log.info("Unknown transform property ignored: %s" % end)
+                continue
+
+            # Extend transform list to suit.
+            if len(ptransforms) <= idx:
+                ptransforms += [{}] * (idx - (len(ptransforms) - 1))
+
+            ptransforms[idx][end] = self.get("", "defaults", opt, None)
+            ptransforms[idx]["idx"] = unicode(idx)
+
+        # From the list of potential transforms, build the
+        # list of real, valid, named, transforms: self.transforms
+
+        for transform in ptransforms:
+
+            # Someone didn't specify the most important part, it's garbage.
+            if "func" not in transform:
+                continue
+
+            # Use the uneval'd func string as a name if none given.
+            if "name" not in transform:
+                transform["name"] = transform["func"]
+
+            # Ensure name is unique.
+            if self.get_transform_by_name(transform["name"]):
+                continue
+
+            try:
+                transform["func"] = eval_transform(transform["func"])
+                self.transforms.append(transform)
+            except:
+                log.err("Unable to eval transform: %s" % transform["func"])
+
+        gf = self.get("", "defaults", "global_transform", None)
+        self.global_transform = self.get_transform(gf)
+
     def parse(self):
         # Clear feeds and tags.
         allfeeds.reset()
@@ -155,6 +230,7 @@ class CantoConfig():
         self.errors = False
 
         self.global_transform = None
+        self.transforms = []
 
         env = { "home" : os.getenv("HOME"),
                 "cwd"  : os.getcwd() }
@@ -183,9 +259,7 @@ class CantoConfig():
             self.default_keep = self.get("int", "defaults", "keep",\
                     self.default_keep)
 
-            gf =  self.get("", "defaults", "global_transform", None)
-            if gf:
-                self.global_transform = eval_transform(gf)
+            self.parse_transforms()
 
         # Grab feeds
         for section in self.cfg.sections():

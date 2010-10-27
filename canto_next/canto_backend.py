@@ -166,6 +166,14 @@ class CantoBackend(CantoServer):
             feeds.append((feed.name, feed.URL))
         self.write(socket, "LISTFEEDS", feeds)
 
+    # LISTTRANSFORMS -> [ { "name" : " " } for all defined filters ]
+
+    def cmd_listtransforms(self, socket, args):
+        transforms = []
+        for transform in self.conf.transforms:
+            transforms.append({"name" : transform["name"]})
+        self.write(socket, "LISTTRANSFORMS", transforms)
+
     # ITEMS [tags] -> { tag : [ ids ], tag2 : ... }
 
     def cmd_items(self, socket, args):
