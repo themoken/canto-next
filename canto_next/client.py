@@ -28,9 +28,10 @@ class CantoClient(CantoSocket):
 
     # Sets self.conf_dir and self.socket_path
 
-    def common_args(self):
+    def common_args(self, extrashort = "", extralong = []):
         try:
-            optlist = getopt.getopt(sys.argv[1:], 'D:', ["dir="])[0]
+            optlist = getopt.getopt(sys.argv[1:],\
+                    'D:' + extrashort, ["dir="] + extralong)[0]
         except getopt.GetoptError, e:
             log.error("Error: %s" % e.msg)
             return -1
