@@ -66,7 +66,6 @@ class StateFilter(CantoTransform):
             state = self.state
             keep = False
 
-        log.debug("attrs: %s" % attrs)
         return [ i for i in items if \
                 (state in attrs[i]["canto-state"]) == keep]
 
@@ -85,11 +84,9 @@ class ContentFilterRegex(CantoTransform):
     def needed_attributes(self, tag):
         if not self.match:
             return []
-        log.debug("returning: %s" % [ self.attribute ])
         return [ self.attribute ]
 
     def transform(self, items, attrs):
-        log.debug("items: %s, attrs: %s" % (items, attrs))
         if not self.match:
             return item
 

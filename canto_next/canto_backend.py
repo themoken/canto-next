@@ -34,7 +34,7 @@ logging.basicConfig(
         filemode = "w",
         format = "%(asctime)s : %(name)s -> %(message)s",
         datefmt = "%H:%M:%S",
-        level = logging.DEBUG
+        level = logging.INFO
 )
 
 log = logging.getLogger("CANTO-DAEMON")
@@ -43,10 +43,7 @@ class CantoBackend(CantoServer):
 
     def init(self):
         # Log verbosity
-        # 0 = normal operation
-        # 1 = log all debug messages
-        # 2 = log all debug messages AND signals
-        self.verbosity = 1
+        self.verbosity = 0
 
         # Shelf for feeds:
         self.fetch = None
@@ -74,9 +71,13 @@ class CantoBackend(CantoServer):
 
         # Initial log chatter.
         log.info("Canto Daemon started.")
+
         if self.verbosity:
-            log.debug("verbosity = %d" % self.verbosity)
-        log.debug("conf_dir = %s" % self.conf_dir)
+            rootlog = logging.getLogger()
+            rootlog.setLevel(max(rootlog.level - 10 * self.verbosity,0))
+            log.info("verbosity = %d" % self.verbosity)
+
+        log.info("conf_dir = %s" % self.conf_dir)
 
         # Actual start.
         self.get_storage()
@@ -115,7 +116,6 @@ class CantoBackend(CantoServer):
     # Propagate tag changes to watching sockets.
 
     def on_tag_change(self, tag):
-        log.debug("otc: %s" % tag)
         if tag in self.watches["tags"]:
             for socket in self.watches["tags"][tag]:
                 self.write(socket, "TAGCHANGE", tag)
@@ -124,7 +124,6 @@ class CantoBackend(CantoServer):
     # revoke any protection associated with it
 
     def on_kill_socket(self, socket):
-        log.debug("on_kill_socket")
         if socket in self.watches["config"]:
             self.watches["config"].remove(socket)
 
@@ -142,13 +141,11 @@ class CantoBackend(CantoServer):
         on_hook("config_change", self.on_config_change)
         on_hook("tag_change", self.on_tag_change)
         on_hook("kill_socket", self.on_kill_socket)
-        log.debug("Hooks setup.")
 
     # Return list of item tuples after global transforms have
     # been performed on them.
 
     def apply_transforms(self, tag):
-        log.debug("Applying transform: %s" % self.conf.global_transform)
         if self.conf.global_transform:
             return self.conf.global_transform(tag)
         return tag
@@ -196,11 +193,7 @@ class CantoBackend(CantoServer):
     # { id : { attribute : value } ... }
 
     def cmd_attributes(self, socket, args):
-
-        log.debug("ATTRIBUTES args: %s" % args)
-
         ret = {}
-
         feeds = allfeeds.items_to_feeds(args.keys())
         for f in feeds:
             ret.update(f.get_attributes(feeds[f], args))
@@ -210,10 +203,7 @@ class CantoBackend(CantoServer):
     # SETATTRIBUTES { id : { attribute : value } ... } -> None
 
     def cmd_setattributes(self, socket, args):
-        log.debug("SETATTRIBUTES %s" % args)
-
         ret = {}
-
         feeds = allfeeds.items_to_feeds(args.keys())
         for f in feeds:
             f.set_attributes(feeds[f], args)
@@ -221,8 +211,6 @@ class CantoBackend(CantoServer):
     # CONFIGS [ config.options ] -> { "option" : "value" ... }
 
     def cmd_configs(self, socket, args):
-        log.debug("CONFIGS %s" % args)
-
         if args:
             ret = {}
             for opt in args:
@@ -238,7 +226,7 @@ class CantoBackend(CantoServer):
                     else:
                         ret[section] = { setting : val }
                 except:
-                    log.debug("Exception getting option %s" % opt)
+                    log.error("Exception getting option %s" % opt)
         else:
             ret = self.conf.get_sections()
 

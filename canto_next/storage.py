@@ -19,43 +19,30 @@ class CantoShelf():
 
     def __setitem__(self, name, value):
         name = name.encode("UTF-8")
-        log.debug("Set shelf[%s] = %s" % (name, value))
         self.shelf[name] = value
 
     def __getitem__(self, name):
         name = name.encode("UTF-8")
         r = self.shelf[name]
-        log.debug("Got shelf[%s]" % name)
         return r
 
     def __contains__(self, name):
         name = name.encode("UTF-8")
-        r = name in self.shelf
-        if r:
-            log.debug("shelf contains %s" % name)
-        else:
-            log.debug("shelf doesn't contain %s" % name)
-        return r
+        return name in self.shelf
 
     def __delitem__(self, name):
         name = name.encode("UTF-8")
         del self.shelf[name]
-        log.debug("deleted %s from shelf" % name)
 
     def open(self, *args):
         if not self.refs:
-            log.debug("opened shelf")
             self.shelf = shelve.open(self.filename, *args)
-        else:
-            log.debug("incrementing shelf refs")
         self.refs += 1
 
     def close(self):
         if self.refs == 1:
-            log.debug("closed shelf")
             self.shelf.close()
             self.shelf = None
         else:
-            log.debug("decrementing shelf refs / sync")
             self.shelf.sync()
         self.refs -= 1

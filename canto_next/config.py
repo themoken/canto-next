@@ -86,23 +86,23 @@ class CantoConfig():
             if not required:
                 return default
             self.errors = True
-            log.info("ERROR: Missing section %s" % section)
+            log.error("ERROR: Missing section %s" % section)
             raise
         except ConfigParser.NoOptionError:
             if not required:
                 return default
             self.errors = True
-            log.info("ERROR: Missing %s in section %s" % (option, section))
+            log.error("ERROR: Missing %s in section %s" % (option, section))
             raise
         except ValueError:
             self.errors = True
-            log.info("ERROR: Malformed %s in section %s" % (option, section))
+            log.error("ERROR: Malformed %s in section %s" % (option, section))
             if not required:
                 return default
             raise
         except Exception, e:
             self.errors = True
-            log.info("Unhandled exception getting %s from section %s: %s" %
+            log.error("Unhandled exception getting %s from section %s: %s" %
                     (option, section, e))
             raise
 
@@ -118,7 +118,7 @@ class CantoConfig():
         try:
             URL = self.get("", section, "url", "", 1)
         except:
-            log.info("ERROR: Missing URL for feed %s" % name)
+            log.error("ERROR: Missing URL for feed %s" % name)
             return
 
         if type(section) == str:
@@ -147,7 +147,6 @@ class CantoConfig():
     def get_transform_by_name(self, ident):
         for transform in self.transforms:
             if ident in [transform["name"], transform["idx"]]:
-                log.debug("found transform: %s\n", ident)
                 return transform["func"]
 
     def get_transform(self, ident):
@@ -159,7 +158,7 @@ class CantoConfig():
         try:
             return eval_transform(ident)
         except:
-            log.debug("Couldn't find or eval transform: %s" % ident)
+            log.error("Couldn't find or eval transform: %s" % ident)
             return None
 
     # Setup global_transform / transform list.
@@ -178,7 +177,7 @@ class CantoConfig():
             try:
                 idx = int(idx)
             except:
-                log.info("Second transform part must be int index, not %s" %
+                log.error("Second transform part must be int index, not %s" %\
                         idx)
                 continue
 
@@ -214,7 +213,7 @@ class CantoConfig():
                 transform["func"] = eval_transform(transform["func"])
                 self.transforms.append(transform)
             except:
-                log.err("Unable to eval transform: %s" % transform["func"])
+                log.error("Unable to eval transform: %s" % transform["func"])
 
         gf = self.get("", "defaults", "global_transform", None)
         self.global_transform = self.get_transform(gf)
@@ -243,17 +242,16 @@ class CantoConfig():
         log.debug("New Parser with env: %s" % env)
 
         if not os.path.exists(self.filename):
-            log.debug("No config found, writing default.")
+            log.info("No config found, writing default.")
             f = open(self.filename, "w")
             f.write(default_config)
             f.close()
 
         self.cfg.read(self.filename)
-        log.debug("Read %s" % self.filename)
-        log.debug("Got sections: %s" % self.cfg.sections())
+        log.info("Read %s" % self.filename)
+        log.info("Got sections: %s" % self.cfg.sections())
 
         if self.cfg.has_section("defaults"):
-            log.debug("Parsing defaults:")
             self.default_rate = self.get("int", "defaults", "rate",\
                     self.default_rate)
             self.default_keep = self.get("int", "defaults", "keep",\
@@ -276,7 +274,6 @@ class CantoConfig():
         self.unordered_feeds = []
 
     def write(self):
-        log.debug("writing config to disk")
         try:
             f = open(self.filename, "wb")
             self.cfg.write(f)

@@ -108,7 +108,6 @@ class CantoFeed():
             try:
                 item_cache, item_idx = self.lookup_by_id(i)
             except:
-                log.debug("get_attributes: couldn't find %s" % (i,))
                 continue
 
             # Potential fetched disk data.
@@ -246,10 +245,7 @@ class CantoFeed():
         # an item has been sitting in an active client for days
         # requests for more information won't fail.
 
-        log.debug("olditems: %s" % self.olditems)
-
         for i, olditem in enumerate(self.olditems):
-            log.debug("item(%d): %s" % (i, olditem))
             if protection.protected(olditem["id"]):
                 log.debug("protected.")
                 for item in self.items:

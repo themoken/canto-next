@@ -81,10 +81,9 @@ class CantoSocket:
 
         try:
             cmd, args = message.split(' ', 1)
-            log.info("EVAL'd args = %s (%s)" % (eval(args), type(eval(args))))
             return (cmd, eval(args))
         except:
-            log.info("Failed to parse message: %s" % message)
+            log.error("Failed to parse message: %s" % message)
 
     # Reads from a connection, returns:
     # 1) (cmd, args) from self.parse if possible.
@@ -93,7 +92,6 @@ class CantoSocket:
 
     def do_read(self, conn, timeout=None):
         if self.fragment and PROTO_TERMINATOR in self.fragment:
-            log.info("retrieving next command from self.fragment")
             return self.parse("") # <- already uses self.fragment
 
         poll = select.poll()

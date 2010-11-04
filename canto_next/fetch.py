@@ -31,7 +31,7 @@ class CantoFetchThread(Thread):
             self.feed.update_contents = feedparser.parse(\
                     feedparser.urllib2.urlopen(request))
         except Exception, e:
-            log.info("ERROR: try to parse %s, got %s" % (self.feed.URL, e))
+            log.error("ERROR: try to parse %s, got %s" % (self.feed.URL, e))
             self.feed.update_contents = None
             return
 
@@ -41,13 +41,13 @@ class CantoFetchThread(Thread):
 
         if "bozo_exception" in self.feed.update_contents:
             if self.feed.update_contents["bozo_exception"] == urllib2.URLError:
-                log.info("ERROR: couldn't grab %s : %s" %\
+                log.error("ERROR: couldn't grab %s : %s" %\
                         (self.feed.URL,\
                         self.feed.update_contents["bozo_exception"].reason))
                 self.feed.update_contents = None
                 return
             elif len(self.feed.update_contents["entries"]) == 0:
-                log.info("No content in %s: %s" %\
+                log.error("No content in %s: %s" %\
                         (self.feed.URL,\
                         self.feed.update_contents["bozo_exception"]))
                 self.feed.update_contents = None
@@ -71,7 +71,7 @@ class CantoFetch():
 
     def needs_update(self, feed):
         if not feed.items:
-            log.debug("Empty feed, attempt to update.")
+            log.info("Empty feed, attempt to update.")
             return True
 
         needs_update = True
