@@ -15,7 +15,6 @@ log = logging.getLogger("SHELF")
 class CantoShelf():
     def __init__(self, filename):
         self.filename = filename
-        self.refs = 0
 
     def __setitem__(self, name, value):
         name = name.encode("UTF-8")
@@ -35,14 +34,8 @@ class CantoShelf():
         del self.shelf[name]
 
     def open(self, *args):
-        if not self.refs:
-            self.shelf = shelve.open(self.filename, *args)
-        self.refs += 1
+        self.shelf = shelve.open(self.filename, *args)
 
     def close(self):
-        if self.refs == 1:
-            self.shelf.close()
-            self.shelf = None
-        else:
-            self.shelf.sync()
-        self.refs -= 1
+        self.shelf.close()
+        self.shelf = None
