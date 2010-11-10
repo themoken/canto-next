@@ -28,6 +28,9 @@ class CantoRemote(CantoClient):
 
     def print_help(self):
         print "USAGE: canto-remote [command] [options]"
+        self.print_commands()
+
+    def print_commands(self):
         print "COMMANDS"
         print "\thelp - get help on a command"
         print "\tconfig - change configuration variables"
@@ -108,6 +111,7 @@ class CantoRemote(CantoClient):
             print getattr(self, command).__doc__
         else:
             print self.cmd_help.__doc__
+            self.print_commands()
 
     def handle_args(self):
         if len(sys.argv) < 2:
