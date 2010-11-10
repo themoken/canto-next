@@ -106,6 +106,8 @@ class CantoRemote(CantoClient):
         command = "cmd_" + sys.argv[2]
         if command in dir(self):
             print getattr(self, command).__doc__
+        else:
+            print self.cmd_help.__doc__
 
     def handle_args(self):
         if len(sys.argv) < 2:
