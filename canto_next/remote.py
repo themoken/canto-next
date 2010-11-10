@@ -120,3 +120,5 @@ class CantoRemote(CantoClient):
             r = func()
             if r == False:
                 print func.__doc__
+        else:
+            self.print_help()
