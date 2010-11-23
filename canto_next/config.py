@@ -40,11 +40,29 @@ class CantoConfig():
 
         self.default_rate = 5
         self.default_keep = 0
+        self.conf_chars = [ '.', ':', '=' ]
+
+    def escape(self, s):
+        for char in self.conf_chars:
+            s = s.replace(char, "\\" + char)
+        return s
+
+    def unescape(self, s):
+        for char in self.conf_chars:
+            s = s.replace("\\" + char, char)
+        return s
 
     def set(self, section, option, value):
         log.debug("setting %s.%s = %s" % (section, option, value))
+
+        # Unescape from backend
+        section = self.unescape(section)
+        option = self.unescape(option)
+
+        # Config escape %%
         if type(value) in [unicode, str]:
             value = value.replace("%","%%")
+
         try:
             if not self.cfg.has_section(section):
                 self.cfg.add_section(section)
@@ -55,17 +73,23 @@ class CantoConfig():
         return self.cfg.set(section, option, value)
 
     def get_section(self, section):
+        usection = self.unescape(section)
+
         r = {}
-        if not self.cfg.has_section(section):
+        if not self.cfg.has_section(usection):
             return r
 
-        for opt in self.cfg.options(section):
-            r[opt] = self.get("", section, opt, None, 0)
+        for opt in self.cfg.options(usection):
+            r[self.escape(opt)] = self.get("", section, opt, None, 0)
         return r
 
     def get_sections(self, sections=None):
         if not sections:
-            sections = self.cfg.sections()
+
+            # Escape these because get_section expects to get escaped sections
+            # from the backend.
+
+            sections = [ self.escape(s) for s in self.cfg.sections() ]
 
         r = {}
         for section in sections:
@@ -73,10 +97,10 @@ class CantoConfig():
         return r
 
     def has_section(self, section):
-        return self.cfg.has_section(section)
+        return self.cfg.has_section(self.unescape(section))
 
     def remove_section(self, section):
-        return self.cfg.remove_section(section)
+        return self.cfg.remove_section(self.unescape(section))
 
     def get(self, otype, section, option, default, required = 0):
         # Use otype to get the right get_* function
@@ -87,7 +111,7 @@ class CantoConfig():
 
         # Wrap the get_x function in logs
         try:
-            r = fn(section, option)
+            r = fn(self.unescape(section), self.unescape(option))
         except ConfigParser.NoSectionError:
             if not required:
                 return default
@@ -119,7 +143,9 @@ class CantoConfig():
         return r
 
     def parse_feed(self, section):
+        section = self.escape(section)
         name = section[5:]
+
         log.debug("Found feed: %s" % name)
         try:
             URL = self.get("", section, "url", "", 1)
