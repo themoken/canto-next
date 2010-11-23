@@ -271,5 +271,11 @@ class CantoFeed():
 
     def destroy(self):
         self.shelf.open()
-        del self.shelf[self.URL]
+
+        # Check for existence in case of delete quickly
+        # after add.
+
+        if self.URL in self.shelf:
+            del self.shelf[self.URL]
+
         self.shelf.close()

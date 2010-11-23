@@ -72,6 +72,12 @@ class CantoConfig():
             r[section] = self.get_section(section)
         return r
 
+    def has_section(self, section):
+        return self.cfg.has_section(section)
+
+    def remove_section(self, section):
+        return self.cfg.remove_section(section)
+
     def get(self, otype, section, option, default, required = 0):
         # Use otype to get the right get_* function
         if hasattr(self.cfg, "get" + otype):

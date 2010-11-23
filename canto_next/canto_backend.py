@@ -49,7 +49,9 @@ class CantoBackend(CantoServer):
         self.fetch = None
         self.fetch_timer = 0
 
-        self.watches = { "config" : [],
+        self.watches = { "new_tags" : [],
+                         "del_tags" : [],
+                         "config" : [],
                          "tags" : {} }
 
         self.shelf = None
@@ -110,8 +112,33 @@ class CantoBackend(CantoServer):
         if "config" in self.watches:
             for socket in self.watches["config"]:
                 self.cmd_configs(socket, change.keys())
+
+        pretags = alltags.tags.keys()
+        newtags = []
+        oldtags = []
+
         self.conf.parse()
+
+        for tagname in alltags.tags.keys():
+            if tagname not in pretags:
+                newtags.append(tagname)
+
+        for tagname in pretags:
+            if tagname not in alltags.tags:
+                oldtags.append(tagname)
+
+        if newtags:
+            call_hook("new_tag", [ newtags ])
+        if oldtags:
+            call_hook("del_tag", [ oldtags ])
+
         self.check_dead_feeds()
+
+    # Notify clients of new tags.
+
+    def on_new_tag(self, tags):
+        for socket in self.watches["new_tags"]:
+            self.write(socket, "NEWTAGS", tags)
 
     # Propagate tag changes to watching sockets.
 
@@ -120,15 +147,27 @@ class CantoBackend(CantoServer):
             for socket in self.watches["tags"][tag]:
                 self.write(socket, "TAGCHANGE", tag)
 
+    # Notify clients of dead tags:
+
+    def on_del_tag(self, tags):
+        for socket in self.watches["del_tags"]:
+            self.write(socket, "DELTAGS", tags)
+
     # If a socket dies, it's not longer watching any events and
     # revoke any protection associated with it
 
     def on_kill_socket(self, socket):
-        if socket in self.watches["config"]:
+        while socket in self.watches["config"]:
             self.watches["config"].remove(socket)
 
+        while socket in self.watches["new_tags"]:
+            self.watches["new_tags"].remove(socket)
+
+        while socket in self.watches["del_tags"]:
+            self.watches["del_tags"].remove(socket)
+
         for tag in self.watches["tags"]:
-            if socket in self.watches["tags"][tag]:
+            while socket in self.watches["tags"][tag]:
                 self.watches["tags"][tag].remove(socket)
 
         protection.unprotect((socket, "auto"))
@@ -138,6 +177,8 @@ class CantoBackend(CantoServer):
     # we get notified about them.
 
     def setup_hooks(self):
+        on_hook("new_tag", self.on_new_tag)
+        on_hook("del_tag", self.on_del_tag)
         on_hook("config_change", self.on_config_change)
         on_hook("tag_change", self.on_tag_change)
         on_hook("kill_socket", self.on_kill_socket)
@@ -237,6 +278,10 @@ class CantoBackend(CantoServer):
     def cmd_setconfigs(self, socket, args):
         changes = {}
         for section in args.keys():
+            if not args[section] and self.conf.has_section(section):
+                self.conf.remove_section(section)
+                continue
+
             for setting in args[section]:
                 self.conf.set(section, setting, args[section][setting])
                 changes.update({ section :\
@@ -249,6 +294,16 @@ class CantoBackend(CantoServer):
 
     def cmd_watchconfigs(self, socket, args):
         self.watches["config"].append(socket)
+
+    # WATCHNEWTAGS
+
+    def cmd_watchnewtags(self, socket, args):
+        self.watches["new_tags"].append(socket)
+
+    # WATCHDELTAGS
+
+    def cmd_watchdeltags(self, socket, args):
+        self.watches["del_tags"].append(socket)
 
     # WATCHTAGS [ "tag", ... ]
 
