@@ -109,9 +109,8 @@ class CantoBackend(CantoServer):
     # Propagate config changes to watching sockets.
 
     def on_config_change(self, change):
-        if "config" in self.watches:
-            for socket in self.watches["config"]:
-                self.cmd_configs(socket, change.keys())
+        for socket in self.watches["config"]:
+            self.cmd_configs(socket, change.keys())
 
         pretags = alltags.tags.keys()
         newtags = []
