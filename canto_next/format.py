@@ -32,3 +32,14 @@ def get_formatter(fmt, keys):
             i += 1
         return s
     return formatter
+
+def escsplit(arg, delim):
+    escaped = False
+    for i, c in enumerate(arg):
+        if escaped:
+            escaped = False
+        elif c == '\\':
+            escaped = True
+        elif c == delim:
+            return (arg[:i], arg[i + 1:])
+    return (arg, '')

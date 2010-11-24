@@ -8,6 +8,7 @@
 
 from client import CantoClient
 from encoding import encoder, decoder
+from format import escsplit
 
 import feedparser
 import urllib2
@@ -66,19 +67,6 @@ class CantoRemote(CantoClient):
             for secvar in sections[section].keys():
                 print "%s.%s = %s" % (section, secvar,\
                         sections[section][secvar])
-
-    # Escape-aware split.
-
-    def _split1(self, arg, delim):
-        escaped = False
-        for i, c in enumerate(arg):
-            if escaped:
-                escaped = False
-            elif c == '\\':
-                escaped = True
-            if c == delim:
-                return (arg[:i], arg[i + 1:])
-        return (arg, '')
 
     def _autoname(self, URL):
         request = urllib2.Request(URL)
@@ -147,7 +135,7 @@ class CantoRemote(CantoClient):
         # Grab any feedopts from the commandline.
 
         for arg in sys.argv[3:]:
-            opt, val = self._split1(arg, "=")
+            opt, val = escsplit(arg, "=")
             if not opt or not val:
                 print "ERROR: can't parse '%s' as x=y setting." % arg
                 continue
@@ -279,8 +267,8 @@ class CantoRemote(CantoClient):
         gets = []
 
         for arg in sys.argv[2:]:
-            var, val = self._split1(arg, "=")
-            section, secvar = self._split1(var, ".")
+            var, val = self.escsplit(arg, "=")
+            section, secvar = self.escsplit(var, ".")
 
             if not section or not secvar:
                 print "ERROR: Unable to parse \"%s\" as section.variable" % var
