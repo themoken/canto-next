@@ -17,6 +17,7 @@ from storage import CantoShelf
 from fetch import CantoFetch
 from hooks import on_hook, call_hook
 from tag import alltags
+from format import escsplit
 
 import traceback
 import logging
@@ -254,11 +255,11 @@ class CantoBackend(CantoServer):
         if args:
             ret = {}
             for opt in args:
-                if "." not in opt:
+                section, setting = escsplit(opt, ".")
+                if not setting:
                     ret[opt] = self.conf.get_section(opt)
                     continue
 
-                section, setting = opt.split(".", 1)
                 try:
                     val = self.conf.get("", section, setting, None, 0)
                     if section in ret:
