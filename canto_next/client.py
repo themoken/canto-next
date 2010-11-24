@@ -8,6 +8,7 @@
 #   published by the Free Software Foundation.
 
 from protocol import CantoSocket
+from encoding import decoder
 
 import logging
 import select
@@ -21,17 +22,22 @@ import os
 log = logging.getLogger("CLIENT")
 
 class CantoClient(CantoSocket):
-    def __init__(self, socket_name):
-        CantoSocket.__init__(self, socket_name, server=False)
-        self.conn = self.socket
+    def __init__(self, socket_name, **kwargs):
+        kwargs["server"] = False
+        CantoSocket.__init__(self, socket_name, **kwargs)
+        self.conn = self.sockets[0] # Clients only have one socket conn.
         self.hupped = 0
 
     # Sets self.conf_dir and self.socket_path
 
     def common_args(self, extrashort = "", extralong = []):
+        self.port = -1
+        self.addr = None
+
         try:
-            optlist = getopt.getopt(sys.argv[1:],\
-                    'D:' + extrashort, ["dir="] + extralong)[0]
+            optlist, sys.argv =\
+                    getopt.getopt(sys.argv[1:], 'D:p:a:' + extrashort,\
+                    ["dir=", "port=", "address="] + extralong)
         except getopt.GetoptError, e:
             log.error("Error: %s" % e.msg)
             return -1
@@ -42,6 +48,18 @@ class CantoClient(CantoSocket):
             if opt in [ "-D", "--dir"]:
                 self.conf_dir = os.path.expanduser(decoder(arg))
                 self.conf_dir = os.path.realpath(self.conf_dir)
+
+            elif opt in [ "-p", "--port"]:
+                try:
+                    self.port = int(decoder(arg))
+                    if self.port < 0:
+                        raise Exception
+                except:
+                    log.error("Error: Port must be >0 integer.")
+                    return -1
+
+            elif opt in [ "-a", "--address"]:
+                self.addr = decoder(arg)
 
         self.socket_path = self.conf_dir + "/.canto_socket"
 

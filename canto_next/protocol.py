@@ -26,28 +26,54 @@ class CantoSocket:
         else:
             self.server = False
 
-        # Server startup, remove old socket
-        if self.server and os.path.exists(socket_name):
-            os.remove(socket_name)
+        self.sockets = []
+        self.socket_rdhup = {}
 
-        self.socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-
-        # Use non-blocking streams
-        self.socket.setblocking(0)
-
-        # Setup the socket.
-        # For the server, self.socket is made ready for .accept() to
-        #   get a read/write socket.
-        # For the client, self.socket is read to be read/written to.
+        # Server setup, potentially both unix and inet sockets.
 
         if self.server:
-            self.socket.bind(socket_name)
-            self.socket.listen(5)
+            if socket_name:
+                # Remove old unix socket.
+                if os.path.exists(socket_name):
+                    os.remove(socket_name)
+
+                # Setup new socket.
+                sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+                sock.setblocking(0)
+                sock.bind(socket_name)
+                sock.listen(5)
+                self.sockets.append(sock)
+
+            # Net socket setup.
+            if "port" in kwargs:
+                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                sock.setblocking(0)
+
+                if "interface" in kwargs:
+                    interface = kwargs["interface"]
+                else:
+                    interface = ''
+
+                sock.bind((interface, kwargs["port"]))
+                sock.listen(5)
+                self.sockets.append(sock)
+
+        # Client setup, can only do unix or inet, not both.
+
         else:
+            if "address" in kwargs and "port" in kwargs:
+                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                addr = (kwargs["address"], kwargs["port"])
+            else:
+                sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+                addr = socket_name
+
+            self.sockets.append(sock)
             tries = 10
+
             while tries > 0:
                 try:
-                    self.socket.connect(socket_name)
+                    sock.connect(addr)
                     break
                 except Exception, e:
                     if e[0] != errno.ECONNREFUSED or tries == 1:
@@ -67,7 +93,6 @@ class CantoSocket:
     def write_mode(self, poll, conn):
         poll.register(conn.fileno(),\
                 select.POLLOUT | select.POLLHUP | select.POLLERR)
-
 
     # Take raw data, return (cmd, args) tuple or None if not enough data.
     def parse(self, data):
@@ -93,6 +118,8 @@ class CantoSocket:
     def do_read(self, conn, timeout=None):
         if self.fragment and PROTO_TERMINATOR in self.fragment:
             return self.parse("") # <- already uses self.fragment
+
+        log.info("do_read conn: %s" % conn)
 
         poll = select.poll()
         self.read_mode(poll, conn)
@@ -120,6 +147,12 @@ class CantoSocket:
             return select.POLLHUP
         if e & select.POLLIN:
             fragment = conn.recv(1024)
+
+            # Never get POLLRDHUP on INET sockets, so
+            # use POLLIN with no data as POLLHUP
+            if not fragment:
+                return select.POLLHUP
+
             log.debug("Read Buffer: %s" % fragment )
             return self.parse(fragment)
 

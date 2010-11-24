@@ -19,10 +19,13 @@ class CantoRemote(CantoClient):
         if self.common_args():
             sys.exit(-1)
 
-        self.start_daemon()
-
         try:
-            CantoClient.__init__(self, self.socket_path)
+            if self.port < 0:
+                self.start_daemon()
+                CantoClient.__init__(self, self.socket_path)
+            else:
+                CantoClient.__init__(self, None,\
+                        port = self.port, address = self.addr)
         except Exception, e:
             print "Error: %s" % e
             sys.exit(-1)
@@ -125,16 +128,16 @@ class CantoRemote(CantoClient):
         name = Feed name (if not specified remote will attempt to lookup)
         rate = Rate, in minutes, at which this feed should be fetched."""
 
-        if len(sys.argv) < 3:
+        if len(sys.argv) < 2:
             return False
 
-        feed = { "url" : sys.argv[2] }
+        feed = { "url" : sys.argv[1] }
         name = None
         feedopts = [ "name", "rate", "alias", "order" ]
 
         # Grab any feedopts from the commandline.
 
-        for arg in sys.argv[3:]:
+        for arg in sys.argv[2:]:
             opt, val = escsplit(arg, "=")
             if not opt or not val:
                 print "ERROR: can't parse '%s' as x=y setting." % arg
@@ -152,7 +155,7 @@ class CantoRemote(CantoClient):
         # If name unspecified, attempt to fetch.
 
         if not name:
-            name = self._autoname(sys.argv[2])
+            name = self._autoname(sys.argv[1])
         if not name:
             return False
 
@@ -207,7 +210,7 @@ class CantoRemote(CantoClient):
         """USAGE: canto-remote listfeeds
     Lists all tracked feeds."""
 
-        if len(sys.argv) > 2:
+        if len(sys.argv) > 1:
             return False
 
         for order, f in self._get_feeds():
@@ -225,10 +228,10 @@ class CantoRemote(CantoClient):
     def cmd_delfeed(self):
         """USAGE: canto-remote delfeed [URL|name|alias]
     Unsubscribe from a feed."""
-        if len(sys.argv) != 3:
+        if len(sys.argv) != 2:
             return False
 
-        term = sys.argv[2]
+        term = sys.argv[1]
         feeds = self._get_feeds()
 
         for i, (order, f) in enumerate(feeds):
@@ -260,13 +263,13 @@ class CantoRemote(CantoClient):
     will let you give bad values, or even set values to non-existent
     variables."""
 
-        if len(sys.argv) < 3:
+        if len(sys.argv) < 2:
             return False
 
         sets = {}
         gets = []
 
-        for arg in sys.argv[2:]:
+        for arg in sys.argv[1:]:
             var, val = self.escsplit(arg, "=")
             section, secvar = self.escsplit(var, ".")
 
@@ -290,10 +293,10 @@ class CantoRemote(CantoClient):
 
     def cmd_help(self):
         """USAGE: canto-remote help [command]"""
-        if len(sys.argv) < 3:
+        if len(sys.argv) < 2:
             return False
 
-        command = "cmd_" + sys.argv[2]
+        command = "cmd_" + sys.argv[1]
         if command in dir(self):
             print getattr(self, command).__doc__
         else:
@@ -301,13 +304,13 @@ class CantoRemote(CantoClient):
             self.print_commands()
 
     def handle_args(self):
-        if len(sys.argv) < 2:
+        if len(sys.argv) < 1:
             self.print_help()
             return
 
         sys.argv = [ decoder(a) for a in sys.argv ]
 
-        command = "cmd_" + sys.argv[1]
+        command = "cmd_" + sys.argv[0]
         if command in dir(self):
             func = getattr(self, command)
             r = func()

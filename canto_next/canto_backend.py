@@ -57,6 +57,9 @@ class CantoBackend(CantoServer):
 
         self.shelf = None
 
+        self.port = -1
+        self.intf = ''
+
         # No bad arguments.
         if self.args():
             sys.exit(-1)
@@ -89,8 +92,22 @@ class CantoBackend(CantoServer):
 
         self.setup_hooks()
 
-        CantoServer.__init__(self, self.conf_dir + "/.canto_socket",\
-                Queue.Queue())
+        sp = self.conf_dir + "/.canto_socket"
+        log.info("Listening on unix socket: %s" % sp)
+
+        try:
+            if self.port < 0:
+                CantoServer.__init__(self, sp, Queue.Queue())
+            else:
+                log.info("Listening on interface %s:%d" %\
+                        (self.intf, self.port))
+                CantoServer.__init__(self, sp, Queue.Queue(),\
+                        port = self.port, interface = self.intf)
+        except Exception, e:
+            err = "Error: %s" % e
+            print err
+            log.error(err)
+            sys.exit(-1)
 
         # Signal handlers kickoff after everything else is init'd
         self.alarmed = 0
@@ -371,7 +388,8 @@ class CantoBackend(CantoServer):
     # This function parses and validates all of the command line arguments.
     def args(self):
         try:
-            optlist = getopt.getopt(sys.argv[1:], 'D:v', ["dir="])[0]
+            optlist = getopt.getopt(sys.argv[1:], 'D:vp:a:',\
+                    ["dir=", "port=", "address="])[0]
         except getopt.GetoptError, e:
             log.error("Error: %s" % e.msg)
             return -1
@@ -387,6 +405,18 @@ class CantoBackend(CantoServer):
             # -v increase verbosity
             elif opt in ["-v"]:
                 self.verbosity += 1
+
+            elif opt in ["-p", "--port"]:
+                try:
+                    self.port = int(decoder(arg))
+                    if self.port < 0:
+                        raise Exception
+                except:
+                    log.error("Error: Port must be >0 integer.")
+                    return -1
+
+            elif opt in ["-a", "--address"]:
+                self.intf = decoder(arg)
 
         return 0
 

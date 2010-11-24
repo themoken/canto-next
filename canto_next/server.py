@@ -19,8 +19,9 @@ import select
 log = logging.getLogger("SERVER")
 
 class CantoServer(CantoSocket):
-    def __init__(self, socket_name, queue):
-        CantoSocket.__init__(self, socket_name, server=True)
+    def __init__(self, socket_name, queue, **kwargs):
+        kwargs["server"] = True
+        CantoSocket.__init__(self, socket_name, **kwargs)
         self.queue = queue
         self.connections = [] # (socket, thread) tuples
         self.alive = True
@@ -63,10 +64,19 @@ class CantoServer(CantoSocket):
         # Dead thread maintenance.
         self.no_dead_conns()
 
-        try:
-            conn = self.socket.accept()
-        except:
-            return # No new connection, we're done.
+        # Try all sockets for new connections.
+
+        conn = None
+        for sock in self.sockets:
+            try:
+                conn = sock.accept()
+                log.info("conn %s from sock %s" % (conn, sock))
+            except:
+                continue # No new connection, try next
+
+        # No sockets had connections, we're done.
+        if not conn:
+            return
 
         # Notify watchers about new socket.
         call_hook("new_socket", [conn[0]])
