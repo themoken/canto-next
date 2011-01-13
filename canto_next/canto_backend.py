@@ -441,8 +441,8 @@ class CantoBackend(CantoServer):
         else:
             try:
                 os.makedirs(self.conf_dir)
-            except e:
-                log.error("Exception making %s : %s" % (self.conf_dir, e.msg))
+            except Exception, e:
+                log.error("Exception making %s : %s" % (self.conf_dir, e))
                 return -1
         return self.ensure_files()
 
