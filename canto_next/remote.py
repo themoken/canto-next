@@ -133,7 +133,6 @@ class CantoRemote(CantoClient):
 
         feed = { "url" : sys.argv[1] }
         name = None
-        feedopts = [ "name", "rate", "alias", "order" ]
 
         # Grab any feedopts from the commandline.
 
@@ -141,10 +140,6 @@ class CantoRemote(CantoClient):
             opt, val = escsplit(arg, "=")
             if not opt or not val:
                 print "ERROR: can't parse '%s' as x=y setting." % arg
-                continue
-
-            if opt not in feedopts:
-                print "ERROR: %s is not a valid feed option." % opt
                 continue
 
             if opt == "name":
@@ -160,43 +155,6 @@ class CantoRemote(CantoClient):
             return False
 
         configs = {}
-
-        # Parse set order, or unset it.
-
-        if "order" in feed:
-            try:
-                feed["order"] = int(feed["order"])
-            except:
-                print "ERROR: Can't parse order ('%s') as integer!" %\
-                    feed["order"]
-                del feed["order"]
-
-        feeds = self._get_feeds()
-
-        # If order unparsable or unset, set it to max set order + 1
-
-        if "order" not in feed:
-            feed["order"] = max([ o for o, f in feeds]) + 1
-        else:
-            curorder = feed["order"]
-            for o, f in feeds:
-
-                # There's already an explicitly set feed with this order
-                # then move it down.
-
-                if o == curorder:
-                    curorder += 1
-                    configs["Feed " + f["tag"]] =\
-                            { "order" : unicode(curorder) }
-
-                # We've crossed into unordered feeds, or beyond current order
-
-                elif o == -1 or o > curorder:
-                    break
-
-        feed["order"] = unicode(feed["order"])
-
-        # Set the rest
 
         name = "Feed " + name
         configs[name] = feed

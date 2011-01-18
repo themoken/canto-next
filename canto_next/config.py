@@ -102,12 +102,13 @@ class CantoConfig():
         self.urls = []
         self.global_transform = None
 
-    # Parse is a wrapper to reset all of the config settings and create a simple
-    # dict full of unicode keys out of the ConfigParser content.
-
     def parse(self):
         self.reset()
+        self.read_config()
+        self.validate()
+        self.instantiate()
 
+    def read_config(self):
         env = { "home" : os.getenv("HOME"),
                 "cwd" : os.getcwd() }
 
@@ -145,8 +146,6 @@ class CantoConfig():
                         decoder(self.cfgp.get(section, option))
 
         log.debug("Parsed into: %s" % self.parsed)
-        self.validate()
-        self.instantiate()
 
     def error(self, section, option, val, error):
         if section not in self.errors:
@@ -336,16 +335,31 @@ class CantoConfig():
                     if valsec["order"] >= len(ordered_feeds):
                         ordered_feeds += [None] * ((valsec["order"] + 1) -
                                 len(ordered_feeds))
+                    elif ordered_feeds[valsec["order"]]:
+                        log.warn("Two feeds with same order (%d)! Demoting %s" %
+                                (valsec["order"], name))
+                        unordered_feeds.insert(0, feed)
+                        continue
                     ordered_feeds[valsec["order"]] = feed
                 else:
                     unordered_feeds.append(feed)
+
+        # Unordered (newly added) feeds should be given an explicit
+        # order now to avoid inconsistent ordering between runs.
+
+        unordered_base = len(ordered_feeds)
+        for feed in unordered_feeds:
+            self.set("Feed " + feed.name, "order", unicode(unordered_base))
+            log.info("New feed order: %s -> %d", feed.name, unordered_base)
+            unordered_base += 1
+        self.write()
 
         # Move over any string-based extra (client) configs
         for section in self.parsed:
             if section not in self.validated:
                 self.final[section] = self.parsed[section]
 
-        self.feeds = ordered_feeds + unordered_feeds
+        self.feeds = filter(None, ordered_feeds + unordered_feeds)
         self.global_transform =\
             eval_transform(self.validated["defaults"]["global_transform"])
 
