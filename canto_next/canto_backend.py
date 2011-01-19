@@ -126,12 +126,18 @@ class CantoBackend(CantoServer):
 
     # Propagate config changes to watching sockets.
 
-    def on_config_change(self, change):
+    def on_config_change(self, change, originating_socket):
         pretags = alltags.tags.keys()
         newtags = []
         oldtags = []
 
-        self.conf.parse()
+        self.conf.parse(False)
+
+        if self.conf.errors:
+            self.write(originating_socket, "ERRORS", self.conf.errors)
+            self.conf.parse()
+        else:
+            self.conf.write()
 
         for socket in self.watches["config"]:
             self.cmd_configs(socket, change.keys())
@@ -278,7 +284,7 @@ class CantoBackend(CantoServer):
                     continue
 
                 try:
-                    val = self.conf.get("", section, setting, None, 0)
+                    val = self.conf.get(section, setting)
                     if section in ret:
                         ret[section].update({ setting : val })
                     else:
@@ -295,8 +301,9 @@ class CantoBackend(CantoServer):
     def cmd_setconfigs(self, socket, args):
         changes = {}
         for section in args.keys():
-            if not args[section] and self.conf.has_section(section):
-                self.conf.remove_section(section)
+            if not args[section]:
+                if self.conf.has_section(section):
+                    self.conf.remove_section(section)
                 continue
 
             for setting in args[section]:
@@ -304,8 +311,7 @@ class CantoBackend(CantoServer):
                 changes.update({ section :\
                         { setting : args[section][setting]}})
 
-        self.conf.write()
-        call_hook("config_change", [changes])
+        call_hook("config_change", [changes, socket])
 
     # WATCHCONFIGS
 
@@ -507,6 +513,14 @@ class CantoBackend(CantoServer):
     def get_config(self):
         self.conf = CantoConfig(self.conf_path, self.shelf)
         self.conf.parse()
+        if self.conf.errors:
+            print "ERRORS!"
+            for s in self.conf.errors:
+                for o in self.conf.errors[s]:
+                    print "%s.%s = %s <-- %s" %\
+                            (s, o, self.conf.errors[s][o][0],
+                                    self.conf.errors[s][o][1])
+            sys.exit(-1)
 
     def get_fetch(self):
         self.fetch = CantoFetch(self.shelf, self.conf)

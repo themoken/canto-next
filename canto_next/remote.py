@@ -58,10 +58,15 @@ class CantoRemote(CantoClient):
             elif type(r) == tuple:
                 if r[0] == cmd:
                     return r[1]
+                elif r[0] == "ERRORS":
+                    print "ERRORS!"
+                    for s in r[1]:
+                        for o in r[1][s]:
+                            print "%s.%s = %s <-- %s" %\
+                                    (s, o, r[1][s][o][0], r[1][s][o][1])
             elif r:
                 print "Unknown return: %s" % r
                 break
-
         return None
 
     def _read_back_config(self):
@@ -96,30 +101,18 @@ class CantoRemote(CantoClient):
         c = self._wait_response("CONFIGS")
 
         ret = []
-        unordered = []
 
         for tag, url in r:
             t = {"tag" : tag, "url" : url}
             f = "Feed " + tag
 
             # Move any other interesting settings:
-            for att in [ "alias" ]:
-                if att in c[f]:
-                    t[att] = c[f][att]
+            for att in c[f]:
+                t[att] = c[f][att]
 
-            # Obtain a numeric order
-            if "order" in c[f]:
-                try:
-                    ret.append((int(c[f]["order"]), t))
-                except:
-                    print "ERROR: Couldn't parse order (%s) as integer." %\
-                            c[f]["order"]
-                    unordered.append((-1, t))
-            else:
-                unordered.append((-1, t))
+            ret.append(t)
 
-        ret.sort()
-        return ret + unordered
+        return ret
 
     def cmd_addfeed(self):
         """USAGE: canto-remote addfeed [URL] (option=value) ...
@@ -171,11 +164,8 @@ class CantoRemote(CantoClient):
         if len(sys.argv) > 1:
             return False
 
-        for order, f in self._get_feeds():
-            s = f["tag"] + " "
-
-            if order > -1:
-                s = ("%s. " % order) + s
+        for idx, f in enumerate(self._get_feeds()):
+            s = ("%d." % idx) + f["tag"] + " "
 
             if "alias" in f:
                 s += "(" + f["alias"] + ")"
@@ -190,26 +180,15 @@ class CantoRemote(CantoClient):
             return False
 
         term = sys.argv[1]
-        feeds = self._get_feeds()
 
-        for i, (order, f) in enumerate(feeds):
+        for f in self._get_feeds():
             matches = [ f["url"], f["tag"]]
             if "alias" in f:
                 matches.append(f["alias"])
+
             if term in matches:
                 print "Unsubscribing from %s" % f["url"]
-                configs = { "Feed " + f["tag"] : None }
-
-                # Re-order any feeds that follow sequentially from here.
-
-                for j, (n_order, n_f) in enumerate(feeds[i + 1:]):
-                    if n_order == order + (j + 1):
-                        configs["Feed " + n_f["tag"]] =\
-                                { "order" : unicode(order + j) }
-                    else:
-                        break
-
-                self.write("SETCONFIGS", configs)
+                self.write("SETCONFIGS",  { "Feed " + f["tag"] : None })
 
     def cmd_config(self):
         """USAGE: canto-remote config [option](=value) ...
@@ -228,8 +207,8 @@ class CantoRemote(CantoClient):
         gets = []
 
         for arg in sys.argv[1:]:
-            var, val = self.escsplit(arg, "=")
-            section, secvar = self.escsplit(var, ".")
+            var, val = escsplit(arg, "=")
+            section, secvar = escsplit(var, ".")
 
             if not section or not secvar:
                 print "ERROR: Unable to parse \"%s\" as section.variable" % var

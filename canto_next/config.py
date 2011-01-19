@@ -46,11 +46,11 @@ class CantoConfig():
         # example
 
         self.defaults_validators = [
-                ("rate", self.validate_int),
-                ("keep", self.validate_int),
+                ("rate", self.validate_int, False),
+                ("keep", self.validate_int, False),
                 ("transform.(?P<idx>\d+).(?P<field>(name|func))",
-                    self.validate_transforms),
-                ("global_transform", self.validate_set_transform),
+                    self.validate_transforms, False),
+                ("global_transform", self.validate_set_transform, False),
         ]
 
         # Defaults are native values and are *not* validated so that they can be
@@ -63,10 +63,10 @@ class CantoConfig():
         }
 
         self.feed_validators = [
-                ("url", self.validate_unique_url),
-                ("rate", self.validate_int),
-                ("keep", self.validate_int),
-                ("order", self.validate_int),
+                ("url", self.validate_unique_url, True),
+                ("rate", self.validate_int, False),
+                ("keep", self.validate_int, False),
+                ("order", self.validate_int, False),
         ]
 
         self.feed_defaults = {}
@@ -102,33 +102,34 @@ class CantoConfig():
         self.urls = []
         self.global_transform = None
 
-    def parse(self):
+    def parse(self, fromfile=True):
         self.reset()
-        self.read_config()
+        self.read_config(fromfile)
         self.validate()
         self.instantiate()
 
-    def read_config(self):
+    def read_config(self, fromfile):
         env = { "home" : os.getenv("HOME"),
                 "cwd" : os.getcwd() }
 
-        self.cfgp = ConfigParser.SafeConfigParser(env)
+        if fromfile:
+            self.cfgp = ConfigParser.SafeConfigParser(env)
 
-        # Make sure we are case sensitive, especially for things
-        # like keybinds where e and E are different things.
+            # Make sure we are case sensitive, especially for things
+            # like keybinds where e and E are different things.
 
-        self.cfgp.optionxform = str
+            self.cfgp.optionxform = str
 
-        log.debug("New Parser with env: %s" % env)
+            log.debug("New Parser with env: %s" % env)
 
-        if not os.path.exists(self.filename):
-            log.info("No config found, writing default.")
-            f = open(self.filename, "w")
-            f.write(default_config)
-            f.close()
+            if not os.path.exists(self.filename):
+                log.info("No config found, writing default.")
+                f = open(self.filename, "w")
+                f.write(default_config)
+                f.close()
 
-        self.cfgp.read(self.filename)
-        log.info("Read %s" % self.filename)
+            self.cfgp.read(self.filename)
+            log.info("Read %s" % self.filename)
 
         for section in self.cfgp.sections():
             esection = decoder(self.escape(section))
@@ -261,7 +262,6 @@ class CantoConfig():
     # (Feeds) haven't actually been created with the config'd values.
 
     def validate(self):
-
         for section_rgx, validator_list, defaults in self.validators:
             sr = re.compile(section_rgx)
 
@@ -273,23 +273,46 @@ class CantoConfig():
                 if section not in self.validated:
                     self.validated[section] = {}
 
-                for rgx, validator in validator_list:
+                # Sub in defaults to be overridden.
+                for option in defaults:
+                    if option not in self.validated[section]:
+                        self.validated[section][option] =\
+                                defaults[option]
+
+                # Validate all matching settings.
+                for rgx, validator, required in validator_list:
                     r = re.compile(rgx)
                     settings = {}
+                    found = False
 
                     for option in self.parsed[section].keys():
                         match = r.match(option)
                         if not match:
                             continue
 
+                        found = True
                         settings[option] = (self.parsed[section][option],\
                                 match.groupdict())
 
-                    validator(section, settings)
+                    # Detect unset, required settings.
 
-                    for option in defaults:
-                        if option not in self.validated[section]:
-                            self.validated[section][option] = defaults[option]
+                    if required and not found:
+                        self.error(section, rgx, "", "Must be set")
+                    else:
+                        validator(section, settings)
+
+                        # Detect invalid, required settings by their absence
+                        # from the validated dict after validation.
+
+                        if required:
+                            invalid_section = False
+                            for s in settings:
+                                if s not in self.validated[section]:
+                                    del self.validated[section]
+                                    invalid_section = True
+                                    break
+                            if invalid_section:
+                                break
 
         # If there's no defaults section we must create one before
         # feeds start trying to use it.
@@ -317,10 +340,8 @@ class CantoConfig():
 
             # Collect arguments to instantiate.
             elif section.startswith("Feed "):
+                self.final[section] = valsec
                 name = section[5:]
-                if "url" not in valsec:
-                    self.error(section, "url", "", "URL unset or bad.")
-                    continue
 
                 if "rate" not in valsec:
                     valsec["rate"] = self.validated["defaults"]["rate"]
@@ -344,22 +365,16 @@ class CantoConfig():
                 else:
                     unordered_feeds.append(feed)
 
-        # Unordered (newly added) feeds should be given an explicit
-        # order now to avoid inconsistent ordering between runs.
-
-        unordered_base = len(ordered_feeds)
-        for feed in unordered_feeds:
-            self.set("Feed " + feed.name, "order", unicode(unordered_base))
-            log.info("New feed order: %s -> %d", feed.name, unordered_base)
-            unordered_base += 1
-        self.write()
+        # Make order explicit, regardless of whether it was in the first place.
+        self.feeds = filter(None, ordered_feeds + unordered_feeds)
+        for i, feed in enumerate(self.feeds):
+            self.set("Feed " + feed.name, "order", unicode(i))
 
         # Move over any string-based extra (client) configs
         for section in self.parsed:
             if section not in self.validated:
                 self.final[section] = self.parsed[section]
 
-        self.feeds = filter(None, ordered_feeds + unordered_feeds)
         self.global_transform =\
             eval_transform(self.validated["defaults"]["global_transform"])
 
@@ -382,6 +397,16 @@ class CantoConfig():
             return
         return self.cfgp.set(section, option, value)
 
+    def get(self, section, option):
+        if section not in self.final:
+            log.warn("tried to get non-existent section: %s" % section)
+            return None
+        if option not in self.final[section]:
+            log.warn("tried to get non-existent option: %s.%s" %\
+                    (section, option))
+            return None
+        return self.final[section][option]
+
     def get_section(self, section):
         if section in self.final:
             return self.final[section]
@@ -401,6 +426,7 @@ class CantoConfig():
         return section in self.final
 
     def remove_section(self, section):
+        del self.final[section]
         return self.cfgp.remove_section(self.unescape(section))
 
     def write(self):
