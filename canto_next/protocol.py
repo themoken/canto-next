@@ -176,7 +176,14 @@ class CantoSocket:
         while tosend:
 
             # Again, we only care about the first descriptor's mask
-            p = poll.poll()
+            try:
+                p = poll.poll()
+            except select.error, e:
+                if e[0] == errno.EINTR:
+                    continue
+                log.debug("Raising error: %s" % e[1])
+                raise
+
             if not p:
                 continue
             e = p[0][1]
