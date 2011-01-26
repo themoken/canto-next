@@ -353,6 +353,7 @@ class CantoBackend(CantoServer):
 
     # The workhorse that maps all requests to their handlers.
     def run(self):
+        log.debug("Beginning to serve...")
         while 1:
             if not self.queue.empty():
                 (socket, (cmd, args)) = self.queue.get()
@@ -367,6 +368,10 @@ class CantoBackend(CantoServer):
                     func(socket, args)
                 else:
                     log.info("Got unknown command: %s" % (cmd))
+
+                # Give priority to waiting requests, try for
+                # another one instead of doing feed processing in between.
+                continue
 
             self.check_conns()
 
@@ -524,7 +529,6 @@ class CantoBackend(CantoServer):
 
     def get_fetch(self):
         self.fetch = CantoFetch(self.shelf, self.conf)
-        self.fetch.fetch()
 
     def start(self):
         try:
