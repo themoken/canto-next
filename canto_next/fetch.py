@@ -10,6 +10,7 @@ from feed import allfeeds
 
 from threading import Thread
 import feedparser
+import urlparse
 import urllib2
 import logging
 import time
@@ -26,10 +27,31 @@ class CantoFetchThread(Thread):
         request.add_header('User-Agent',\
                 'Canto/0.8.0 + http://codezen.org/canto')
 
-        # Handle non-password, non-script, non-file URLs
         try:
-            self.feed.update_contents = feedparser.parse(\
-                    feedparser.urllib2.urlopen(request))
+            result = None
+            # Passworded Feed
+            if self.feed.username or self.feed.password:
+                mgr = urllib2.HTTPPasswordMgrWithDefaultRealm()
+                domain = urlparse.urlparse(self.feed.URL)[1]
+                mgr.add_password(None, domain, self.feed.username,
+                        self.feed.password)
+
+                # Try Basic Authentication
+                auth = urllib2.HTTPBasicAuthHandler(mgr)
+                opener = urllib2.build_opener(auth)
+                try:
+                    result = feedparser.parse(opener.open(request))
+                except:
+                    # And, failing that, Digest Authentication
+                    auth = urllib2.HTTPDigestAuthHandler(mgr)
+                    opener = urllib2.build_opener(auth)
+                    result = feedparser.parse(opener.open(request))
+
+            # No password
+            else:
+                result = feedparser.parse(feedparser.urllib2.urlopen(request))
+
+            self.feed.update_contents = result
         except Exception, e:
             log.error("ERROR: try to parse %s, got %s" % (self.feed.URL, e))
             self.feed.update_contents = None

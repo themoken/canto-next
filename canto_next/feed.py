@@ -57,13 +57,21 @@ class CantoFeeds():
 allfeeds = CantoFeeds()
 
 class CantoFeed():
-    def __init__(self, shelf, name, URL, rate, keep):
+    def __init__(self, shelf, name, URL, rate, keep, **kwargs):
         allfeeds.add_feed(URL, self)
         self.shelf = shelf
         self.name = name
         self.URL = URL
         self.rate = rate
         self.keep = keep
+
+        self.username = None
+        if "username" in kwargs:
+            self.username = kwargs["username"]
+
+        self.password = None
+        if "password" in kwargs:
+            self.password = kwargs["password"]
 
         self.update_contents = None
         self.items = []

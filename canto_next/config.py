@@ -67,6 +67,8 @@ class CantoConfig():
                 ("rate", self.validate_int, False),
                 ("keep", self.validate_int, False),
                 ("order", self.validate_int, False),
+                ("username", self.validate_string, False),
+                ("password", self.validate_string, False),
         ]
 
         self.feed_defaults = {}
@@ -172,6 +174,12 @@ class CantoConfig():
                 self.error(section, option, val, "Must be integer")
                 continue
 
+            self.validated[section][option] = val
+
+    # i.e. no validation since everything we get is a string.
+    def validate_string(self, section, settings):
+        for option in settings:
+            val, groups = settings[option]
             self.validated[section][option] = val
 
     def get_transform_by_name(self, name):
@@ -348,9 +356,14 @@ class CantoConfig():
                 if "keep" not in valsec:
                     valsec["keep"] = self.validated["defaults"]["keep"]
 
+                kws = {}
+                for k in ["password", "username"]:
+                    if k in valsec:
+                        kws[k] = valsec[k]
+
                 feed = CantoFeed(self.shelf, name,\
                         valsec["url"], valsec["rate"],
-                        valsec["keep"])
+                        valsec["keep"], **kws)
 
                 if "order" in valsec:
                     if valsec["order"] >= len(ordered_feeds):
