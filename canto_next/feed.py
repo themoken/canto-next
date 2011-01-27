@@ -105,6 +105,20 @@ class CantoFeed():
         else:
             raise Exception, "%s not found in self.items" % (i,)
 
+    # Return { attribute : value ... }
+    def get_feedattributes(self, attributes):
+        self.shelf.open()
+        d = self.shelf[self.URL]
+        self.shelf.close()
+
+        r = {}
+        for attr in attributes:
+            if attr in d:
+                r[attr] = d[attr]
+            else:
+                r[attr] = ""
+        return r
+
     # Return { id : { attribute : value .. } .. }
     def get_attributes(self, items, attributes):
         r = {}

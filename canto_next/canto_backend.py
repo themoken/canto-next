@@ -253,6 +253,18 @@ class CantoBackend(CantoServer):
 
         self.write(socket, "ITEMS", response)
 
+    # FEEDATTRIBUTES { 'url' : [ attribs .. ] .. } ->
+    # { url : { attribute : value } ... }
+
+    def cmd_feedattributes(self, socket, args):
+        r = {}
+        for url in args.keys():
+            feed = allfeeds.get_feed(url)
+            if not feed:
+                continue
+            r.update({ url : feed.get_feedattributes(args[url])})
+        self.write(socket, "FEEDATTRIBUTES", r)
+
     # ATTRIBUTES { id : [ attribs .. ] .. } ->
     # { id : { attribute : value } ... }
 

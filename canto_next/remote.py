@@ -43,6 +43,7 @@ class CantoRemote(CantoClient):
         print "\tlistfeeds - list all subscribed feeds"
         print "\tdelfeed - unsubscribe from a feed"
         print "\tconfig - change configuration variables"
+        print "\texport - export feed list as OPML"
 
     def _wait_response(self, cmd):
         r = None
@@ -227,6 +228,29 @@ class CantoRemote(CantoClient):
         self.write("CONFIGS", gets)
         self._read_back_config()
         return True
+
+    def cmd_export(self):
+        """USAGE: canto-remote export
+
+    This will print an OPML file to standard output."""
+
+        print """<opml version="1.0">"""
+        print """\t<body>"""
+        for f in self._get_feeds():
+            self.write("FEEDATTRIBUTES", { f["url"] : [ "version"] })
+            attrs = self._wait_response("FEEDATTRIBUTES")
+            if "atom" in attrs[f["url"]]["version"]:
+                feedtype = "pie"
+            else:
+                feedtype = "rss"
+
+            print """\t\t<outline text="%s" xmlUrl="%s" type="%s" />""" %\
+                (encoder(f["tag"].replace("\"","\\\"")),
+                 encoder(f["url"].replace("\"","\\\"")),
+                 feedtype)
+
+        print """\t</body>"""
+        print """</opml>"""
 
     def cmd_help(self):
         """USAGE: canto-remote help [command]"""
