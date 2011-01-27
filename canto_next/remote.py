@@ -141,7 +141,10 @@ class CantoRemote(CantoClient):
     Where URL is the feed's URL. You can also specify options for the feed:
 
         name = Feed name (if not specified remote will attempt to lookup)
-        rate = Rate, in minutes, at which this feed should be fetched."""
+        rate = Rate, in minutes, at which this feed should be fetched.
+
+        username = Username (if necessary) for password protected feeds.
+        password = Password for password protected feeds."""
 
         if len(sys.argv) < 2:
             return False
@@ -168,7 +171,7 @@ class CantoRemote(CantoClient):
             return False
 
         for idx, f in enumerate(self._get_feeds()):
-            s = ("%d." % idx) + f["tag"] + " "
+            s = ("%d. " % idx) + f["tag"] + " "
 
             if "alias" in f:
                 s += "(" + f["alias"] + ")"
