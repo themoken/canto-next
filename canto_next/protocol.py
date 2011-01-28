@@ -119,8 +119,6 @@ class CantoSocket:
         if self.fragment and PROTO_TERMINATOR in self.fragment:
             return self.parse("") # <- already uses self.fragment
 
-        log.info("do_read conn: %s" % conn)
-
         poll = select.poll()
         self.read_mode(poll, conn)
 
