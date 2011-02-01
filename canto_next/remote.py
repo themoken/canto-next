@@ -18,7 +18,7 @@ import sys
 
 class CantoRemote(CantoClient):
     def __init__(self):
-        if self.common_args():
+        if self.common_args() == -1:
             sys.exit(-1)
 
         try:

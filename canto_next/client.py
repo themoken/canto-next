@@ -63,7 +63,7 @@ class CantoClient(CantoSocket):
 
         self.socket_path = self.conf_dir + "/.canto_socket"
 
-        return 0
+        return optlist
 
     # Test whether we can lock the pidfile, and if we can, fork the daemon
     # with the proper arguments.
