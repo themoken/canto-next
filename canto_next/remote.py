@@ -14,6 +14,8 @@ import xml.parsers.expat
 import feedparser
 import traceback
 import urllib2
+import pprint
+import time
 import sys
 
 class CantoRemote(CantoClient):
@@ -30,6 +32,7 @@ class CantoRemote(CantoClient):
                         port = self.port, address = self.addr)
         except Exception, e:
             print "Error: %s" % e
+            print self.socket_path
             sys.exit(-1)
 
         self.handle_args()
@@ -46,6 +49,8 @@ class CantoRemote(CantoClient):
         print "\tdelfeed - unsubscribe from a feed"
         print "\tconfig - change configuration variables"
         print "\texport - export feed list as OPML"
+        print "\timport - import feed list from OPML"
+        print "\tscript - run script"
 
     def _wait_response(self, cmd):
         r = None
@@ -59,6 +64,8 @@ class CantoRemote(CantoClient):
                 print "Please check daemon-log for exception."
                 return
             elif type(r) == tuple:
+                if not cmd:
+                    return r
                 if r[0] == cmd:
                     return r[1]
                 elif r[0] == "ERRORS":
@@ -301,6 +308,59 @@ class CantoRemote(CantoClient):
 
         for feed in feeds:
             self._addfeed(feed)
+
+    def cmd_script(self):
+        """USAGE canto-remote script (scriptfile)
+
+    Run script from scriptfile or stdin.
+
+    Note: This is intended for testing and does not gracefully handle errors."""
+
+        if len(sys.argv) not in [1, 2]:
+            return False
+
+        if len(sys.argv) == 1:
+            lines = sys.stdin.readlines()
+        else:
+            f = open(sys.argv[1], "r")
+            lines = f.readlines()
+            f.close()
+
+        pp = pprint.PrettyPrinter()
+
+        for line in lines:
+            line = line[:-1].lstrip()
+            print line
+
+            # Wait for n responses.
+
+            if line.startswith("REMOTE_WAIT "):
+                num = int(line.split(" ", 1)[-1])
+                for i in xrange(num):
+                    r = self._wait_response(None)
+                    pp.pprint(r)
+
+            elif line.startswith("REMOTE_IGNORE "):
+                num = int(line.split(" ", 1)[-1])
+                for i in xrange(num):
+                    self._wait_response(None)
+
+            # Hang with socket open so that the daemon thinks
+            # we're using any data we've requested. Script runners
+            # must be smart enough to signal-kill this remote.
+
+            elif line.startswith("REMOTE_HANG"):
+                while True:
+                    time.sleep(1000)
+
+            # Skip comments / blank
+
+            elif line == '' or line.startswith("#"):
+                continue
+
+            else:
+                cmd, arg = line.split(' ', 1)
+                self.write(cmd, eval(arg))
 
     def cmd_help(self):
         """USAGE: canto-remote help [command]"""

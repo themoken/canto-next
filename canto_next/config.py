@@ -56,10 +56,14 @@ class CantoConfig():
         # Defaults are native values and are *not* validated so that they can be
         # easily substituted even if validation fails on a user provided value.
 
+        # Usually this means that the defaults listed here are in their end for.
+        # For eval'd values, like transforms, they will eval'd in the
+        # instantiation phase, so they should be strings at defaults.
+
         self.defaults_defaults = {
                 "rate" : 10,
                 "keep" : 0,
-                "global_transform" : None,
+                "global_transform" : "None",
         }
 
         self.feed_validators = [

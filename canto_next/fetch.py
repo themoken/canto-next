@@ -130,8 +130,11 @@ class CantoFetch():
             self.threads.append((thread, feed.URL))
 
     def process(self):
+        newthreads = []
+
         for thread, URL in self.threads:
             if thread.isAlive():
+                newthreads.append((thread, URL))
                 continue
             thread.join()
 
@@ -142,4 +145,4 @@ class CantoFetch():
             if feed:
                 feed.index()
 
-        self.threads = [ t for t in self.threads if t[0].isAlive() ]
+        self.threads = newthreads

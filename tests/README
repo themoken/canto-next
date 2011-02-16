@@ -1,0 +1,17 @@
+== TESTS ==
+
+Each directory encompasses one test.
+
+    Run all tests: ./run.sh */
+
+    Run one test: ./run.sh testname
+
+In addition, there are two other scripts.
+
+clean.sh will clean all visible files from a test directory (takes the same
+arguments that run.sh)
+
+setuptest.sh will clean a directory and in addition copy the skel files into
+the directory and start a canto-daemon there. This is useful if you want to
+run a client by hand there. This also takes the same arguments as run and
+clean.

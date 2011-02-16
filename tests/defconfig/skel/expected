@@ -1,0 +1,16 @@
+CONFIGS {}
+REMOTE_WAIT 1
+(u'CONFIGS',
+ {u'Feed Canto': {'keep': 0,
+                  u'order': 0,
+                  'rate': 10,
+                  u'url': u'http://codezen.org/static/canto.xml'},
+  u'Feed Reddit': {'keep': 0,
+                   u'order': 2,
+                   'rate': 10,
+                   u'url': u'http://reddit.com/.rss'},
+  u'Feed Slashdot': {'keep': 0,
+                     u'order': 1,
+                     'rate': 10,
+                     u'url': u'http://rss.slashdot.org/slashdot/Slashdot'},
+  'defaults': {'global_transform': 'None', 'keep': 0, 'rate': 10}})

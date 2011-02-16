@@ -111,7 +111,9 @@ class CantoBackend(CantoServer):
 
         # Signal handlers kickoff after everything else is init'd
         self.alarmed = 0
+        self.interrupted = 0
         signal.signal(signal.SIGALRM, self.sig_alrm)
+        signal.signal(signal.SIGINT, self.sig_int)
         signal.alarm(1)
 
     def check_dead_feeds(self):
@@ -377,13 +379,23 @@ class CantoBackend(CantoServer):
                 cmdf = "cmd_" + cmd.lower()
                 if hasattr(self, cmdf):
                     func = getattr(self, cmdf)
-                    func(socket, args)
+                    try:
+                        func(socket, args)
+                    except Exception, e:
+                        tb = "".join(traceback.format_exc(e))
+                        self.write(socket, "EXCEPT", e)
+                        log.error("Protocol exception:")
+                        log.error("\n" + tb)
                 else:
                     log.info("Got unknown command: %s" % (cmd))
 
                 # Give priority to waiting requests, try for
                 # another one instead of doing feed processing in between.
                 continue
+
+            # Caught SIGINT
+            if self.interrupted:
+                break
 
             self.check_conns()
 
@@ -446,6 +458,9 @@ class CantoBackend(CantoServer):
     def sig_alrm(self, a, b):
         self.alarmed = 1
         signal.alarm(1)
+
+    def sig_int(self, a, b):
+        self.interrupted = 1
 
     # This function makes sure that the configuration paths are all R/W or
     # creatable.
