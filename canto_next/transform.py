@@ -111,6 +111,21 @@ class ContentFilter(ContentFilterRegex):
         string = ".*" + re.escape(string) + ".*"
         ContentFilterRegex.__init__(self, attribute, string)
 
+
+class SortTransform(CantoTransform):
+    def __init__(self, name, attr, sortfunc = None):
+        CantoTransform.__init__(self, name)
+        self.attr = attr
+        self.sort = sortfunc
+
+    def needed_attributes(self, tag):
+        return [ self.attr ]
+
+    def transform(self, items, attrs):
+        r = [ ( attrs[item][self.attr], item ) for item in items ]
+        r.sort(self.sort)
+        return [ item[1] for item in r ]
+
 # Transform_locals is a list of elements that we pass to the eval() call when
 # evaluating a transform line from the config. Passing these into the local
 # scope allows simple filters to be created on the fly.
@@ -119,6 +134,8 @@ transform_locals["StateFilter"] = StateFilter
 transform_locals["ContentFilterRegex"] = ContentFilterRegex
 transform_locals["ContentFilter"] = ContentFilter
 transform_locals["filter_read"] = StateFilter("read")
+transform_locals["sort_alphabetical"] =\
+        SortTransform("Sort Alphabetical", "title")
 
 # So now lines line `global_transform = ContentFilter('title', 'AMA')` can be
 # simply, safely, parsed with the Python interpreter. As well as supporting the
