@@ -141,6 +141,12 @@ class CantoBackend(CantoServer):
         else:
             self.conf.write()
 
+        # Force check of fetching. This automatically starts the fetch.
+        # for new feeds, but also takes any new settings (like rates)
+        # into account.
+
+        self.fetch_timer = 0
+
         for socket in self.watches["config"]:
             self.cmd_configs(socket, change.keys())
 
