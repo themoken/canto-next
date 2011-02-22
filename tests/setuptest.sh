@@ -12,4 +12,8 @@ for test_dir in "$@"; do
     # Start daemon there.
 
     canto-daemon -v -D "./$test_dir" &
+
+    while [ ! -e "./$test_dir/.canto_socket" ]; do
+        sleep 0.1
+    done
 done
