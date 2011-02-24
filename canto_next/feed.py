@@ -267,18 +267,41 @@ class CantoFeed():
         # an item has been sitting in an active client for days
         # requests for more information won't fail.
 
+        # While we're looping through the olditems, we also make a list of
+        # unprotected items for the next step (increasing the number of
+        # remembered feed items).
+
+        unprotected_old = []
+
         for i, olditem in enumerate(self.olditems):
-            if protection.protected(olditem["id"]):
-                log.debug("protected.")
-                for item in self.items:
-                    if olditem["id"] == item["id"]:
-                        log.debug("still in self.items")
-                        break
-                else:
+            for item in self.items:
+                if olditem["id"] == item["id"]:
+                    log.debug("still in self.items")
+                    break
+            else:
+                if protection.protected(olditem["id"]):
                     log.debug("Saving committed item: %s" % olditem)
                     self.items.append(olditem)
                     self.update_contents["entries"].append(\
                             self.old_contents["entries"][i])
+                else:
+                    unprotected_old.append((i, olditem))
+
+        # Flesh out the kept items so that we save 2x the number of items
+        # presented in the feed naturally. This is particularly geared
+        # towards bouncy feeds (like Reddit) where an item can fade in and
+        # out of the feed and we don't want to worry about forgetting the
+        # state.
+
+        fill = min((2 * len(self.update_contents["entries"])) -
+                len(self.items), len(unprotected_old))
+
+        if fill > 0:
+            log.debug("Saving %d old items to fill out disk" % fill)
+            for idx, item in unprotected_old[:fill - 1]:
+                self.update_contents["entries"].append(\
+                        self.old_contents["entries"][idx])
+                self.items.append(item)
 
         # Commit the updates to disk.
         self.shelf.open()
