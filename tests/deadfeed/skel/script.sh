@@ -16,6 +16,7 @@ WATCHTAGS [ "Static" ]
 
 # Add feed
 SETCONFIGS { "Feed Static" : { "url" : "file:///tmp/canto.xml" } }
+UPDATE {}
 REMOTE_WAIT 5
 
 # Get ITEMS so that the daemon will consider them protected.

@@ -50,6 +50,9 @@ class CantoBackend(CantoServer):
         self.fetch = None
         self.fetch_timer = 0
 
+        # Whether fetching is inhibited.
+        self.no_fetch = False
+
         self.watches = { "new_tags" : [],
                          "del_tags" : [],
                          "config" : [],
@@ -84,6 +87,9 @@ class CantoBackend(CantoServer):
             log.info("verbosity = %d" % self.verbosity)
 
         log.info("conf_dir = %s" % self.conf_dir)
+
+        if self.no_fetch:
+            log.info("NOFETCH, will not be automatically updating.")
 
         # Actual start.
         self.get_storage()
@@ -221,6 +227,12 @@ class CantoBackend(CantoServer):
         if self.conf.global_transform:
             return self.conf.global_transform(tag)
         return tag
+
+    # Fetch any feeds that need fetching.
+
+    def do_fetch(self):
+        self.fetch.fetch()
+        self.fetch_timer = 60
 
     # PING -> PONG
 
@@ -371,6 +383,15 @@ class CantoBackend(CantoServer):
             for id in args[reason]:
                 protection.unprotect_one((socket, reason), id)
 
+    # UPDATE {}
+
+    # Note that this is intended to allow clients to take manual
+    # control when canto is started with --nofetch and doesn't
+    # override rates or any other factors in updating.
+
+    def cmd_update(self, socket, args):
+        self.do_fetch()
+
     # The workhorse that maps all requests to their handlers.
     def run(self):
         log.debug("Beginning to serve...")
@@ -418,9 +439,8 @@ class CantoBackend(CantoServer):
                 # Check whether feeds need to be updated and fetch
                 # them if necessary.
 
-                if self.fetch_timer <= 0:
-                    self.fetch.fetch()
-                    self.fetch_timer = 60
+                if self.fetch_timer <= 0 and not self.no_fetch:
+                    self.do_fetch()
 
                 self.alarmed = False
 
@@ -429,8 +449,8 @@ class CantoBackend(CantoServer):
     # This function parses and validates all of the command line arguments.
     def args(self):
         try:
-            optlist = getopt.getopt(sys.argv[1:], 'D:vp:a:',\
-                    ["dir=", "port=", "address="])[0]
+            optlist = getopt.getopt(sys.argv[1:], 'D:vp:a:n',\
+                    ["dir=", "port=", "address=", "nofetch"])[0]
         except getopt.GetoptError, e:
             log.error("Error: %s" % e.msg)
             return -1
@@ -458,6 +478,9 @@ class CantoBackend(CantoServer):
 
             elif opt in ["-a", "--address"]:
                 self.intf = decoder(arg)
+
+            elif opt in ["-n", "--nofetch"]:
+                self.no_fetch = True
 
         return 0
 

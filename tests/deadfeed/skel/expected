@@ -3,6 +3,7 @@ WATCHTAGS [ "Static" ]
 
 # Add feed
 SETCONFIGS { "Feed Static" : { "url" : "file:///tmp/canto.xml" } }
+UPDATE {}
 REMOTE_WAIT 5
 (u'TAGCHANGE', u'Static')
 (u'TAGCHANGE', u'Static')

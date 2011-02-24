@@ -3,6 +3,7 @@ WATCHTAGS [ "Static", "Static 2" ]
 # Add feed
 SETCONFIGS { "Feed Static" : { "url" : "file:///tmp/canto.xml" } }
 SETCONFIGS { "Feed Static 2" : { "url" : "file:///tmp/canto2.xml" } }
+UPDATE {}
 REMOTE_IGNORE 10
 
 # Get ITEMS, should be all 5
