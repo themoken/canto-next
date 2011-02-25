@@ -154,7 +154,9 @@ class CantoBackend(CantoServer):
         self.fetch_timer = 0
 
         for socket in self.watches["config"]:
-            self.cmd_configs(socket, change.keys())
+            # Don't echo changes back to socket that made them.
+            if socket != originating_socket:
+                self.cmd_configs(socket, change.keys())
 
         for tagname in alltags.tags.keys():
             if tagname not in pretags:
