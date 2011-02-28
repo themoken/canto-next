@@ -1,9 +1,9 @@
 #!/bin/bash
 
 # This test ensures that:
-# 1) None works as a filter
-# 2) You can dynamically change filter and it has effect.
-# 3) Config change is persistent.
+# 1) Sorts work. This is probably unnecessary as the filter test
+# effectively does the same thing and the concepts are general in
+# the code (i.e. sorts = filters = "transforms")
 
 mv ./canto.xml /tmp/
 
