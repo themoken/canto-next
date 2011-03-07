@@ -153,10 +153,22 @@ class CantoBackend(CantoServer):
 
         self.fetch_timer = 0
 
+        # Create changed_items as arguments for CONFIGS to send changed
+        # keys to other sockets. This should cause CONFIGS to be sent
+        # with the exact contents of the change variable, but this uses the
+        # CONFIGS machinery.
+
+        changed_items = [ ]
+        for key in change.keys():
+            for opt in change[key].keys():
+                changed_items.append("%s.%s" % (key, opt))
+
         for socket in self.watches["config"]:
             # Don't echo changes back to socket that made them.
             if socket != originating_socket:
-                self.cmd_configs(socket, change.keys())
+                self.cmd_configs(socket, changed_items)
+
+        # Tag hooks stemming from config changes.
 
         for tagname in alltags.tags.keys():
             if tagname not in pretags:
