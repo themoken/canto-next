@@ -15,6 +15,7 @@ log = logging.getLogger("SHELF")
 class CantoShelf():
     def __init__(self, filename):
         self.filename = filename
+        self.shelf = shelve.open(self.filename)
 
     def __setitem__(self, name, value):
         name = name.encode("UTF-8")
@@ -32,9 +33,6 @@ class CantoShelf():
     def __delitem__(self, name):
         name = name.encode("UTF-8")
         del self.shelf[name]
-
-    def open(self, *args):
-        self.shelf = shelve.open(self.filename, *args)
 
     def close(self):
         self.shelf.close()

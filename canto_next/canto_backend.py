@@ -616,6 +616,7 @@ class CantoBackend(CantoServer):
             log.error("Exiting on exception:")
             log.error("\n" + "".join(tb))
 
+        self.shelf.close()
         self.exit()
         self.pid_unlock()
         sys.exit(0)

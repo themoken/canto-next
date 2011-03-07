@@ -107,9 +107,7 @@ class CantoFeed():
 
     # Return { attribute : value ... }
     def get_feedattributes(self, attributes):
-        self.shelf.open()
         d = self.shelf[self.URL]
-        self.shelf.close()
 
         r = {}
         for attr in attributes:
@@ -147,9 +145,7 @@ class CantoFeed():
 
                     # If we haven't already grabbed the disk content, do so.
                     if not d:
-                        self.shelf.open()
                         d = self.shelf[self.URL]
-                        self.shelf.close()
 
                     # NOTE: This relies on self.items maintaining
                     # the identical order to the entries on disk.
@@ -166,7 +162,6 @@ class CantoFeed():
     # Given an ID and a dict of attributes, update the disk.
     def set_attributes(self, items, attributes):
 
-        self.shelf.open()
         d = self.shelf[self.URL]
 
         for i in items:
@@ -183,7 +178,6 @@ class CantoFeed():
                 d["entries"][item_idx][a] = attributes[i][a]
 
         self.shelf[self.URL] = d
-        self.shelf.close()
 
     # Re-index contents
     # If we have self.update_contents, use that
@@ -194,17 +188,14 @@ class CantoFeed():
     def index(self):
 
         if not self.update_contents:
-            self.shelf.open()
             try:
                 if not self.items and self.URL in self.shelf:
                     self.update_contents = self.shelf[self.URL]
                 else:
-                    # No update yet, no disk presence, nothing to do
                     return
-            finally:
-                self.shelf.close()
+            except:
+                pass
 
-        self.shelf.open()
         if self.URL not in self.shelf:
             # Stub empty feed
             log.debug("Previous content not found.")
@@ -212,7 +203,6 @@ class CantoFeed():
         else:
             self.old_contents = self.shelf[self.URL]
             log.debug("Fetched previous content.")
-        self.shelf.close()
 
         # BEWARE: At this point, update_contents could either be
         # fresh from feedparser or fresh from disk, so it's possible that the
@@ -304,9 +294,7 @@ class CantoFeed():
                 self.items.append(item)
 
         # Commit the updates to disk.
-        self.shelf.open()
         self.shelf[self.URL] = self.update_contents
-        self.shelf.close()
 
         # Remove non-existent IDs from all tags
         self.clear_tags()
@@ -315,12 +303,8 @@ class CantoFeed():
         self.update_contents = None
 
     def destroy(self):
-        self.shelf.open()
-
         # Check for existence in case of delete quickly
         # after add.
 
         if self.URL in self.shelf:
             del self.shelf[self.URL]
-
-        self.shelf.close()

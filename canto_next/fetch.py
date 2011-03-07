@@ -97,7 +97,6 @@ class CantoFetch():
             return True
 
         needs_update = True
-        self.shelf.open()
         if feed.URL in self.shelf:
             f = self.shelf[feed.URL]
 
@@ -107,7 +106,6 @@ class CantoFetch():
                         (feed.URL, passed / 60))
                 needs_update = False
 
-        self.shelf.close()
         return needs_update
 
     def still_working(self, URL):
