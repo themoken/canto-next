@@ -135,10 +135,6 @@ class CantoBackend(CantoServer):
     # Propagate config changes to watching sockets.
 
     def on_config_change(self, change, originating_socket):
-        pretags = alltags.tags.keys()
-        newtags = []
-        oldtags = []
-
         self.conf.parse(False)
 
         if self.conf.errors:
@@ -168,22 +164,8 @@ class CantoBackend(CantoServer):
             if socket != originating_socket:
                 self.cmd_configs(socket, changed_items)
 
-        # Tag hooks stemming from config changes.
-
-        for tagname in alltags.tags.keys():
-            if tagname not in pretags:
-                newtags.append(tagname)
-
-        for tagname in pretags:
-            if tagname not in alltags.tags:
-                oldtags.append(tagname)
-
-        if newtags:
-            call_hook("new_tag", [ newtags ])
-        if oldtags:
-            call_hook("del_tag", [ oldtags ])
-
         self.check_dead_feeds()
+        alltags.del_old_tags()
 
     # Notify clients of new tags.
 

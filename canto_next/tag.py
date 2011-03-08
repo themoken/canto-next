@@ -13,12 +13,15 @@ log = logging.getLogger("TAG")
 
 class CantoTags():
     def __init__(self):
+        self.oldtags = {}
         self.tags = {}
 
     def add_tag(self, id, name):
         # Create tag if no tag exists
         if name not in self.tags:
             self.tags[name] = []
+            if name not in self.oldtags:
+                call_hook("new_tag", [[ name ]])
 
         # Add to tag.
         if id not in self.tags[name]:
@@ -36,10 +39,19 @@ class CantoTags():
             return self.tags[tag]
         return []
 
+    def del_old_tags(self):
+        oldtags = []
+        for tag in self.oldtags:
+            if tag not in self.tags:
+                oldtags.append(tag)
+        if oldtags:
+            call_hook("del_tag", [ oldtags ])
+
     def reset(self):
-        oldtags = self.tags
+        self.oldtags = self.tags
         self.tags = {}
-        for tag in oldtags:
+
+        for tag in self.oldtags:
             call_hook("tag_change", [tag])
 
 alltags = CantoTags()
