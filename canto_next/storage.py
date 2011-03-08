@@ -34,6 +34,9 @@ class CantoShelf():
         name = name.encode("UTF-8")
         del self.shelf[name]
 
+    def sync(self):
+        self.shelf.sync()
+
     def close(self):
         self.shelf.close()
         self.shelf = None

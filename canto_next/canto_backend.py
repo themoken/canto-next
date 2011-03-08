@@ -120,6 +120,7 @@ class CantoBackend(CantoServer):
         self.interrupted = 0
         signal.signal(signal.SIGALRM, self.sig_alrm)
         signal.signal(signal.SIGINT, self.sig_int)
+        signal.signal(signal.SIGTERM, self.sig_int)
         signal.alarm(1)
 
     def check_dead_feeds(self):
@@ -415,6 +416,11 @@ class CantoBackend(CantoServer):
                 # Give priority to waiting requests, try for
                 # another one instead of doing feed processing in between.
                 continue
+
+            # We've just completed a block of requests, go ahead and
+            # sync any changes they created.
+
+            self.shelf.sync()
 
             # Caught SIGINT
             if self.interrupted:
