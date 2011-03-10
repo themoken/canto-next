@@ -331,6 +331,7 @@ class CantoRemote(CantoClient):
         for line in lines:
             line = line[:-1].lstrip()
             print line
+            sys.__stdout__.flush()
 
             # Wait for n responses.
 
@@ -339,6 +340,7 @@ class CantoRemote(CantoClient):
                 for i in xrange(num):
                     r = self._wait_response(None)
                     pp.pprint(r)
+                    sys.__stdout__.flush()
 
             elif line.startswith("REMOTE_IGNORE "):
                 num = int(line.split(" ", 1)[-1])
