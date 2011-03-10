@@ -137,9 +137,6 @@ class CantoSocket:
         e = p[0][1]
 
         log.debug("E: %d" % e)
-        if e & select.POLLHUP:
-            log.debug("Read HUP")
-            return select.POLLHUP
         if e & select.POLLERR:
             log.debug("Read ERR")
             return select.POLLHUP
@@ -149,10 +146,17 @@ class CantoSocket:
             # Never get POLLRDHUP on INET sockets, so
             # use POLLIN with no data as POLLHUP
             if not fragment:
+                log.debug("Read POLLIN with no data")
                 return select.POLLHUP
 
             log.debug("Read Buffer: %s" % fragment )
             return self.parse(fragment)
+
+        # Parse POLLHUP last so if we still got POLLIN, any data
+        # is still retrieved from the socket.
+        if e & select.POLLHUP:
+            log.debug("Read HUP")
+            return select.POLLHUP
 
         # Non-empty, but not anything we're interested in?
         log.debug("Unknown poll.poll() return")
