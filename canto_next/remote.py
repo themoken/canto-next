@@ -162,7 +162,7 @@ class CantoRemote(CantoClient):
         # Grab any feedopts from the commandline.
 
         for arg in sys.argv[2:]:
-            opt, val = escsplit(arg, "=")
+            opt, val = escsplit(arg, "=", 1, 1)
             if not opt or not val:
                 print "ERROR: can't parse '%s' as x=y setting." % arg
                 continue
@@ -220,8 +220,8 @@ class CantoRemote(CantoClient):
         gets = []
 
         for arg in sys.argv[1:]:
-            var, val = escsplit(arg, "=")
-            section, secvar = escsplit(var, ".")
+            var, val = escsplit(arg, "=", 1, 1)
+            section, secvar = escsplit(var, ".", 1, 1)
 
             if not section or not secvar:
                 print "ERROR: Unable to parse \"%s\" as section.variable" % var

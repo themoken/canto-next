@@ -307,7 +307,7 @@ class CantoBackend(CantoServer):
         if args:
             ret = {}
             for opt in args:
-                section, setting = escsplit(opt, ".")
+                section, setting = escsplit(opt, ".", 1, 1)
                 if not setting:
                     ret[opt] = self.conf.get_section(opt)
                     continue

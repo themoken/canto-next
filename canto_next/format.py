@@ -7,6 +7,10 @@
 #   it under the terms of the GNU General Public License version 2 as 
 #   published by the Free Software Foundation.
 
+import logging
+
+log = logging.getLogger("FORMAT")
+
 def get_formatter(fmt, keys):
     l = len(fmt)
     def formatter(dct):
@@ -33,13 +37,34 @@ def get_formatter(fmt, keys):
         return s
     return formatter
 
-def escsplit(arg, delim):
+def escsplit(arg, delim, maxsplit=0, minsplit=0):
+    r = []
+    acc = ""
     escaped = False
+
     for i, c in enumerate(arg):
         if escaped:
             escaped = False
+            acc += c
         elif c == '\\':
             escaped = True
         elif c == delim:
-            return (arg[:i], arg[i + 1:])
-    return (arg, '')
+            r.append(acc)
+            acc = ""
+
+            # Last split?
+            if maxsplit == 1:
+                r.append(arg[i + 1:])
+                break
+            elif maxsplit > 1:
+                maxsplit -= 1
+        else:
+            acc += c
+    else:
+        # Get last frag, if we didn't maxout.
+        r.append(acc)
+
+    if minsplit > 0 and len(r) < (minsplit + 1):
+        r += [ None ] * ((minsplit + 1) - len(r))
+
+    return r
