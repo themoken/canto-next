@@ -1,0 +1,11 @@
+[Test=]
+opt=val
+
+[=Test=]
+opt.test=Blah
+
+[Test.Test]
+test.test = test
+
+[Test=tseT]
+Bad\==Blah
