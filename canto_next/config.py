@@ -7,15 +7,16 @@
 #   it under the terms of the GNU General Public License version 2 as 
 #   published by the Free Software Foundation.
 
+from encoding import decoder, locale_enc
 from transform import eval_transform
 from feed import allfeeds, CantoFeed
 from tag import alltags
-from encoding import decoder
 
 import ConfigParser
 import traceback
 import logging
 import locale
+import codecs
 import os
 import re
 
@@ -130,11 +131,11 @@ class CantoConfig():
 
             if not os.path.exists(self.filename):
                 log.info("No config found, writing default.")
-                f = open(self.filename, "w")
+                f = open(self.filename, "wb")
                 f.write(default_config)
                 f.close()
 
-            self.cfgp.read(self.filename)
+            self.cfgp.readfp(codecs.open(self.filename, "rb", locale_enc))
             log.info("Read %s" % self.filename)
 
         for section in self.cfgp.sections():
@@ -448,7 +449,7 @@ class CantoConfig():
 
     def write(self):
         try:
-            f = open(self.filename, "wb")
+            f = codecs.open(self.filename, "wb", locale_enc)
             self.cfgp.write(f)
         finally:
             f.close()
