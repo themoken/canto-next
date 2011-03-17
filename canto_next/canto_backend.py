@@ -236,13 +236,20 @@ class CantoBackend(CantoServer):
     def cmd_ping(self, socket, args):
         self.write(socket, "PONG", u"")
 
-    # LISTFEEDS -> [ (tag, URL) for all feeds ]
+    # LISTTAGS -> [ "tag1", "tag2", .. ]
+    # This makes no guarantee on order *other* than the fact that
+    # maintag tags will be first, and in feed order. Following tags
+    # are in whatever order the dict gives them in.
 
-    def cmd_listfeeds(self, socket, args):
-        feeds = []
+    def cmd_listtags(self, socket, args):
+        r = []
         for feed in self.conf.feeds:
-            feeds.append((feed.name, feed.URL))
-        self.write(socket, "LISTFEEDS", feeds)
+            r.append("maintag:" + feed.name)
+        for tag in alltags.get_tags():
+            if tag not in r:
+                r.append(tag)
+
+        self.write(socket, "LISTTAGS", r)
 
     # LISTTRANSFORMS -> [ { "name" : " " } for all defined filters ]
 

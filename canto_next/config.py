@@ -10,6 +10,7 @@
 from encoding import decoder, locale_enc
 from transform import eval_transform
 from feed import allfeeds, CantoFeed
+from format import escsplit
 from tag import alltags
 
 import ConfigParser
@@ -74,6 +75,7 @@ class CantoConfig():
                 ("order", self.validate_int, False),
                 ("username", self.validate_string, False),
                 ("password", self.validate_string, False),
+                ("tags", self.validate_string_list, False),
         ]
 
         self.feed_defaults = {}
@@ -185,7 +187,13 @@ class CantoConfig():
     def validate_string(self, section, settings):
         for option in settings:
             val, groups = settings[option]
-            self.validated[section][option] = val
+            self.validates[section][option] = val
+
+    def validate_string_list(self, section, settings):
+        for option in settings:
+            val, groups = settings[option]
+            l = [ s.strip().lstrip().rstrip() for s in escsplit(val, ",")]
+            self.validated[section][option] = l
 
     def get_transform_by_name(self, name):
         for transform in self.transforms:
@@ -362,7 +370,7 @@ class CantoConfig():
                     valsec["keep"] = self.validated["defaults"]["keep"]
 
                 kws = {}
-                for k in ["password", "username"]:
+                for k in ["password", "username", "tags"]:
                     if k in valsec:
                         kws[k] = valsec[k]
 

@@ -16,7 +16,16 @@ class CantoTags():
         self.oldtags = {}
         self.tags = {}
 
-    def add_tag(self, id, name):
+    def add_tag(self, id, name, category=""):
+        # Tags are actually stored as category:name, this is
+        # so that you can tell the difference between, say, a plugin that has
+        # marked an item as cool (pluginname:cool) and something the user has
+        # marked as cool (user:cool). It also allows primary tags for feeds to
+        # be easily identified (maintag:Reddit), vs. tags added at the feed
+        # level (feed:Reddit), etc.
+
+        name = category + ":" + name
+
         # Create tag if no tag exists
         if name not in self.tags:
             self.tags[name] = []
@@ -38,6 +47,9 @@ class CantoTags():
         if tag in self.tags.keys():
             return self.tags[tag]
         return []
+
+    def get_tags(self):
+        return self.tags.keys()
 
     def del_old_tags(self):
         oldtags = []
