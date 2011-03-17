@@ -283,12 +283,13 @@ class CantoFeed():
         # out of the feed and we don't want to worry about forgetting the
         # state.
 
-        fill = min((2 * len(self.update_contents["entries"])) -
-                len(self.items), len(unprotected_old))
+        factor = 2 * len(self.update_contents["entries"])
+        fill = min(factor - len(self.items), len(unprotected_old))
 
         if fill > 0:
             log.debug("Saving %d old items to fill out disk" % fill)
-            for idx, item in unprotected_old[:fill - 1]:
+            log.debug("From list: %s" % unprotected_old)
+            for idx, item in unprotected_old[:fill]:
                 self.update_contents["entries"].append(\
                         self.old_contents["entries"][idx])
                 self.items.append(item)
