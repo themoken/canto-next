@@ -9,7 +9,7 @@ mv ./canto.xml /tmp/
 ln -sf /tmp/canto.xml /tmp/canto2.xml
 
 canto-remote -D ./ script <<EOF
-WATCHTAGS [ "Static", "Static 2" ]
+WATCHTAGS [ "maintag:Static", "maintag:Static 2" ]
 
 # Add feed
 SETCONFIGS { "Feed Static" : { "url" : "file:///tmp/canto.xml" } }
@@ -18,7 +18,7 @@ UPDATE {}
 REMOTE_IGNORE 10
 
 # Get ITEMS, should be all 5
-ITEMS [ "Static", "Static 2" ]
+ITEMS [ "maintag:Static", "maintag:Static 2" ]
 REMOTE_WAIT 1
 
 # Set some items to be filtered by filter_read
@@ -26,7 +26,7 @@ SETATTRIBUTES { (u'file:///tmp/canto.xml', u'http://codezen.org/canto/news/94') 
 SETATTRIBUTES { (u'file:///tmp/canto2.xml', u'http://codezen.org/canto/news/92') : { "canto-state" : [ "read" ]}, (u'file:///tmp/canto2.xml', u'http://codezen.org/canto/news/91') : { "canto-state" : [ "read" ] } }
 
 # Get ITEMS, should still be all 5
-ITEMS [ "Static", "Static 2" ]
+ITEMS [ "maintag:Static", "maintag:Static 2" ]
 REMOTE_WAIT 1
 
 # Switch the filter.
@@ -34,6 +34,6 @@ SETCONFIGS { "defaults" : { "global_transform" : "filter_read" } }
 REMOTE_IGNORE 12
 
 # This should be different because of the filterset.
-ITEMS [ "Static", "Static 2"]
+ITEMS [ "maintag:Static", "maintag:Static 2"]
 REMOTE_WAIT 1
 EOF

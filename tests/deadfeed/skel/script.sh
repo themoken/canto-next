@@ -12,7 +12,7 @@ mv ./canto.xml /tmp/
 
 canto-remote -D ./ script <<EOF
 WATCHDELTAGS []
-WATCHTAGS [ "Static" ]
+WATCHTAGS [ "maintag:Static" ]
 
 # Add feed
 SETCONFIGS { "Feed Static" : { "url" : "file:///tmp/canto.xml" } }
@@ -20,7 +20,7 @@ UPDATE {}
 REMOTE_WAIT 5
 
 # Get ITEMS so that the daemon will consider them protected.
-ITEMS [ "Static" ]
+ITEMS [ "maintag:Static" ]
 REMOTE_WAIT 1
 
 # Remove the feed.
@@ -31,8 +31,8 @@ REMOTE_WAIT 2
 ATTRIBUTES { (u'file:///tmp/canto.xml', u'http://codezen.org/canto/news/94') : [ "title" ] }
 REMOTE_WAIT 1
 
-# However this shouldn't have the "Static" feed
-LISTFEEDS []
+# However this shouldn't have the "maintag:Static" tag
+LISTTAGS []
 REMOTE_WAIT 1
 EOF
 

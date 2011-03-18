@@ -1,4 +1,4 @@
-WATCHTAGS [ "Static"]
+WATCHTAGS [ "maintag:Static"]
 
 # Add feed
 SETCONFIGS { "Feed Static" : { "url" : "file:///tmp/canto.xml" } }
@@ -6,26 +6,26 @@ UPDATE {}
 REMOTE_IGNORE 5
 
 # Get ITEMS, should be all 5
-ITEMS [ "Static", "Static 2" ]
+ITEMS [ "maintag:Static", "maintag:Static 2" ]
 REMOTE_WAIT 1
 (u'ITEMS',
- {'Static': [(u'file:///tmp/canto.xml', u'B. This is a test feed.'),
-             (u'file:///tmp/canto.xml', u'C. This is a test feed.'),
-             (u'file:///tmp/canto.xml', u'E. This is a test feed.'),
-             (u'file:///tmp/canto.xml', u'D. This is a test feed.'),
-             (u'file:///tmp/canto.xml', u'A. This is a test feed.')],
-  'Static 2': []})
+ {'maintag:Static': [(u'file:///tmp/canto.xml', u'B. This is a test feed.'),
+                     (u'file:///tmp/canto.xml', u'C. This is a test feed.'),
+                     (u'file:///tmp/canto.xml', u'E. This is a test feed.'),
+                     (u'file:///tmp/canto.xml', u'D. This is a test feed.'),
+                     (u'file:///tmp/canto.xml', u'A. This is a test feed.')],
+  'maintag:Static 2': []})
 
 # Switch the filter.
 SETCONFIGS { "defaults" : { "global_transform" : "sort_alphabetical" } }
 REMOTE_IGNORE 6
 
 # This should be different because of the filterset.
-ITEMS [ "Static" ]
+ITEMS [ "maintag:Static" ]
 REMOTE_WAIT 1
 (u'ITEMS',
- {'Static': [(u'file:///tmp/canto.xml', u'A. This is a test feed.'),
-             (u'file:///tmp/canto.xml', u'B. This is a test feed.'),
-             (u'file:///tmp/canto.xml', u'C. This is a test feed.'),
-             (u'file:///tmp/canto.xml', u'D. This is a test feed.'),
-             (u'file:///tmp/canto.xml', u'E. This is a test feed.')]})
+ {'maintag:Static': [(u'file:///tmp/canto.xml', u'A. This is a test feed.'),
+                     (u'file:///tmp/canto.xml', u'B. This is a test feed.'),
+                     (u'file:///tmp/canto.xml', u'C. This is a test feed.'),
+                     (u'file:///tmp/canto.xml', u'D. This is a test feed.'),
+                     (u'file:///tmp/canto.xml', u'E. This is a test feed.')]})

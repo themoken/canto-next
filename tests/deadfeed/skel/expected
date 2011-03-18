@@ -1,31 +1,36 @@
 WATCHDELTAGS []
-WATCHTAGS [ "Static" ]
+WATCHTAGS [ "maintag:Static" ]
 
 # Add feed
 SETCONFIGS { "Feed Static" : { "url" : "file:///tmp/canto.xml" } }
 UPDATE {}
 REMOTE_WAIT 5
-(u'TAGCHANGE', u'Static')
-(u'TAGCHANGE', u'Static')
-(u'TAGCHANGE', u'Static')
-(u'TAGCHANGE', u'Static')
-(u'TAGCHANGE', u'Static')
+(u'TAGCHANGE', u'maintag:Static')
+(u'TAGCHANGE', u'maintag:Static')
+(u'TAGCHANGE', u'maintag:Static')
+(u'TAGCHANGE', u'maintag:Static')
+(u'TAGCHANGE', u'maintag:Static')
 
 # Get ITEMS so that the daemon will consider them protected.
-ITEMS [ "Static" ]
+ITEMS [ "maintag:Static" ]
 REMOTE_WAIT 1
 (u'ITEMS',
- {'Static': [(u'file:///tmp/canto.xml', u'http://codezen.org/canto/news/94'),
-             (u'file:///tmp/canto.xml', u'http://codezen.org/canto/news/93'),
-             (u'file:///tmp/canto.xml', u'http://codezen.org/canto/news/92'),
-             (u'file:///tmp/canto.xml', u'http://codezen.org/canto/news/91'),
-             (u'file:///tmp/canto.xml', u'http://codezen.org/canto/news/90')]})
+ {'maintag:Static': [(u'file:///tmp/canto.xml',
+                      u'http://codezen.org/canto/news/94'),
+                     (u'file:///tmp/canto.xml',
+                      u'http://codezen.org/canto/news/93'),
+                     (u'file:///tmp/canto.xml',
+                      u'http://codezen.org/canto/news/92'),
+                     (u'file:///tmp/canto.xml',
+                      u'http://codezen.org/canto/news/91'),
+                     (u'file:///tmp/canto.xml',
+                      u'http://codezen.org/canto/news/90')]})
 
 # Remove the feed.
 SETCONFIGS { "Feed Static" : None }
 REMOTE_WAIT 2
-(u'TAGCHANGE', u'Static')
-(u'DELTAGS', [u'Static'])
+(u'TAGCHANGE', u'maintag:Static')
+(u'DELTAGS', [u'maintag:Static'])
 
 # This should still work, because they're committed.
 ATTRIBUTES { (u'file:///tmp/canto.xml', u'http://codezen.org/canto/news/94') : [ "title" ] }
@@ -33,13 +38,10 @@ REMOTE_WAIT 1
 (u'ATTRIBUTES',
  {(u'file:///tmp/canto.xml', u'http://codezen.org/canto/news/94'): {'title': u'Update'}})
 
-# However this shouldn't have the "Static" feed
-LISTFEEDS []
+# However this shouldn't have the "maintag:Static" tag
+LISTTAGS []
 REMOTE_WAIT 1
-(u'LISTFEEDS',
- [(u'Canto', u'http://codezen.org/static/canto.xml'),
-  (u'Slashdot', u'http://rss.slashdot.org/slashdot/Slashdot'),
-  (u'Reddit', u'http://reddit.com/.rss')])
+(u'LISTTAGS', [u'maintag:Canto', u'maintag:Slashdot', u'maintag:Reddit'])
 # This should no longer work because the items should've been eliminated.
 ATTRIBUTES { (u'file:///tmp/canto.xml', u'http://codezen.org/canto/news/94') : [ "title" ] }
 REMOTE_WAIT 1

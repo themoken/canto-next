@@ -6,16 +6,18 @@
 mv ./canto.xml /tmp/
 
 canto-remote -D ./ script <<EOF
-# The skel/feeds database has items 1. - 4.
-WATCHTAGS [ "Static" ]
+# The skel/feeds database has items 1. - 5.
+# skel/canto.xml contains new items 6. - 9. with no overlap
+
+WATCHTAGS [ "maintag:Static" ]
 UPDATE {}
 
-# 4 Tag Changes ... 3 new items and 1 lost item
-REMOTE_WAIT 4
+# 5 Tag Changes, one per new item (4), and one for the lost item.
+REMOTE_WAIT 5
 
-# Note that item 4 should be dropped as it's unprotected, and
+# Note that item 5 should be dropped as it's unprotected, and
 # doesn't fall in the 2x area of old items.
-ITEMS [ "Static" ]
+ITEMS [ "maintag:Static" ]
 
 REMOTE_WAIT 1
 EOF
