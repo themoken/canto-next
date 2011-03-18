@@ -141,12 +141,8 @@ transform_locals["sort_alphabetical"] =\
 # simply, safely, parsed with the Python interpreter. As well as supporting the
 # simple syntax `global_transform = filter_read` etc.
 
+# This code will throw an exception if it's invalid, so calling code must be
+# prepared.
+
 def eval_transform(transform_name):
-    try:
-        return eval(transform_name, {}, transform_locals)
-    except Exception, e:
-        import traceback
-        tb = traceback.format_exc(e)
-        log.error("Couldn't figure out transform: %s" % transform_name)
-        log.error("\n" + "".join(tb))
-        return None
+    return eval(transform_name, {}, transform_locals)

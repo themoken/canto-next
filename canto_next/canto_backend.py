@@ -18,6 +18,7 @@ from fetch import CantoFetch
 from hooks import on_hook, call_hook
 from tag import alltags
 from format import escsplit
+from transform import eval_transform
 
 import traceback
 import logging
@@ -57,6 +58,9 @@ class CantoBackend(CantoServer):
                          "del_tags" : [],
                          "config" : [],
                          "tags" : {} }
+
+        # Per socket transforms.
+        self.socket_transforms = {}
 
         self.shelf = None
 
@@ -204,6 +208,9 @@ class CantoBackend(CantoServer):
             while socket in self.watches["tags"][tag]:
                 self.watches["tags"][tag].remove(socket)
 
+        if socket in self.socket_transforms.keys():
+            del self.socket_transforms[socket]
+
         protection.unprotect((socket, "auto"))
         self.check_dead_feeds()
 
@@ -220,9 +227,12 @@ class CantoBackend(CantoServer):
     # Return list of item tuples after global transforms have
     # been performed on them.
 
-    def apply_transforms(self, tag):
+    def apply_transforms(self, socket, tag):
         if self.conf.global_transform:
-            return self.conf.global_transform(tag)
+            tag = self.conf.global_transform(tag)
+        if socket in self.socket_transforms and\
+                self.socket_transforms[socket]:
+            tag = self.socket_transforms[socket](tag)
         return tag
 
     # Fetch any feeds that need fetching.
@@ -259,6 +269,31 @@ class CantoBackend(CantoServer):
             transforms.append({"name" : transform["name"]})
         self.write(socket, "LISTTRANSFORMS", transforms)
 
+
+    # TRANSFORM "" -> "current socket transform"
+    # TRANSFORM "string" -> set current socket transform.
+
+    def cmd_transform(self, socket, args):
+        # Clear with !args
+        if not args:
+            if socket in self.socket_transforms:
+                del self.socket_transforms[socket]
+            self.write(socket, "TRANSFORM", "")
+            return
+
+        filt = None
+        try:
+            filt = eval_transform(args)
+        except:
+            self.write(socket, "EXCEPT",\
+                    "Couldn't parse transform: %s" % args)
+            return
+
+        self.socket_transforms[socket] = filt
+
+        # Echo back on successful compilation.
+        self.write(socket, "TRANSFORM", args)
+
     # ITEMS [tags] -> { tag : [ ids ], tag2 : ... }
 
     def cmd_items(self, socket, args):
@@ -267,7 +302,7 @@ class CantoBackend(CantoServer):
 
         for tag in args:
             # get_tag returns a list invariably, but may be empty.
-            response[tag] = self.apply_transforms(alltags.get_tag(tag))
+            response[tag] = self.apply_transforms(socket, alltags.get_tag(tag))
 
             # ITEMS must protect all given items automatically to
             # avoid instances where an item disappears before a PROTECT
