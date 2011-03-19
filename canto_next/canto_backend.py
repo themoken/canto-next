@@ -8,6 +8,8 @@
 
 # This Backend class is the core of the daemon's specific protocol.
 
+CANTO_PROTOCOL_VERSION = 0.1
+
 from feed import allfeeds
 from encoding import encoder, decoder
 from protect import protection
@@ -240,6 +242,11 @@ class CantoBackend(CantoServer):
     def do_fetch(self):
         self.fetch.fetch()
         self.fetch_timer = 60
+
+    # VERSION -> X.Y
+
+    def cmd_version(self, socket, args):
+        self.write(socket, "VERSION", CANTO_PROTOCOL_VERSION)
 
     # PING -> PONG
 
