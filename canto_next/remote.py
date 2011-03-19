@@ -50,6 +50,7 @@ class CantoRemote(CantoClient):
         print "\tconfig - change configuration variables"
         print "\texport - export feed list as OPML"
         print "\timport - import feed list from OPML"
+        print "\tkill - cleanly kill the daemon"
         print "\tscript - run script"
 
     def _wait_response(self, cmd):
@@ -363,6 +364,13 @@ class CantoRemote(CantoClient):
             else:
                 cmd, arg = line.split(' ', 1)
                 self.write(cmd, eval(arg))
+
+    def cmd_kill(self):
+        """USAGE: canto-remote kill
+
+    Cleanly kill the connected daemon."""
+
+        self.write("DIE", {})
 
     def cmd_help(self):
         """USAGE: canto-remote help [command]"""
