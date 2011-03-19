@@ -111,7 +111,6 @@ class ContentFilter(ContentFilterRegex):
         string = ".*" + re.escape(string) + ".*"
         ContentFilterRegex.__init__(self, attribute, string)
 
-
 class SortTransform(CantoTransform):
     def __init__(self, name, attr, sortfunc = None):
         CantoTransform.__init__(self, name)
