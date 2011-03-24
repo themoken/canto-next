@@ -24,7 +24,7 @@ class CantoTags():
         # be easily identified (maintag:Reddit), vs. tags added at the feed
         # level (feed:Reddit), etc.
 
-        name = category + ":" + name
+        name = category + "\\:" + name
 
         # Create tag if no tag exists
         if name not in self.tags:

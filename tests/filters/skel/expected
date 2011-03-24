@@ -1,4 +1,4 @@
-WATCHTAGS [ "maintag:Static", "maintag:Static 2" ]
+WATCHTAGS [ "maintag\\:Static", "maintag\\:Static 2" ]
 
 # Add feed
 SETCONFIGS { "Feed Static" : { "url" : "file:///tmp/canto.xml" } }
@@ -7,76 +7,76 @@ UPDATE {}
 REMOTE_IGNORE 10
 
 # Get ITEMS, should be all 5
-ITEMS [ "maintag:Static", "maintag:Static 2" ]
+ITEMS [ "maintag\\:Static", "maintag\\:Static 2" ]
 REMOTE_WAIT 1
 (u'ITEMS',
- {'maintag:Static': [(u'file:///tmp/canto.xml',
-                      u'http://codezen.org/canto/news/94'),
-                     (u'file:///tmp/canto.xml',
-                      u'http://codezen.org/canto/news/93'),
-                     (u'file:///tmp/canto.xml',
-                      u'http://codezen.org/canto/news/92'),
-                     (u'file:///tmp/canto.xml',
-                      u'http://codezen.org/canto/news/91'),
-                     (u'file:///tmp/canto.xml',
-                      u'http://codezen.org/canto/news/90')],
-  'maintag:Static 2': [(u'file:///tmp/canto2.xml',
+ {'maintag\\:Static': [(u'file:///tmp/canto.xml',
                         u'http://codezen.org/canto/news/94'),
-                       (u'file:///tmp/canto2.xml',
+                       (u'file:///tmp/canto.xml',
                         u'http://codezen.org/canto/news/93'),
-                       (u'file:///tmp/canto2.xml',
+                       (u'file:///tmp/canto.xml',
                         u'http://codezen.org/canto/news/92'),
-                       (u'file:///tmp/canto2.xml',
+                       (u'file:///tmp/canto.xml',
                         u'http://codezen.org/canto/news/91'),
-                       (u'file:///tmp/canto2.xml',
-                        u'http://codezen.org/canto/news/90')]})
+                       (u'file:///tmp/canto.xml',
+                        u'http://codezen.org/canto/news/90')],
+  'maintag\\:Static 2': [(u'file:///tmp/canto2.xml',
+                          u'http://codezen.org/canto/news/94'),
+                         (u'file:///tmp/canto2.xml',
+                          u'http://codezen.org/canto/news/93'),
+                         (u'file:///tmp/canto2.xml',
+                          u'http://codezen.org/canto/news/92'),
+                         (u'file:///tmp/canto2.xml',
+                          u'http://codezen.org/canto/news/91'),
+                         (u'file:///tmp/canto2.xml',
+                          u'http://codezen.org/canto/news/90')]})
 
 # Set some items to be filtered by filter_read
 SETATTRIBUTES { (u'file:///tmp/canto.xml', u'http://codezen.org/canto/news/94') : { "canto-state" : [ "read" ]}, (u'file:///tmp/canto.xml', u'http://codezen.org/canto/news/93') : { "canto-state" : [ "read" ] } }
 SETATTRIBUTES { (u'file:///tmp/canto2.xml', u'http://codezen.org/canto/news/92') : { "canto-state" : [ "read" ]}, (u'file:///tmp/canto2.xml', u'http://codezen.org/canto/news/91') : { "canto-state" : [ "read" ] } }
 
 # Get ITEMS, should still be all 5
-ITEMS [ "maintag:Static", "maintag:Static 2" ]
+ITEMS [ "maintag\\:Static", "maintag\\:Static 2" ]
 REMOTE_WAIT 1
 (u'ITEMS',
- {'maintag:Static': [(u'file:///tmp/canto.xml',
-                      u'http://codezen.org/canto/news/94'),
-                     (u'file:///tmp/canto.xml',
-                      u'http://codezen.org/canto/news/93'),
-                     (u'file:///tmp/canto.xml',
-                      u'http://codezen.org/canto/news/92'),
-                     (u'file:///tmp/canto.xml',
-                      u'http://codezen.org/canto/news/91'),
-                     (u'file:///tmp/canto.xml',
-                      u'http://codezen.org/canto/news/90')],
-  'maintag:Static 2': [(u'file:///tmp/canto2.xml',
+ {'maintag\\:Static': [(u'file:///tmp/canto.xml',
                         u'http://codezen.org/canto/news/94'),
-                       (u'file:///tmp/canto2.xml',
+                       (u'file:///tmp/canto.xml',
                         u'http://codezen.org/canto/news/93'),
-                       (u'file:///tmp/canto2.xml',
+                       (u'file:///tmp/canto.xml',
                         u'http://codezen.org/canto/news/92'),
-                       (u'file:///tmp/canto2.xml',
+                       (u'file:///tmp/canto.xml',
                         u'http://codezen.org/canto/news/91'),
-                       (u'file:///tmp/canto2.xml',
-                        u'http://codezen.org/canto/news/90')]})
+                       (u'file:///tmp/canto.xml',
+                        u'http://codezen.org/canto/news/90')],
+  'maintag\\:Static 2': [(u'file:///tmp/canto2.xml',
+                          u'http://codezen.org/canto/news/94'),
+                         (u'file:///tmp/canto2.xml',
+                          u'http://codezen.org/canto/news/93'),
+                         (u'file:///tmp/canto2.xml',
+                          u'http://codezen.org/canto/news/92'),
+                         (u'file:///tmp/canto2.xml',
+                          u'http://codezen.org/canto/news/91'),
+                         (u'file:///tmp/canto2.xml',
+                          u'http://codezen.org/canto/news/90')]})
 
 # Switch the filter.
 SETCONFIGS { "defaults" : { "global_transform" : "filter_read" } }
 REMOTE_IGNORE 12
 
 # This should be different because of the filterset.
-ITEMS [ "maintag:Static", "maintag:Static 2"]
+ITEMS [ "maintag\\:Static", "maintag\\:Static 2"]
 REMOTE_WAIT 1
 (u'ITEMS',
- {'maintag:Static': [(u'file:///tmp/canto.xml',
-                      u'http://codezen.org/canto/news/92'),
-                     (u'file:///tmp/canto.xml',
-                      u'http://codezen.org/canto/news/91'),
-                     (u'file:///tmp/canto.xml',
-                      u'http://codezen.org/canto/news/90')],
-  'maintag:Static 2': [(u'file:///tmp/canto2.xml',
-                        u'http://codezen.org/canto/news/94'),
-                       (u'file:///tmp/canto2.xml',
-                        u'http://codezen.org/canto/news/93'),
-                       (u'file:///tmp/canto2.xml',
-                        u'http://codezen.org/canto/news/90')]})
+ {'maintag\\:Static': [(u'file:///tmp/canto.xml',
+                        u'http://codezen.org/canto/news/92'),
+                       (u'file:///tmp/canto.xml',
+                        u'http://codezen.org/canto/news/91'),
+                       (u'file:///tmp/canto.xml',
+                        u'http://codezen.org/canto/news/90')],
+  'maintag\\:Static 2': [(u'file:///tmp/canto2.xml',
+                          u'http://codezen.org/canto/news/94'),
+                         (u'file:///tmp/canto2.xml',
+                          u'http://codezen.org/canto/news/93'),
+                         (u'file:///tmp/canto2.xml',
+                          u'http://codezen.org/canto/news/90')]})

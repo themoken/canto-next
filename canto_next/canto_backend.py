@@ -8,7 +8,12 @@
 
 # This Backend class is the core of the daemon's specific protocol.
 
-CANTO_PROTOCOL_VERSION = 0.1
+# PROTOCOL_VERSION History:
+# 0.1 - Initial versioned commit.
+# 0.2 - Modified tags to escape the : separator such that tags handed out are
+#       immediaely read to be used as [ Tag -whatever- ] config headers.
+
+CANTO_PROTOCOL_VERSION = 0.2
 
 from feed import allfeeds
 from encoding import encoder, decoder
@@ -261,7 +266,7 @@ class CantoBackend(CantoServer):
     def cmd_listtags(self, socket, args):
         r = []
         for feed in self.conf.feeds:
-            r.append("maintag:" + feed.name)
+            r.append("maintag\\:" + feed.name)
         for tag in alltags.get_tags():
             if tag not in r:
                 r.append(tag)
