@@ -15,6 +15,11 @@ class CantoTags():
     def __init__(self):
         self.oldtags = {}
         self.tags = {}
+        self.changed_tags = []
+
+    def tag_changed(self, tag):
+        if tag not in self.changed_tags:
+            self.changed_tags.append(tag)
 
     def add_tag(self, id, name, category=""):
         # Tags are actually stored as category:name, this is
@@ -35,13 +40,13 @@ class CantoTags():
         # Add to tag.
         if id not in self.tags[name]:
             self.tags[name].append(id)
-            call_hook("tag_change", [name])
+            self.tag_changed(name)
 
     def remove_id(self, id):
         for tag in self.tags:
             if id in self.tags[tag]:
                 self.tags[tag].remove(id)
-                call_hook("tag_change", [tag])
+                self.tag_changed(tag)
 
     def get_tag(self, tag):
         if tag in self.tags.keys():
@@ -59,11 +64,16 @@ class CantoTags():
         if oldtags:
             call_hook("del_tag", [ oldtags ])
 
+    def do_tag_changes(self):
+        for tag in self.changed_tags:
+            call_hook("tag_change", [ tag ])
+        self.changed_tags = []
+
     def reset(self):
         self.oldtags = self.tags
         self.tags = {}
 
         for tag in self.oldtags:
-            call_hook("tag_change", [tag])
+            self.tag_changed(tag)
 
 alltags = CantoTags()

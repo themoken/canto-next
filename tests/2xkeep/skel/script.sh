@@ -12,8 +12,8 @@ canto-remote -D ./ script <<EOF
 WATCHTAGS [ "maintag\\\\:Static" ]
 UPDATE {}
 
-# 5 Tag Changes, one per new item (4), and one for the lost item.
-REMOTE_WAIT 5
+# Get one tag change.
+REMOTE_WAIT 1
 
 # Note that item 5 should be dropped as it's unprotected, and
 # doesn't fall in the 2x area of old items.

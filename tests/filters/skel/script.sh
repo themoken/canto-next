@@ -15,7 +15,7 @@ WATCHTAGS [ "maintag\\\\:Static", "maintag\\\\:Static 2" ]
 SETCONFIGS { "Feed Static" : { "url" : "file:///tmp/canto.xml" } }
 SETCONFIGS { "Feed Static 2" : { "url" : "file:///tmp/canto2.xml" } }
 UPDATE {}
-REMOTE_IGNORE 10
+REMOTE_IGNORE 2
 
 # Get ITEMS, should be all 5
 ITEMS [ "maintag\\\\:Static", "maintag\\\\:Static 2" ]
@@ -31,7 +31,7 @@ REMOTE_WAIT 1
 
 # Switch the filter.
 SETCONFIGS { "defaults" : { "global_transform" : "filter_read" } }
-REMOTE_IGNORE 12
+REMOTE_IGNORE 2
 
 # This should be different because of the filterset.
 ITEMS [ "maintag\\\\:Static", "maintag\\\\:Static 2"]

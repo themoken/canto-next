@@ -4,11 +4,7 @@ WATCHTAGS [ "maintag\\:Static" ]
 # Add feed
 SETCONFIGS { "Feed Static" : { "url" : "file:///tmp/canto.xml" } }
 UPDATE {}
-REMOTE_WAIT 5
-(u'TAGCHANGE', u'maintag\\:Static')
-(u'TAGCHANGE', u'maintag\\:Static')
-(u'TAGCHANGE', u'maintag\\:Static')
-(u'TAGCHANGE', u'maintag\\:Static')
+REMOTE_WAIT 1
 (u'TAGCHANGE', u'maintag\\:Static')
 
 # Get ITEMS so that the daemon will consider them protected.
@@ -29,8 +25,8 @@ REMOTE_WAIT 1
 # Remove the feed.
 SETCONFIGS { "Feed Static" : None }
 REMOTE_WAIT 2
-(u'TAGCHANGE', u'maintag\\:Static')
 (u'DELTAGS', [u'maintag\\:Static'])
+(u'TAGCHANGE', u'maintag\\:Static')
 
 # This should still work, because they're committed.
 ATTRIBUTES { (u'file:///tmp/canto.xml', u'http://codezen.org/canto/news/94') : [ "title" ] }

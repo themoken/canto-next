@@ -3,7 +3,7 @@ WATCHTAGS [ "maintag\\:Static"]
 # Add feed
 SETCONFIGS { "Feed Static" : { "url" : "file:///tmp/canto.xml" } }
 UPDATE {}
-REMOTE_IGNORE 5
+REMOTE_IGNORE 1
 
 # Get ITEMS, should be all 5
 ITEMS [ "maintag\\:Static", "maintag\\:Static 2" ]
@@ -23,7 +23,7 @@ REMOTE_WAIT 1
 
 # Switch the filter.
 SETCONFIGS { "defaults" : { "global_transform" : "sort_alphabetical" } }
-REMOTE_IGNORE 6
+REMOTE_IGNORE 1
 
 # This should be different because of the filterset.
 ITEMS [ "maintag\\:Static" ]

@@ -476,6 +476,10 @@ class CantoBackend(CantoServer):
 
             self.shelf.sync()
 
+            # In addition, send any pending TAGCHANGE notifications
+
+            alltags.do_tag_changes()
+
             # Caught SIGINT
             if self.interrupted:
                 break
