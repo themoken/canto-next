@@ -13,9 +13,13 @@ import shelve
 log = logging.getLogger("SHELF")
 
 class CantoShelf():
-    def __init__(self, filename):
+    def __init__(self, filename, writeback):
         self.filename = filename
-        self.shelf = shelve.open(self.filename)
+
+        if writeback:
+            self.shelf = shelve.open(self.filename, 'c', None, True)
+        else:
+            self.shelf = shelve.open(self.filename)
 
     def __setitem__(self, name, value):
         name = name.encode("UTF-8")

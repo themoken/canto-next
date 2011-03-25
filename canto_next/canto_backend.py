@@ -61,6 +61,9 @@ class CantoBackend(CantoServer):
         # Whether fetching is inhibited.
         self.no_fetch = False
 
+        # Whether we should use the shelf writeback.
+        self.writeback = True
+
         self.watches = { "new_tags" : [],
                          "del_tags" : [],
                          "config" : [],
@@ -510,7 +513,7 @@ class CantoBackend(CantoServer):
     def args(self):
         try:
             optlist = getopt.getopt(sys.argv[1:], 'D:vp:a:n',\
-                    ["dir=", "port=", "address=", "nofetch"])[0]
+                    ["dir=", "port=", "address=", "nofetch", "nowb"])[0]
         except getopt.GetoptError, e:
             log.error("Error: %s" % e.msg)
             return -1
@@ -541,6 +544,9 @@ class CantoBackend(CantoServer):
 
             elif opt in ["-n", "--nofetch"]:
                 self.no_fetch = True
+
+            elif opt in ["--nowb"]:
+                self.writeback = False
 
         return 0
 
@@ -626,7 +632,7 @@ class CantoBackend(CantoServer):
     # fatal and handled lower in CantoShelf.
 
     def get_storage(self):
-        self.shelf = CantoShelf(self.feed_path)
+        self.shelf = CantoShelf(self.feed_path, self.writeback)
 
     # Bring up config, the only errors possible at this point will
     # be fatal and handled lower in CantoConfig.
