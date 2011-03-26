@@ -7,6 +7,8 @@
 #   it under the terms of the GNU General Public License version 2 as 
 #   published by the Free Software Foundation.
 
+from hooks import on_hook
+
 import logging
 import shelve
 
@@ -20,6 +22,12 @@ class CantoShelf():
             self.shelf = shelve.open(self.filename, 'c', None, True)
         else:
             self.shelf = shelve.open(self.filename)
+
+        # Sync after a block of requests has been fulfilled,
+        # close the database all together on exit.
+
+        on_hook("work_done", self.sync)
+        on_hook("exit", self.close)
 
     def __setitem__(self, name, value):
         name = name.encode("UTF-8")

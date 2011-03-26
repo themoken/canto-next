@@ -127,6 +127,7 @@ class CantoBackend(CantoServer):
             err = "Error: %s" % e
             print err
             log.error(err)
+            call_hook("exit", [])
             sys.exit(-1)
 
         # Signal handlers kickoff after everything else is init'd
@@ -474,14 +475,7 @@ class CantoBackend(CantoServer):
                 # another one instead of doing feed processing in between.
                 continue
 
-            # We've just completed a block of requests, go ahead and
-            # sync any changes they created.
-
-            self.shelf.sync()
-
-            # In addition, send any pending TAGCHANGE notifications
-
-            alltags.do_tag_changes()
+            call_hook("work_done", [])
 
             # Caught SIGINT
             if self.interrupted:
@@ -668,7 +662,7 @@ class CantoBackend(CantoServer):
             log.error("Exiting on exception:")
             log.error("\n" + "".join(tb))
 
-        self.shelf.close()
+        call_hook("exit", [])
         self.exit()
         self.pid_unlock()
         sys.exit(0)

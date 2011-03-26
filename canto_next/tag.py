@@ -5,7 +5,7 @@
 #   it under the terms of the GNU General Public License version 2 as 
 #   published by the Free Software Foundation.
 
-from hooks import call_hook
+from hooks import on_hook, call_hook
 
 import logging
 
@@ -16,6 +16,11 @@ class CantoTags():
         self.oldtags = {}
         self.tags = {}
         self.changed_tags = []
+
+        # Batch tag_changes to be sent only after
+        # a block of requests.
+
+        on_hook("work_done", self.do_tag_changes)
 
     def tag_changed(self, tag):
         if tag not in self.changed_tags:
