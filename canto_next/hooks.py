@@ -24,6 +24,10 @@ def on_hook(hook, func):
     else:
         hooks[hook] = [func]
 
+def remove_hook(hook, func):
+    if hook in hooks and func in hooks[hook]:
+        hooks[hook].remove(func)
+
 def call_hook(hook, args):
     log.log(8, "Calling funcs for hook: %s" % hook)
     if hook in hooks:
