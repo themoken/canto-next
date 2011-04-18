@@ -31,7 +31,11 @@ def remove_hook(hook, func):
 def call_hook(hook, args):
     log.log(8, "Calling funcs for hook: %s" % hook)
     if hook in hooks:
-        for func in hooks[hook]:
+
+        # List copy here so hooks can remove themselves
+        # without effecting our iteration.
+
+        for func in hooks[hook][:]:
             log.log(8, "\t%s(%s)" % (func, args))
             func(*args)
     else:
