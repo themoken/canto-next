@@ -183,7 +183,10 @@ class PluginHandler(object):
 
         def newfunc(*args, **kwargs):
             if argt:
-                args, kwargs = argt(args[0], origin_obj, *args[1:], **kwargs)
+                r = argt(args[0], origin_obj, *args[1:], **kwargs)
+                if not r:
+                    return
+                args, kwargs = r
 
             for c, f in hook_pres:
                 try:
