@@ -1,0 +1,197 @@
+<?xml version="1.0" encoding="UTF-8"?><rss version="2.0">   <channel>       <title>Canto RSS</title>       <link>http://codezen.org/static/canto.xml</link>       <description>Canto News</description>                          <title> 0.7.10 and plans</title>               <link>http://codezen.org/canto/news/93</link>               <guid isPermaLink="true">                   http://codezen.org/canto/news/93               </guid>               <description>&lt;p&gt;You can grab the 0.7.10 release from the 
+&lt;a href="http://codezen.org/canto/download/"&gt;download&lt;/a&gt; page.&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;Add canto-inspect.1 manpage&lt;/li&gt;
+&lt;li&gt;Fix other manpages&lt;/li&gt;
+&lt;li&gt;Fix some 2.6 incompatible abuse&lt;/li&gt;
+&lt;li&gt;Add workaround for bad feed data caused by switching between
+    the system feedparser and the builtin.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;This is basically a maintenance release, mostly thanks to Canto having a new
+Debian maintainer (thanks Vincent!). Essentially some immaterial cleanups that
+won't make a difference to most. Some better Python practices (particularly
+string exceptions that apparently have always been buggy and now are not
+supported int 2.6+).&lt;/p&gt;
+&lt;p&gt;I would like this to be the last 0.7.x release, and thus consider it to be in
+maintenance mode. &lt;code&gt;xulos&lt;/code&gt; and &lt;code&gt;jaacoppi&lt;/code&gt; from IRC still have some nasty bugs,
+but try as I might I can't get them to reproduce. Resolving these bugs would be
+the only thing that would prompt an 0.7.11 release.&lt;/p&gt;
+&lt;h3 id="080-plans"&gt;0.8.0 Plans&lt;/h3&gt;
+&lt;p&gt;So, as I've mentioned before, Canto was basically the first piece of Python that
+I wrote. I've learned everything I know about Python from building it and every
+version from 0.4.1 to this latest 0.7.10 has been organically grown from the
+same codebase.&lt;/p&gt;
+&lt;p&gt;As a result 0.7.10 is about 30% a product of the beginner Pythonista I &lt;em&gt;was&lt;/em&gt;,
+50% the result of the intermediate Pythonista I came to be not recognizing the
+poor design, and 20% of the expert Pythonista I am now thrashing to salvage
+anything.&lt;/p&gt;
+&lt;p&gt;Now I reached the point where I stopped thrashing, evaluated the codebase on its
+merits versus the amount of effort to start again and found that, easily, it
+made more sense to start from scratch.&lt;/p&gt;
+&lt;p&gt;0.7.x evolved into a multi-process monster with &lt;code&gt;canto-fetch&lt;/code&gt; flying around in a
+cronjob. Its insides were twisted around to communicate with a gimpy form of
+Python only picklable socket protocol. The dividing line between work that
+needed to be done in the interface and needed to be done in the backend was
+blurry and information that needed to cross the boundary ill-defined.&lt;/p&gt;
+&lt;p&gt;In short, it became a huge mess, but that's what happens when you start with the
+idea of threading and (through necessity, thanks to the Python GIL) end-up with
+processes. Among other bad choices.&lt;/p&gt;
+&lt;p&gt;0.8.0 rectifies the situation.&lt;/p&gt;
+&lt;p&gt;Instead of a hideously twisted gimp protocol of 0.7.x, a real, genuine socket
+protocol is being used to communicate with a (&lt;em&gt;gasp!&lt;/em&gt;) daemon. Because the
+daemon exists, &lt;code&gt;canto-fetch&lt;/code&gt; is history. As are slow exits, bouncing CPU usage,
+confusing macro systems, eye glazing Python based configs, pointless lock
+hammering on the filesystem, delayed updates, and lost information.&lt;/p&gt;
+&lt;p&gt;Most of the heavy lifting is done in the daemon, which is properly
+multi-threaded such that multiple clients could be running at once and
+cooperate. Not only that, but because it uses a simple text based protocol
+(instead of Python-only pickles), it would be trivial to write a GTK or a Qt
+based frontend to canto and still take advantage of its filters, sorts and other
+configuration all in any language that's smart enough to talk to a socket (read:
+all of them).&lt;/p&gt;
+&lt;p&gt;0.8.0 will be a great simplification.&lt;/p&gt;
+&lt;h3 id="current-status"&gt;Current Status&lt;/h3&gt;
+&lt;p&gt;As of this writing, I have about half of the server functionality complete and
+about a third (although it's the &lt;em&gt;hard&lt;/em&gt; third) of the client done. Neither are
+up yet for public consumption, but as soon as I start giving IRC users alphas,
+there will be another post and the project will appear in the usual gitweb.&lt;/p&gt;
+&lt;p&gt;I'm not sure how long it will take for that to happen, but I'm hoping to put out
+the initial 0.8.0 release before the end of the year (loose enough timeline for
+you?).&lt;/p&gt;
+&lt;p&gt;A short list of notable changes:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;p&gt;Server / client (as mentioned above).&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;Blocking event-based architecture = 0% CPU usage when not in use.&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;INI style config, that can be machine manipulated. (Although Python 
+    extension will be worked in.)&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;Built-in interface command line.&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;Supports traditional text-cursor in addition to new commands making it trivial
+    to do massive batch operations and use the interface without the
+    text-cursor.&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;Filters / sorts in arbitrary, persistently loaded binaries.&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;All around more efficient methods for practically everything.&lt;/p&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;The basic gist you should take away from this post is that it's time for Canto
+to level up.&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;Jack&lt;/li&gt;
+&lt;/ul&gt;               </description>           </item>           <item>               <title> 0.7.9</title>               <link>http://codezen.org/canto/news/92</link>               <guid isPermaLink="true">                   http://codezen.org/canto/news/92               </guid>               <description>&lt;p&gt;You can grab the 0.7.9 release from the 
+&lt;a href="http://codezen.org/canto/download/"&gt;download&lt;/a&gt; page.&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;Fix fresh install sans system feedparser&lt;/li&gt;
+&lt;li&gt;Make canto-inspect use builtin feedparser&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;Some kinks had to be worked out with the import of feedparser and parts of the
+code were still falling back on the system. I am disappointed I haven't heard
+back from one of the original reporters so 0.7.10 might be coming sooner rather
+than later, but the part of the problem I was able to reproduce locally (and
+cropped up others' machines) was fixed in this commit.&lt;/p&gt;
+&lt;p&gt;Have fun! Submit bugs!&lt;/p&gt;               </description>           </item>           <item>               <title> 0.7.8</title>               <link>http://codezen.org/canto/news/91</link>               <guid isPermaLink="true">                   http://codezen.org/canto/news/91               </guid>               <description>&lt;p&gt;You can grab the 0.7.8 release from the 
+&lt;a href="http://codezen.org/canto/download/"&gt;download&lt;/a&gt; page.&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;Fix feed exception encoding problem.&lt;/li&gt;
+&lt;li&gt;Fix occasional zombies / extra pids floating around.&lt;/li&gt;
+&lt;li&gt;Import feedparser into source tree.&lt;/li&gt;
+&lt;li&gt;Add -s/--sysfp flag to canto-fetch to fall back on system feedparser&lt;/li&gt;
+&lt;li&gt;Render improvements by honoring declared content types&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h3 id="feedparser"&gt;Feedparser&lt;/h3&gt;
+&lt;p&gt;Hot on the heels of the 0.7.7 release comes 0.7.8. It's been awhile since
+there's been a release that's only lasted a week, but in this case it had to
+happen. Why? Feedparser.&lt;/p&gt;
+&lt;p&gt;I love feedparser. It really makes my life much easier when it comes to getting
+feeds. I haven't touched XML with code since I started using it and it's been
+great. What I &lt;em&gt;don't&lt;/em&gt; like about feedparser however is that the venerable &lt;a href="http://diveintomark.org"&gt;Mark
+Pilgrim&lt;/a&gt; that authored it and maintains it has no time
+to fix or integrate fixes for about a million little bugs.&lt;/p&gt;
+&lt;p&gt;Right now, the Debian version of feedparser (the one I use everyday) has 14
+patches against it. Understandable since the last release of feedparser was in
+April 2007. Things are bound to break. Arch has got 5. Gentoo, and I'm sure a
+lot of other distros have 0. So there are a number of versions floating around
+each with different behavior. I've known about this since Canto started using
+feedparser.&lt;/p&gt;
+&lt;p&gt;Over the last year or so a number of people have submitted bugs about this and
+that, and some of them were serious in that they rendered a feed entirely
+useless. Like misreporting titles. Or even worse, causing exceptions. Each time
+I just told them, "I'm sorry, it's feedparser, talk to your distro's maintainer
+about picking up this patch."&lt;/p&gt;
+&lt;p&gt;For the most part things were okay like this only because (at least, initially)
+I thought mpilgrim was going to step up and feedparser 4.2 would be coming out
+and maybe I wouldn't &lt;em&gt;have&lt;/em&gt; to resort to importing the source. Then, in the last
+&lt;strong&gt;week&lt;/strong&gt;, I got two bug reports from two separate people on two different
+distros that both came down to feedparser. The clock on 4.1 just passed three
+years and I've had enough. So I grabbed Debian's feedparser and tossed it into
+the source.&lt;/p&gt;
+&lt;p&gt;Now everyone will be on a level playing field and if (or &lt;em&gt;when&lt;/em&gt;) someone else
+reports a bug that traces into feedparser. I can get in there and fix it myself,
+without having to wait on mpilgrim or the distros. Mission accomplished.&lt;/p&gt;
+&lt;p&gt;I don't foresee problems migrating beyond, perhaps, some items being marked as
+unread again because their IDs have changed.&lt;/p&gt;
+&lt;h3 id="rendering"&gt;Rendering&lt;/h3&gt;
+&lt;p&gt;The other noticeable improvement on this release is the rendering of content
+that is explicitly reported as &lt;code&gt;text/plain&lt;/code&gt;. Previous to this release, Canto
+ignored such things and attempted to render basically everything as HTML. It's a
+strategy that had served Canto well trying to cope with feeds published by
+moronic broken publishers and most of the time &lt;code&gt;text/plain&lt;/code&gt; content wasn't
+changed in the process. However, this is sort of punishing good feed publishers
+for the others' stupidity by messing with the spacing of their content.&lt;/p&gt;
+&lt;p&gt;In particular, things like plaintext logs and the like would show up as a
+jumbled mess even though the feed declared "hey, don't format this."&lt;/p&gt;
+&lt;p&gt;So, to stop punishing the good guys, Canto honors the type. This &lt;em&gt;may&lt;/em&gt; make bad
+feeds look like crap, but in that case the user can contact the publisher to
+complain.&lt;/p&gt;
+&lt;h3 id="077-exception"&gt;0.7.7 Exception&lt;/h3&gt;
+&lt;p&gt;Twice in the short lifespan of 0.7.7 it was reported that Canto excepted on line
+289 of &lt;code&gt;process.py&lt;/code&gt;. I didn't fix it directly, but I believe that it was fixed
+by restoring an accidentally dropped line from 0.7.6. If this isn't the case and
+you see such an exception, please report it.&lt;/p&gt;
+&lt;h3 id="thanks"&gt;Thanks&lt;/h3&gt;
+&lt;p&gt;Lastly, thanks to &lt;code&gt;jaacoppi&lt;/code&gt; (the pidwatcher), &lt;code&gt;evg_krsk&lt;/code&gt;, and Caleb for
+reporting bugs for this release.&lt;/p&gt;
+&lt;p&gt;Have fun! Submit bugs!&lt;/p&gt;               </description>           </item>           <item>               <title> 0.7.7</title>               <link>http://codezen.org/canto/news/90</link>               <guid isPermaLink="true">                   http://codezen.org/canto/news/90               </guid>               <description>&lt;p&gt;You can grab the 0.7.7 release from the 
+&lt;a href="http://codezen.org/canto/download/"&gt;download&lt;/a&gt; page.&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;Fix harmless widecurse.c warning&lt;/li&gt;
+&lt;li&gt;Fix going to locale incompatible URLs&lt;/li&gt;
+&lt;li&gt;Fix Python 2.6.5 weirdness&lt;/li&gt;
+&lt;li&gt;Fix enclosure parsing/display exception&lt;/li&gt;
+&lt;li&gt;Fix set_{filter,tag_filter,sort}(None)&lt;/li&gt;
+&lt;li&gt;Improved config validation for gui options&lt;/li&gt;
+&lt;li&gt;Work harder to maintain selections through updates&lt;/li&gt;
+&lt;li&gt;Make cursor behavior more flexible&lt;/li&gt;
+&lt;li&gt;Change default cursor behavior&lt;/li&gt;
+&lt;li&gt;Documentation tweaks (thanks acoolon)&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;Another round of bugfixes. This one tackles some annoyances like occasionally
+getting an item with a link with characters that are both not URL-encoded and
+not compatible with your system locale. No symptoms other than the link just
+wouldn't open, which is crappy.&lt;/p&gt;
+&lt;p&gt;Some exception stuff has been cleaned up, and &lt;code&gt;set_filter&lt;/code&gt; and friends now work
+properly when given &lt;code&gt;None&lt;/code&gt; as the argument.&lt;/p&gt;
+&lt;p&gt;The most noticeable change, if you weren't suffering from the previous bugs, is
+that the cursor behavior is now configurable. For once I actually completed the
+official documentation before the release, so you can read about it
+&lt;a href="http://codezen.org/canto/config/#cursor-behavior-077"&gt;here&lt;/a&gt;.&lt;/p&gt;
+&lt;p&gt;If you want to return to the &amp;lt;0.7.7 default scroll behavior, you can add this
+line to your config:&lt;/p&gt;
+&lt;div class="codehilite"&gt;&lt;pre&gt;&lt;span class="n"&gt;cursor_edge&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="mf"&gt;0&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;To cause the interface to scroll at the very edge of the screen, instead of the
+new default behavior with a scroll margin of 5 lines.&lt;/p&gt;
+&lt;p&gt;Have fun! Submit bugs!&lt;/p&gt;               </description>           </item>   </channel></rss>
