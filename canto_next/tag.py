@@ -22,6 +22,14 @@ class CantoTags():
 
         on_hook("work_done", self.do_tag_changes)
 
+    def items_to_tags(self, ids):
+        tags = []
+        for id in ids:
+            for tag in self.tags:
+                if id in self.tags[tag]:
+                    tags.append(tag)
+        return tags
+
     def tag_changed(self, tag):
         if tag not in self.changed_tags:
             self.changed_tags.append(tag)
