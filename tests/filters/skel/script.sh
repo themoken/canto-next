@@ -14,7 +14,11 @@ WATCHTAGS [ "maintag\\\\:Static", "maintag\\\\:Static 2" ]
 # Add feed
 SETCONFIGS { "Feed Static" : { "url" : "file:///tmp/canto.xml" } }
 SETCONFIGS { "Feed Static 2" : { "url" : "file:///tmp/canto2.xml" } }
+
 UPDATE {}
+
+# Ignore these TAGCHANGES because their order doesn't matter
+# and depends on which fetch thread completes first.
 REMOTE_IGNORE 2
 
 # Get ITEMS, should be all 5
@@ -25,8 +29,12 @@ REMOTE_WAIT 1
 SETATTRIBUTES { (u'file:///tmp/canto.xml', u'http://codezen.org/canto/news/94') : { "canto-state" : [ "read" ]}, (u'file:///tmp/canto.xml', u'http://codezen.org/canto/news/93') : { "canto-state" : [ "read" ] } }
 SETATTRIBUTES { (u'file:///tmp/canto2.xml', u'http://codezen.org/canto/news/92') : { "canto-state" : [ "read" ]}, (u'file:///tmp/canto2.xml', u'http://codezen.org/canto/news/91') : { "canto-state" : [ "read" ] } }
 
+# Should get TAGCHANGEs from SETATTR
+REMOTE_WAIT 2
+
 # Get ITEMS, should still be all 5
 ITEMS [ "maintag\\\\:Static", "maintag\\\\:Static 2" ]
+
 REMOTE_WAIT 1
 
 # Switch the filter.

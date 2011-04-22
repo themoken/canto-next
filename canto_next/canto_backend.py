@@ -354,23 +354,14 @@ class CantoBackend(CantoServer):
     # SETATTRIBUTES { id : { attribute : value } ... } -> None
 
     def cmd_setattributes(self, socket, args):
-        pre_change = {}
-
-        tags = alltags.items_to_tags(args.keys())
-        for t in tags:
-            pre_change[t] = self.apply_transforms(socket, alltags.get_tag(t))
 
         feeds = allfeeds.items_to_feeds(args.keys())
         for f in feeds:
             f.set_attributes(feeds[f], args)
 
-        # If setting attributes caused the filtered output
-        # of this tag to change, call the tag_change hook.
-
+        tags = alltags.items_to_tags(args.keys())
         for t in tags:
-            if self.apply_transforms(socket, alltags.get_tag(t)) !=\
-                    pre_change[t]:
-                call_hook("tag_change", [ t ])
+            call_hook("tag_change", [ t ])
 
     # CONFIGS [ config.options ] -> { "option" : "value" ... }
 

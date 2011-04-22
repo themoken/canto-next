@@ -26,7 +26,7 @@ class CantoTags():
         tags = []
         for id in ids:
             for tag in self.tags:
-                if id in self.tags[tag]:
+                if id in self.tags[tag] and tag not in tags:
                     tags.append(tag)
         return tags
 
