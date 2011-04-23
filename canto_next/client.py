@@ -25,8 +25,10 @@ class CantoClient(CantoSocket):
     def __init__(self, socket_name, **kwargs):
         kwargs["server"] = False
         CantoSocket.__init__(self, socket_name, **kwargs)
-        self.conn = self.sockets[0] # Clients only have one socket conn.
-        self.hupped = 0
+
+    def connect(self):
+        CantoSocket.connect(self)
+        self.conn = self.sockets[0]
 
     # Sets self.conf_dir and self.socket_path
 
@@ -105,11 +107,8 @@ class CantoClient(CantoSocket):
 
     # Write a (cmd, args)
     def write(self, cmd, args):
-        self.do_write(self.conn, cmd, args)
+        return self.do_write(self.conn, cmd, args)
 
     # Read a (cmd, args)
     def read(self, timeout=None):
-        r = self.do_read(self.conn, timeout)
-        if r == select.POLLHUP:
-            self.hupped = 1
-        return r
+        return self.do_read(self.conn, timeout)

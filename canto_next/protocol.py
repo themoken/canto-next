@@ -21,52 +21,70 @@ log = logging.getLogger('SOCKET')
 
 class CantoSocket:
     def __init__(self, socket_name, **kwargs):
+
+        self.socket_name = socket_name
+
         if "server" in kwargs and kwargs["server"]:
             self.server = True
         else:
             self.server = False
 
+        if "port" in kwargs:
+            self.port = kwargs["port"]
+        else:
+            self.port = 0
+
+        if "interface" in kwargs:
+            self.interface = kwargs["interface"]
+        else:
+            self.interface = ''
+
+        if "address" in kwargs:
+            self.address = kwargs["address"]
+        else:
+            self.address = None
+
         self.sockets = []
-        self.socket_rdhup = {}
 
-        # Server setup, potentially both unix and inet sockets.
+        # Holster for partial reads.
+        self.fragment = u""
 
+        self.connect()
+
+    # Server setup, potentially both unix and inet sockets.
+    def connect(self):
+        self.sockets = []
         if self.server:
-            if socket_name:
+            if self.socket_name:
                 # Remove old unix socket.
-                if os.path.exists(socket_name):
-                    os.remove(socket_name)
+                if os.path.exists(self.socket_name):
+                    os.remove(self.socket_name)
 
                 # Setup new socket.
                 sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
                 sock.setblocking(0)
-                sock.bind(socket_name)
+                sock.bind(self.socket_name)
                 sock.listen(5)
                 self.sockets.append(sock)
 
             # Net socket setup.
-            if "port" in kwargs:
+            if self.port > 0:
                 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 sock.setblocking(0)
 
-                if "interface" in kwargs:
-                    interface = kwargs["interface"]
-                else:
-                    interface = ''
-
-                sock.bind((interface, kwargs["port"]))
+                sock.bind((self.interface, self.port))
                 sock.listen(5)
                 self.sockets.append(sock)
 
         # Client setup, can only do unix or inet, not both.
 
         else:
-            if "address" in kwargs and "port" in kwargs:
+            if self.address and self.port > 0:
                 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                addr = (kwargs["address"], kwargs["port"])
+                addr = (self.address, self.port)
             else:
                 sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-                addr = socket_name
+                addr = self.socket_name
 
             self.sockets.append(sock)
             tries = 10
@@ -80,9 +98,6 @@ class CantoSocket:
                         raise
                 time.sleep(1)
                 tries -= 1
-
-        # Holster for partial reads.
-        self.fragment = u""
 
     # Setup poll.poll() object to watch for read status on conn.
     def read_mode(self, poll, conn):
@@ -116,6 +131,12 @@ class CantoSocket:
     # 3) select.POLLHUP if the connection is dead.
 
     def do_read(self, conn, timeout=None):
+        r = self._do_read(conn, timeout)
+        if r == select.POLLHUP:
+            self.disconnected(conn)
+        return r
+
+    def _do_read(self, conn, timeout):
         if self.fragment and PROTO_TERMINATOR in self.fragment:
             return self.parse("") # <- already uses self.fragment
 
@@ -167,6 +188,12 @@ class CantoSocket:
     # 2) select.POLLHUP is the connection is dead.
 
     def do_write(self, conn, cmd, args):
+        r = self._do_write(conn, cmd, args)
+        if r == select.POLLHUP:
+            self.disconnected(conn)
+        return r
+
+    def _do_write(self, conn, cmd, args):
 
         message = cmd + " " + repr(args) + PROTO_TERMINATOR
 
@@ -200,3 +227,6 @@ class CantoSocket:
                 sent = conn.send(tosend)
                 tosend = tosend[sent:]
                 log.debug("Sent %d bytes." % sent)
+
+    def disconnected(self, conn):
+        pass

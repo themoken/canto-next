@@ -91,7 +91,7 @@ class CantoServer(CantoSocket):
 
     # Write a (cmd, args) to a single connection.
     def write(self, conn, cmd, args):
-        self.do_write(conn, cmd, args)
+        return self.do_write(conn, cmd, args)
 
     # Write a (cmd, args) to every connection.
     def write_all(self, cmd, args):
