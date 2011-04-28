@@ -162,7 +162,14 @@ class CantoSocket:
             log.debug("Read ERR")
             return select.POLLHUP
         if e & select.POLLIN:
-            fragment = conn.recv(1024)
+            try:
+                fragment = conn.recv(1024)
+            except Exception, e:
+                if e[0] == errno.EINTR:
+                    return
+                log.error("Error sending: %s" % e[1])
+                log.error("Interpreting as HUP")
+                return select.POLLHUP
 
             # Never get POLLRDHUP on INET sockets, so
             # use POLLIN with no data as POLLHUP
@@ -210,7 +217,7 @@ class CantoSocket:
             except select.error, e:
                 if e[0] == errno.EINTR:
                     continue
-                log.debug("Raising error: %s" % e[1])
+                log.error("Raising error: %s" % e[1])
                 raise
 
             if not p:
@@ -224,7 +231,15 @@ class CantoSocket:
                 log.debug("Write ERR")
                 return select.POLLHUP
             if e & select.POLLOUT:
-                sent = conn.send(tosend)
+                try:
+                    sent = conn.send(tosend)
+                except Exception, e:
+                    if e[0] == errno.EINTR:
+                        continue
+                    log.error("Error sending: %s" % e[1])
+                    log.error("Interpreting as HUP")
+                    return select.POLLHUP
+
                 tosend = tosend[sent:]
                 log.debug("Sent %d bytes." % sent)
 
