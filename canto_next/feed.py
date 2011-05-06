@@ -214,7 +214,7 @@ class CantoFeed():
 
         self.olditems = self.items
         self.items = []
-        for item in self.update_contents["entries"]:
+        for item in self.update_contents["entries"][:]:
 
             # Attempt to isolate a feed unique ID
             if "id" not in item:
@@ -224,12 +224,14 @@ class CantoFeed():
                     item["id"] = item["title"]
                 else:
                     log.error("Unable to uniquely ID item: %s" % item)
+                    self.update_contents["entries"].remove(item)
                     continue
 
             # Ensure ID truly is feed (and thus globally, since the
             # ID is paired with the unique URL) unique.
 
             if not self.unique_item(item):
+                self.update_contents["entries"].remove(item)
                 continue
 
             # At this point, we're sure item's going to be added.
