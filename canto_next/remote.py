@@ -105,16 +105,17 @@ class CantoRemote(CantoClient):
         return None
 
     def _get_feeds(self):
-        self.write("LISTFEEDS", [])
-        r = self._wait_response("LISTFEEDS")
+        self.write("LISTTAGS", [])
+        r = self._wait_response("LISTTAGS")
 
-        self.write("CONFIGS", [ "Feed " + tag for tag, url in r ])
+        r = [ x[9:] for x in r if x.startswith("maintag") ]
+        self.write("CONFIGS", [ "Feed " + tag for tag in r ])
         c = self._wait_response("CONFIGS")
 
         ret = []
 
-        for tag, url in r:
-            t = {"tag" : tag, "url" : url}
+        for tag in r:
+            t = {"tag" : tag}
             f = "Feed " + tag
 
             # Move any other interesting settings:
