@@ -18,6 +18,9 @@ import pprint
 import time
 import sys
 
+def print_wrap(s):
+    print encoder(s)
+
 class CantoRemote(CantoClient):
     def __init__(self):
         if self.common_args() == -1:
@@ -31,27 +34,27 @@ class CantoRemote(CantoClient):
                 CantoClient.__init__(self, None,\
                         port = self.port, address = self.addr)
         except Exception, e:
-            print "Error: %s" % e
-            print self.socket_path
+            print_wrap("Error: %s" % e)
+            print_wrap(self.socket_path)
             sys.exit(-1)
 
         self.handle_args()
 
     def print_help(self):
-        print "USAGE: canto-remote [command] [options]"
+        print_wrap("USAGE: canto-remote [command] [options]")
         self.print_commands()
 
     def print_commands(self):
-        print "COMMANDS"
-        print "\thelp - get help on a command"
-        print "\taddfeed - subscribe to a new feed"
-        print "\tlistfeeds - list all subscribed feeds"
-        print "\tdelfeed - unsubscribe from a feed"
-        print "\tconfig - change configuration variables"
-        print "\texport - export feed list as OPML"
-        print "\timport - import feed list from OPML"
-        print "\tkill - cleanly kill the daemon"
-        print "\tscript - run script"
+        print_wrap("COMMANDS")
+        print_wrap("\thelp - get help on a command")
+        print_wrap("\taddfeed - subscribe to a new feed")
+        print_wrap("\tlistfeeds - list all subscribed feeds")
+        print_wrap("\tdelfeed - unsubscribe from a feed")
+        print_wrap("\tconfig - change configuration variables")
+        print_wrap("\texport - export feed list as OPML")
+        print_wrap("\timport - import feed list from OPML")
+        print_wrap("\tkill - cleanly kill the daemon")
+        print_wrap("\tscript - run script")
 
     def _wait_response(self, cmd):
         r = None
@@ -59,10 +62,10 @@ class CantoRemote(CantoClient):
             r = self.read()
             if type(r) == int:
                 if r == 16:
-                    print "Server hung up."
+                    print_wrap("Server hung up.")
                 else:
-                    print "Got code: %d" % r
-                print "Please check daemon-log for exception."
+                    print_wrap("Got code: %d" % r)
+                print_wrap("Please check daemon-log for exception.")
                 return
             elif type(r) == tuple:
                 if not cmd:
@@ -70,13 +73,13 @@ class CantoRemote(CantoClient):
                 if r[0] == cmd:
                     return r[1]
                 elif r[0] == "ERRORS":
-                    print "ERRORS!"
+                    print_wrap("ERRORS!")
                     for s in r[1]:
                         for o in r[1][s]:
-                            print "%s.%s = %s <-- %s" %\
-                                    (s, o, r[1][s][o][0], r[1][s][o][1])
+                            print_wrap("%s.%s = %s <-- %s" %\
+                                    (s, o, r[1][s][o][0], r[1][s][o][1]))
             elif r:
-                print "Unknown return: %s" % r
+                print_wrap("Unknown return: %s" % r)
                 break
         return None
 
@@ -84,8 +87,8 @@ class CantoRemote(CantoClient):
         sections = self._wait_response("CONFIGS")
         for section in sections:
             for secvar in sections[section].keys():
-                print "%s.%s = %s" % (section, secvar,\
-                        sections[section][secvar])
+                print_wrap("%s.%s = %s" % (section, secvar,\
+                        sections[section][secvar]))
 
     def _autoname(self, URL):
         request = urllib2.Request(URL)
@@ -94,13 +97,13 @@ class CantoRemote(CantoClient):
         try:
             content = feedparser.parse(feedparser.urllib2.urlopen(request))
         except Exception, e:
-            print "ERROR: Couldn't determine name: %s" % e
+            print_wrap("ERROR: Couldn't determine name: %s" % e)
             return None
 
         if "title" in content["feed"]:
             return content["feed"]["title"]
         else:
-            print "Couldn't find title in feed!"
+            print_wrap("Couldn't find title in feed!")
 
         return None
 
@@ -132,7 +135,7 @@ class CantoRemote(CantoClient):
         if not attrs["name"]:
             return False
 
-        print "Adding feed %s - %s" % (attrs["url"], attrs["name"])
+        print_wrap("Adding feed %s - %s" % (attrs["url"], attrs["name"]))
 
         configs = {}
         name = "Feed " + attrs["name"]
@@ -166,7 +169,7 @@ class CantoRemote(CantoClient):
         for arg in sys.argv[2:]:
             opt, val = escsplit(arg, "=", 1, 1)
             if not opt or not val:
-                print "ERROR: can't parse '%s' as x=y setting." % arg
+                print_wrap("ERROR: can't parse '%s' as x=y setting." % arg)
                 continue
             feed[opt] = val
 
@@ -186,7 +189,7 @@ class CantoRemote(CantoClient):
                 s += "(" + f["alias"] + ")"
 
             s += "\n   " + f["url"] + "\n"
-            print s
+            print_wrap(s)
 
     def cmd_delfeed(self):
         """USAGE: canto-remote delfeed [URL|name|alias]
@@ -202,7 +205,7 @@ class CantoRemote(CantoClient):
                 matches.append(f["alias"])
 
             if term in matches:
-                print "Unsubscribing from %s" % f["url"]
+                print_wrap("Unsubscribing from %s" % f["url"])
                 self.write("SETCONFIGS",  { "Feed " + f["tag"] : None })
 
     def cmd_config(self):
@@ -226,7 +229,7 @@ class CantoRemote(CantoClient):
             section, secvar = escsplit(var, ".", 1, 1)
 
             if not section or not secvar:
-                print "ERROR: Unable to parse \"%s\" as section.variable" % var
+                print_wrap("ERROR: Unable to parse \"%s\" as section.variable" % var)
                 continue
 
             if val:
@@ -248,8 +251,8 @@ class CantoRemote(CantoClient):
 
     This will print an OPML file to standard output."""
 
-        print """<opml version="1.0">"""
-        print """\t<body>"""
+        print_wrap("""<opml version="1.0">""")
+        print_wrap("""\t<body>""")
         for f in self._get_feeds():
             self.write("FEEDATTRIBUTES", { f["url"] : [ "version"] })
             attrs = self._wait_response("FEEDATTRIBUTES")
@@ -258,13 +261,13 @@ class CantoRemote(CantoClient):
             else:
                 feedtype = "rss"
 
-            print """\t\t<outline text="%s" xmlUrl="%s" type="%s" />""" %\
+            print_wrap("""\t\t<outline text="%s" xmlUrl="%s" type="%s" />""" %\
                 (encoder(f["tag"].replace("\"","\\\"")),
                  encoder(f["url"].replace("\"","\\\"")),
-                 feedtype)
+                 feedtype))
 
-        print """\t</body>"""
-        print """</opml>"""
+        print_wrap("""\t</body>""")
+        print_wrap("""</opml>""")
 
     def cmd_import(self):
         """USAGE: canto-remote import [OPML file]
@@ -280,7 +283,7 @@ class CantoRemote(CantoClient):
         try:
             data = decoder(open(opmlpath, "r").read())
         except Exception, e:
-            print "Couldn't read OPML file:"
+            print_wrap("Couldn't read OPML file:")
             traceback.print_exc()
             return
 
@@ -332,7 +335,7 @@ class CantoRemote(CantoClient):
 
         for line in lines:
             line = line[:-1].lstrip()
-            print line
+            print_wrap(line)
             sys.__stdout__.flush()
 
             # Wait for n responses.
@@ -380,9 +383,9 @@ class CantoRemote(CantoClient):
 
         command = "cmd_" + sys.argv[1]
         if command in dir(self):
-            print getattr(self, command).__doc__
+            print_wrap(getattr(self, command).__doc__)
         else:
-            print self.cmd_help.__doc__
+            print_wrap(self.cmd_help.__doc__)
             self.print_commands()
 
     def handle_args(self):
@@ -397,6 +400,6 @@ class CantoRemote(CantoClient):
             func = getattr(self, command)
             r = func()
             if r == False:
-                print func.__doc__
+                print_wrap(func.__doc__)
         else:
             self.print_help()
