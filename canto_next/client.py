@@ -46,10 +46,13 @@ class CantoClient(CantoSocket):
 
         self.conf_dir = os.path.expanduser(u"~/.canto-ng/")
 
+        self.location_args = []
+
         for opt, arg in optlist:
             if opt in [ "-D", "--dir"]:
                 self.conf_dir = os.path.expanduser(decoder(arg))
                 self.conf_dir = os.path.realpath(self.conf_dir)
+                self.location_args += [ opt, arg ]
 
             elif opt in [ "-p", "--port"]:
                 try:
@@ -59,9 +62,11 @@ class CantoClient(CantoSocket):
                 except:
                     log.error("Error: Port must be >0 integer.")
                     return -1
+                self.location_args += [ opt, arg ]
 
             elif opt in [ "-a", "--address"]:
                 self.addr = decoder(arg)
+                self.location_args += [ opt, arg ]
 
         self.socket_path = self.conf_dir + "/.canto_socket"
 
