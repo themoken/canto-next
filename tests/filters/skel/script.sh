@@ -45,3 +45,5 @@ REMOTE_IGNORE 2
 ITEMS [ "maintag\\\\:Static", "maintag\\\\:Static 2"]
 REMOTE_WAIT 1
 EOF
+
+rm /tmp/canto*.xml

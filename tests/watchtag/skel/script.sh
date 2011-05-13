@@ -43,3 +43,5 @@ REMOTE_WAIT 2
 ITEMS [ "maintag\\\\:Static" ]
 REMOTE_WAIT 1
 EOF
+
+rm /tmp/canto*.xml
