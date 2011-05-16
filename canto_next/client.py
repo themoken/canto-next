@@ -9,6 +9,7 @@
 
 from protocol import CantoSocket
 from encoding import decoder
+from hooks import call_hook
 
 import logging
 import select
@@ -29,6 +30,7 @@ class CantoClient(CantoSocket):
     def connect(self):
         CantoSocket.connect(self)
         self.conn = self.sockets[0]
+        call_hook("new_socket", [self.conn])
 
     # Sets self.conf_dir and self.socket_path
 

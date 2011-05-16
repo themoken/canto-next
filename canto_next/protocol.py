@@ -7,6 +7,8 @@
 #   it under the terms of the GNU General Public License version 2 as 
 #   published by the Free Software Foundation.
 
+from hooks import on_hook
+
 from threading import Thread
 import logging
 import socket
@@ -47,7 +49,10 @@ class CantoSocket:
         self.sockets = []
 
         # Holster for partial reads.
-        self.fragment = u""
+        self.fragments = { }
+
+        on_hook("new_socket", self.prot_new_frag)
+        on_hook("kill_socket", self.prot_kill_frag)
 
         self.connect()
 
@@ -109,15 +114,24 @@ class CantoSocket:
         poll.register(conn.fileno(),\
                 select.POLLOUT | select.POLLHUP | select.POLLERR)
 
+    def prot_new_frag(self, newconn):
+        if newconn not in self.fragments:
+            self.fragments[newconn] = u""
+
+    def prot_kill_frag(self, deadconn):
+        if deadconn in self.fragments:
+            del self.fragments[deadconn]
+
     # Take raw data, return (cmd, args) tuple or None if not enough data.
-    def parse(self, data):
+    def parse(self, conn, data):
 
-        self.fragment += data
+        self.fragments[conn] += data
 
-        if PROTO_TERMINATOR not in self.fragment:
+        if PROTO_TERMINATOR not in self.fragments[conn]:
             return None
 
-        message, self.fragment = self.fragment.split(PROTO_TERMINATOR, 1)
+        message, self.fragments[conn] =\
+                self.fragments[conn].split(PROTO_TERMINATOR, 1)
 
         try:
             cmd, args = message.split(' ', 1)
@@ -137,8 +151,8 @@ class CantoSocket:
         return r
 
     def _do_read(self, conn, timeout):
-        if self.fragment and PROTO_TERMINATOR in self.fragment:
-            return self.parse("") # <- already uses self.fragment
+        if self.fragments[conn] and PROTO_TERMINATOR in self.fragments[conn]:
+            return self.parse(conn, "") # <- already uses self.fragments
 
         poll = select.poll()
         self.read_mode(poll, conn)
@@ -178,7 +192,7 @@ class CantoSocket:
                 return select.POLLHUP
 
             log.debug("Read Buffer: %s" % fragment )
-            return self.parse(fragment)
+            return self.parse(conn, fragment)
 
         # Parse POLLHUP last so if we still got POLLIN, any data
         # is still retrieved from the socket.
