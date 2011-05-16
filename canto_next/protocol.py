@@ -212,10 +212,18 @@ class CantoSocket:
         while tosend:
 
             # Again, we only care about the first descriptor's mask
+
+            eintr_count = 0
             try:
                 p = poll.poll()
             except select.error, e:
                 if e[0] == errno.EINTR:
+                    eintr_count += 1
+                    if eintr_count >= 3:
+                        log.error("conn %s appears valid, but unresponsive." % conn)
+                        log.error("Closing conn, please check client.")
+                        conn.close()
+                        return select.POLLHUP
                     continue
                 log.error("Raising error: %s" % e[1])
                 raise
