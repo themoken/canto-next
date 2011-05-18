@@ -223,11 +223,12 @@ class CantoSocket:
         self.write_mode(poll, conn)
 
         log.debug("Sending: %s" % tosend)
+        eintr_count = 0
+
         while tosend:
 
             # Again, we only care about the first descriptor's mask
 
-            eintr_count = 0
             try:
                 p = poll.poll()
             except select.error, e:
