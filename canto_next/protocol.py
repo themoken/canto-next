@@ -155,7 +155,13 @@ class CantoSocket:
             return self.parse(conn, "") # <- already uses self.fragments
 
         poll = select.poll()
-        self.read_mode(poll, conn)
+
+        try:
+            self.read_mode(poll, conn)
+        except:
+            log.error("Error putting conn in read mode.")
+            log.error("Interpreting as HUP")
+            return select.POLLHUP
 
         # We only care about the first (only) descriptor's event
         try:
@@ -220,7 +226,13 @@ class CantoSocket:
 
         poll = select.poll()
         tosend = message
-        self.write_mode(poll, conn)
+
+        try:
+            self.write_mode(poll, conn)
+        except:
+            log.error("Error putting conn in write mode.")
+            log.error("Interpreting as HUP")
+            return select.POLLHUP
 
         log.debug("Sending: %s" % tosend)
         eintr_count = 0
