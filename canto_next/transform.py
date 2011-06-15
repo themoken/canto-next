@@ -125,6 +125,68 @@ class SortTransform(CantoTransform):
         r.sort(self.sort)
         return [ item[1] for item in r ]
 
+# Meta-filter for AND
+class AllTransform(CantoTransform):
+    def __init__(self, *args):
+        name = "("
+        for i, t in enumerate(args):
+            if i > 0:
+                name += " AND "
+            name += t.name
+
+        name += ")"
+        CantoTransform.__init__(self, name)
+        self.transforms = args
+
+    def needed_attributes(self, tag):
+        needed = []
+        for t in self.transforms:
+            for a in t.needed_attributes(tag):
+                if a not in needed:
+                    needed.append(a)
+        return needed
+
+    def transform(self, items, attrs):
+        good_items = items[:]
+        for t in self.transforms:
+            good_items = t.transform(good_items, attrs)
+            if not good_items:
+                break
+        return good_items
+
+class AnyTransform(CantoTransform):
+    def __init__(self, *args):
+        name = "("
+        for i, t in enumerate(args):
+            if i > 0:
+                name += " OR "
+            name += t.name
+
+        name += ")"
+        CantoTransform.__init__(self, name)
+        self.transforms = args
+
+    def needed_attributes(self, tag):
+        needed = []
+        for t in self.transforms:
+            for a in t.needed_attributes(tag):
+                if a not in needed:
+                    needed.append(a)
+        return needed
+
+    def transform(self, items, attrs):
+        good_items = []
+        per_transform = []
+
+        for t in self.transforms:
+            per_transform.append(t.transform(items, attrs))
+
+        for pt in per_transform:
+            for item in pt:
+                if item not in good_items:
+                    good_items.append(item)
+        return good_items
+
 # Transform_locals is a list of elements that we pass to the eval() call when
 # evaluating a transform line from the config. Passing these into the local
 # scope allows simple filters to be created on the fly.
@@ -132,6 +194,9 @@ class SortTransform(CantoTransform):
 transform_locals["StateFilter"] = StateFilter
 transform_locals["ContentFilterRegex"] = ContentFilterRegex
 transform_locals["ContentFilter"] = ContentFilter
+transform_locals["All"] = AllTransform
+transform_locals["Any"] = AnyTransform
+
 transform_locals["filter_read"] = StateFilter("read")
 transform_locals["sort_alphabetical"] =\
         SortTransform("Sort Alphabetical", "title")
