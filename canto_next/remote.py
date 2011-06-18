@@ -226,7 +226,12 @@ class CantoRemote(CantoClient):
 
         for arg in sys.argv[1:]:
             var, val = escsplit(arg, "=", 1, 1)
+            var = var.lstrip().rstrip()
+            val = val.lstrip().rstrip()
+
             section, secvar = escsplit(var, ".", 1, 1)
+            section = section.lstrip().rstrip()
+            secvar = secvar.lstrip().rstrip()
 
             if not section or not secvar:
                 print_wrap("ERROR: Unable to parse \"%s\" as section.variable" % var)
