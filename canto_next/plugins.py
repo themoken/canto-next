@@ -71,146 +71,76 @@ def add_arg_transform(fn, trans):
 
 class PluginHandler(object):
     def __init__(self):
-        self.plugin_funcs = {}
+        self.plugin_attrs = {}
+
+    def update_plugin_lookups(self):
+        # Populate a dict of overridden attributes
+
+        self.plugin_attrs = {}
+
+        self.plugin_class_instances =\
+                [ c() for c in self.plugin_class.__subclasses__() ]
+
+        for iclass in self.plugin_class_instances[:]:
+            try:
+                # Warn if we're overriding a previously defined plugin attr
+                for iclass_attr in iclass.plugin_attrs.keys():
+                    if iclass_attr in self.plugin_attrs:
+                        log.warn("Multiply defined plugin attribute!: %s" %\
+                                iclass_attr)
+
+                self.plugin_attrs.update(iclass.plugin_attrs)
+            except Exception, e:
+                log.error("Error initializing plugins:")
+                log.error(traceback.format_exc())
+
+                # Malformed plugins removed from instances
+                self.plugin_class_instances.remove(iclass)
+                continue
+
+        # Complete the dict by preparing arg transformed functions
+
+        for trans_obj in [ self ] + self.plugin_class_instances:
+            for attr in dir(trans_obj):
+                a = getattr(trans_obj, attr)
+
+                # Skip non-functions, which make no sense
+                # to have argument transforms.
+
+                if "__func__" not in dir(a):
+                    continue
+
+                f = repr(getattr(a, "__func__"))
+
+                # Skip functions without transforms defined
+
+                if f not in arg_transforms:
+                    continue
+
+                # Wrap the target function with the transform.
+
+                argt = arg_transforms[f]
+
+                self.plugin_attrs[attr] = self.__wrap_argt(trans_obj, argt, a)
+
+    # This has to be done in a new scope so that the newfunc doesn't bind to
+    # the reference in the above loop and get majorly confused.
+
+    def __wrap_argt(self, origin_obj, argt, realfunc):
+        def newfunc(*args, **kwargs):
+            r = argt(args[0], origin_obj, *args[1:], **kwargs)
+            if not r:
+                return
+
+            args, kwargs = r
+            r = realfunc(*args, **kwargs)
+            return r
+        return newfunc
 
     def __getattribute__(self, name):
-        try:
-            objs = [(self, object.__getattribute__(self, name))]
-        except AttributeError:
-            # Ignore these to avoid recursing forever
-            if name in [ "plugin_class", "plugin_class_instances"]:
-                raise
-
-            # If we have no plugin class, we really don't have the attribute
-            if not hasattr(self, "plugin_class"):
-                raise
-
-            # Generate the instance list, if necessary.
-            if not hasattr(self, "plugin_class_instances"):
-                self.plugin_class_instances = [ c() for c in\
-                        self.plugin_class.__subclasses__() ]
-
-            # Check plugin instances for the same attribute.
-
-            objs = []
-            for c in self.plugin_class_instances:
-                if hasattr(c, name):
-                    o = getattr(c, name)
-
-                    # Ignore non-method attributes. We don't want
-                    # to worry about collisions between plugin variables.
-
-                    if not inspect.ismethod(o):
-                        continue
-
-                    objs.append((c,o))
-
-            if not objs:
-                # Didn't find one, really doesn't exist
-                raise
-        else:
-            if not inspect.ismethod(objs[0][1]):
-                return objs[0][1]
-
-        # At this point we have created objs, which is a list of tuples
-        # (matched class, matched function) that has at least one tuple in
-        # it.
-
-        # If we have multiple matches, something is wrong, unless they're
-        # hooks (functions that begin withe hook_pre_ / hook_post_ ), which
-        # are assumed to return lists by code later in this function.
-
-        if any([ name.startswith(x) for x in ['hook_pre_','hook_post_']]):
-            return objs
-
-        if len(objs) > 1:
-            log.error("Too many matches for attribute %s!" % name)
-            raise AttributeError
-
-        # Okay, now we have a single object to work on, regardless of whether
-        # it's from the current class, or from the subclasses.
-
-        origin_obj, o = objs[0][0], objs[0][1]
-
-        # repr on the func gives a unique identifier. We use this to
-        # differentiate the functions without being as shallow as using name.
-
-        func = repr(o.__func__)
-
-        # We've done this collection before, go ahead and use the stored value.
-        if name in self.plugin_funcs:
-            return self.plugin_funcs[func]
-
-        # Now we're going to create a wrapper function that can:
-        # - potentially transform the arguments arbitrarily using
-        #   arg_transforms.
-        # - calls all hook_pre/hook_post functions
-        # - calls either the real function or one overriding function
-        #
-        # We take advantage of the functionality built in above to count on
-        # the fact that getting the 'hook_pre_name' and 'hook_post_name'
-        # attributes will build and return a list dynamically. Because of the
-        # more expensive nature of __getattribute__ we just attempt to get
-        # it, instead of calling hasattr first.
-
-        try:
-            over = getattr(self, "override_" + name)
-        except AttributeError:
-            over = o
-
-        try:
-            hook_pres = getattr(self, "hook_pre_" + name)
-        except AttributeError:
-            hook_pres = []
-
-        try:
-            hook_posts = getattr(self, "hook_post_" + name)
-        except AttributeError:
-            hook_posts = []
-
-        if func in arg_transforms:
-            argt = arg_transforms[func]
-        else:
-            argt = None
-
-        # If we're not going to use any of the features, then don't bother
-        # wrapping. This keeps out unnecessary resources and needlessly
-        # complex backtraces.
-
-        if not argt and not hook_posts and not hook_pres and over == o:
-            self.plugin_funcs[func] = o
-            return o
-
-        def newfunc(*args, **kwargs):
-            if argt:
-                r = argt(args[0], origin_obj, *args[1:], **kwargs)
-                if not r:
-                    return
-                args, kwargs = r
-
-            for c, f in hook_pres:
-                try:
-                    f(*args, **kwargs)
-                except Exception, e:
-                    tb = traceback.format_exc(e)
-                    log.error("Exception running pre hook %s from %s" % (f, c))
-                    log.error("\n" + "".join(tb))
-
-            r = over(*args, **kwargs)
-            kwargs["ret"] = r
-
-            for c, f in hook_posts:
-                try:
-                    f(*args, **kwargs)
-                except Exception, e:
-                    tb = traceback.format_exc(e)
-                    log.error("Exception running post hook %s from %s" % (f, c))
-                    log.error("\n" + "".join(tb))
-
-            return r
-
-        self.plugin_funcs[func] = newfunc
-        return newfunc
+        if name == "plugin_attrs" or name not in self.plugin_attrs:
+            return object.__getattribute__(self, name)
+        return self.plugin_attrs[name]
 
 # Plugin is the base class for all of the separate plugin classes for each Gui
 # object. There are two reasons to pin plugins to an empty class:
