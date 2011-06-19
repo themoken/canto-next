@@ -7,6 +7,7 @@
 #   it under the terms of the GNU General Public License version 2 as 
 #   published by the Free Software Foundation.
 
+from plugins import PluginHandler, Plugin
 from protect import protection
 from tag import alltags
 import logging
@@ -56,8 +57,16 @@ class CantoFeeds():
 
 allfeeds = CantoFeeds()
 
-class CantoFeed():
+class DaemonFeedPlugin(Plugin):
+    pass
+
+class CantoFeed(PluginHandler):
     def __init__(self, shelf, name, URL, rate, keep, **kwargs):
+        PluginHandler.__init__(self)
+
+        self.plugin_class = DaemonFeedPlugin
+        self.update_plugin_lookups()
+
         allfeeds.add_feed(URL, self)
         self.shelf = shelf
         self.name = name
@@ -301,6 +310,22 @@ class CantoFeed():
                 self.update_contents["entries"].append(\
                         self.old_contents["entries"][idx])
                 self.items.append(item)
+
+
+        # Allow plugins DaemonFeedPlugins defining edit_* functions to have a
+        # crack at the contents before we commit to disk.
+
+        for attr in self.plugin_attrs.keys():
+            if not attr.startswith("edit_"):
+                continue
+
+            try:
+                a = getattr(self, attr)
+                a(feed = self, newcontent = self.update_contents)
+            except:
+                log.error("Error running feed editing plugin")
+                log.error(traceback.format_exc())
+
 
         # Commit the updates to disk.
         self.shelf[self.URL] = self.update_contents

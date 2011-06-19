@@ -26,6 +26,7 @@ from hooks import on_hook, call_hook
 from tag import alltags
 from format import escsplit
 from transform import eval_transform
+from plugins import try_plugins
 
 import traceback
 import logging
@@ -101,6 +102,9 @@ class CantoBackend(CantoServer):
             log.info("verbosity = %d" % self.verbosity)
 
         log.info("conf_dir = %s" % self.conf_dir)
+
+        # Evaluate any plugins
+        try_plugins(self.conf_dir)
 
         if self.no_fetch:
             log.info("NOFETCH, will not be automatically updating.")
