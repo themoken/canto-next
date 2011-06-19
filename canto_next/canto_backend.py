@@ -248,8 +248,8 @@ class CantoBackend(CantoServer):
 
     # Fetch any feeds that need fetching.
 
-    def do_fetch(self):
-        self.fetch.fetch()
+    def do_fetch(self, force = False):
+        self.fetch.fetch(force)
         self.fetch_timer = 60
 
     # VERSION -> X.Y
@@ -450,6 +450,13 @@ class CantoBackend(CantoServer):
 
     def cmd_update(self, socket, args):
         self.do_fetch()
+
+    # FORCEUPDATE {}
+
+    # This command, on the other hand, *will* force the timers.
+
+    def cmd_forceupdate(self, socket, args):
+        self.do_fetch(True)
 
     # The workhorse that maps all requests to their handlers.
     def run(self):

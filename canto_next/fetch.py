@@ -114,9 +114,9 @@ class CantoFetch():
                 return True
         return False
 
-    def fetch(self):
+    def fetch(self, force):
         for feed in self.conf.feeds:
-            if not self.needs_update(feed):
+            if not force and not self.needs_update(feed):
                 continue
 
             if self.still_working(feed.URL):

@@ -50,6 +50,7 @@ class CantoRemote(CantoClient):
         print_wrap("\taddfeed - subscribe to a new feed")
         print_wrap("\tlistfeeds - list all subscribed feeds")
         print_wrap("\tdelfeed - unsubscribe from a feed")
+        print_wrap("\tforce-update - refetch all feeds")
         print_wrap("\tconfig - change configuration variables")
         print_wrap("\texport - export feed list as OPML")
         print_wrap("\timport - import feed list from OPML")
@@ -381,12 +382,20 @@ class CantoRemote(CantoClient):
 
         self.write("DIE", {})
 
+    def cmd_force_update(self):
+        """USAGE: canto-remote force-update
+
+    Force fetch of all feeds."""
+
+        self.write("FORCEUPDATE", {})
+
     def cmd_help(self):
         """USAGE: canto-remote help [command]"""
         if len(sys.argv) < 2:
             return False
 
-        command = "cmd_" + sys.argv[1]
+        command = "cmd_" + sys.argv[1].replace("-","_")
+
         if command in dir(self):
             print_wrap(getattr(self, command).__doc__)
         else:
@@ -400,7 +409,8 @@ class CantoRemote(CantoClient):
 
         sys.argv = [ decoder(a) for a in sys.argv ]
 
-        command = "cmd_" + sys.argv[0]
+        command = "cmd_" + sys.argv[0].replace("-","_")
+
         if command in dir(self):
             func = getattr(self, command)
             r = func()
