@@ -29,7 +29,7 @@ class CantoTransform():
     def __str__(self):
         return self.name
 
-    def __call__(self, tag):
+    def __call__(self, tag, immune):
         a = {}
         f = allfeeds.items_to_feeds(tag)
         needed = self.needed_attributes(tag)
@@ -39,12 +39,12 @@ class CantoTransform():
             for i in f[feed]:
                 attrs[i] = needed
             a.update(feed.get_attributes(f[feed], attrs))
-        return self.transform(tag, a)
+        return self.transform(tag, a, immune)
 
     def needed_attributes(self, tag):
         return []
 
-    def transform(self, items, attrs):
+    def transform(self, items, attrs, immune):
         return items
 
 # A StateFilter will filter out items that match a particular state. Supports
@@ -58,7 +58,7 @@ class StateFilter(CantoTransform):
     def needed_attributes(self, tag):
         return ["canto-state"]
 
-    def transform(self, items, attrs):
+    def transform(self, items, attrs, immune):
         if self.state[0] == "-":
             state = self.state[1:]
             keep = True
@@ -67,7 +67,7 @@ class StateFilter(CantoTransform):
             keep = False
 
         return [ i for i in items if \
-                (state in attrs[i]["canto-state"]) == keep]
+                (state in attrs[i]["canto-state"]) == keep or immune(i)]
 
 # Filter out items whose [attribute] content matches an arbitrary regex.
 
@@ -86,22 +86,26 @@ class ContentFilterRegex(CantoTransform):
             return []
         return [ self.attribute ]
 
-    def transform(self, items, attrs):
+    def transform(self, items, attrs, immune):
         if not self.match:
-            return item
+            return items
 
         r = []
         for item in items:
-           a = attrs[item]
-           if self.attribute not in a:
-               r.append(item)
-               continue
-           if type(a[self.attribute]) != unicode:
-               log.error("Can't match non-string!")
-               continue
+            if immune(item):
+                r.append(item)
+                continue
 
-           if not self.match.match(a[self.attribute]):
-               r.append(item)
+            a = attrs[item]
+            if self.attribute not in a:
+                r.append(item)
+                continue
+            if type(a[self.attribute]) != unicode:
+                log.error("Can't match non-string!")
+                continue
+
+            if not self.match.match(a[self.attribute]):
+                r.append(item)
         return r
 
 # Simple basic-string abstraction of the above.
@@ -120,7 +124,7 @@ class SortTransform(CantoTransform):
     def needed_attributes(self, tag):
         return [ self.attr ]
 
-    def transform(self, items, attrs):
+    def transform(self, items, attrs, immune):
         r = [ ( attrs[item][self.attr], item ) for item in items ]
         r.sort(self.sort)
         return [ item[1] for item in r ]
@@ -146,10 +150,10 @@ class AllTransform(CantoTransform):
                     needed.append(a)
         return needed
 
-    def transform(self, items, attrs):
+    def transform(self, items, attrs, immune):
         good_items = items[:]
         for t in self.transforms:
-            good_items = t.transform(good_items, attrs)
+            good_items = t.transform(good_items, attrs, immune)
             if not good_items:
                 break
         return good_items
@@ -174,12 +178,12 @@ class AnyTransform(CantoTransform):
                     needed.append(a)
         return needed
 
-    def transform(self, items, attrs):
+    def transform(self, items, attrs, immune):
         good_items = []
         per_transform = []
 
         for t in self.transforms:
-            per_transform.append(t.transform(items, attrs))
+            per_transform.append(t.transform(items, attrs, immune))
 
         for pt in per_transform:
             for item in pt:

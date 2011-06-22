@@ -32,6 +32,21 @@ class Protection():
         log.debug("item %s is not protected." % (item,))
         return False
 
+    # Return whether a single item tuple is protected by
+    # a particular key.
+
+    def protected_by(self, item, reason):
+        if reason not in self.prot:
+            log.debug("No reason \"%s\" known." % (reason,))
+            return False
+
+        if item in self.prot[reason]:
+            log.debug("item %s is protected by %s" % (item, reason))
+            return True
+
+        log.debug("item %s is not protected by %s" % (item, reason))
+        return False
+
     # Put a set of items under the protection of key.
 
     def protect(self, key, items):

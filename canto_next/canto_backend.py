@@ -243,11 +243,20 @@ class CantoBackend(CantoServer):
     # been performed on them.
 
     def apply_transforms(self, socket, tag):
+
+        # Lambda up a function that, given an id, can tell a filter if it's
+        # protected in this circumstance without allowing filters access to the
+        # socket, or requiring them to know anything about the protection
+        # scheme.
+
+        filter_immune = lambda x :\
+                protection.protected_by(x, (socket, "filter-immune"))
+
         if self.conf.global_transform:
-            tag = self.conf.global_transform(tag)
+            tag = self.conf.global_transform(tag, filter_immune)
         if socket in self.socket_transforms and\
                 self.socket_transforms[socket]:
-            tag = self.socket_transforms[socket](tag)
+            tag = self.socket_transforms[socket](tag, filter_immune)
         return tag
 
     # Fetch any feeds that need fetching.
