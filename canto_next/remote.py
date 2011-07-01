@@ -228,7 +228,6 @@ class CantoRemote(CantoClient):
         for arg in sys.argv[1:]:
             var, val = escsplit(arg, "=", 1, 1)
             var = var.lstrip().rstrip()
-            val = val.lstrip().rstrip()
 
             section, secvar = escsplit(var, ".", 1, 1)
             section = section.lstrip().rstrip()
@@ -239,6 +238,7 @@ class CantoRemote(CantoClient):
                 continue
 
             if val:
+                val = val.lstrip().rstrip()
                 if section in sets:
                     sets[section].update({secvar : val})
                 else:
