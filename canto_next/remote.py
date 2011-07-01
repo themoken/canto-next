@@ -51,7 +51,8 @@ class CantoRemote(CantoClient):
         print_wrap("\tlistfeeds - list all subscribed feeds")
         print_wrap("\tdelfeed - unsubscribe from a feed")
         print_wrap("\tforce-update - refetch all feeds")
-        print_wrap("\tconfig - change configuration variables")
+        print_wrap("\tconfig - change / query configuration variables")
+        print_wrap("\tone-config - change / query one configuration variable")
         print_wrap("\texport - export feed list as OPML")
         print_wrap("\timport - import feed list from OPML")
         print_wrap("\tkill - cleanly kill the daemon")
@@ -209,29 +210,19 @@ class CantoRemote(CantoClient):
                 print_wrap("Unsubscribing from %s" % f["url"])
                 self.write("SETCONFIGS",  { "Feed " + f["tag"] : None })
 
-    def cmd_config(self):
-        """USAGE: canto-remote config [option](=value) ...
-    Where option is a full variable declaration like 'section.variable' and
-    value is any string. If value is omitted, the current value will be printed.
-    Any number of options can be printed or set at one time.
-
-    NOTE: validation is done by the client that uses the variable, canto-remote
-    will let you give bad values, or even set values to non-existent
-    variables."""
-
-        if len(sys.argv) < 2:
-            return False
-
+    def _config(self, args):
         sets = {}
         gets = []
 
-        for arg in sys.argv[1:]:
+        for arg in args:
             var, val = escsplit(arg, "=", 1, 1)
             var = var.lstrip().rstrip()
 
             section, secvar = escsplit(var, ".", 1, 1)
             section = section.lstrip().rstrip()
-            secvar = secvar.lstrip().rstrip()
+
+            if secvar:
+                secvar = secvar.lstrip().rstrip()
 
             if not section or not secvar:
                 print_wrap("ERROR: Unable to parse \"%s\" as section.variable" % var)
@@ -251,6 +242,43 @@ class CantoRemote(CantoClient):
         self.write("CONFIGS", gets)
         self._read_back_config()
         return True
+
+    def cmd_one_config(self):
+        """USAGE: canto-remote one-config [option] ( = value)
+    Where option is a full variable declaration like 'section.variable' and
+    value is any string. If value is omitted, the current value will be printed.
+
+    This differs from config as only one option can be set/got at a time, but
+    it allows lax argument parsing (i.e. one-config CantoCurses.browser =
+    firefox %u will work as expected, without quoting.)
+
+    NOTE: validation is done by the client that uses the variable, canto-remote
+    will let you give bad values, or even set values to non-existent
+    variables."""
+
+        if len(sys.argv) < 2:
+            return False
+
+        arg = " ".join(sys.argv[1:])
+
+        return self._config([arg])
+
+    def cmd_config(self):
+        """USAGE: canto-remote config [option](=value) ...
+    Where option is a full variable declaration like 'section.variable' and
+    value is any string. If value is omitted, the current value will be printed.
+
+    This differs from one-config as multiple sets/gets can be done, but it is
+    more strict in terms of argument parsing.
+
+    NOTE: validation is done by the client that uses the variable, canto-remote
+    will let you give bad values, or even set values to non-existent
+    variables."""
+
+        if len(sys.argv) < 2:
+            return False
+
+        return self._config(sys.argv[1:])
 
     def cmd_export(self):
         """USAGE: canto-remote export
