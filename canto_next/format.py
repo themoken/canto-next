@@ -46,8 +46,13 @@ def escsplit(arg, delim, maxsplit=0, minsplit=0):
         if escaped:
             escaped = False
             acc += c
+
+        # We append the escape character because we just want to intelligently
+        # split, not unescape the components
+
         elif c == '\\':
             escaped = True
+            acc += c
         elif c == delim:
             r.append(acc)
             acc = ""
