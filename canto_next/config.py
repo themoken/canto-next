@@ -80,11 +80,18 @@ class CantoConfig():
 
         self.feed_defaults = {}
 
+        self.tag_validators = [
+                ("transform", self.validate_set_transform, False),
+        ]
+
+        self.tag_defaults = {}
+
         # Map sections to validator lists
 
         self.validators = [
                 ("defaults", self.defaults_validators, self.defaults_defaults),
                 ("Feed .*", self.feed_validators, self.feed_defaults),
+                ("Tag .*", self.tag_validators, self.tag_defaults),
         ]
 
     def escape(self, s):
@@ -109,7 +116,9 @@ class CantoConfig():
         self.feeds = []
         self.transforms = []
         self.urls = []
+
         self.global_transform = None
+        self.tag_transforms = {}
 
     def parse(self, fromfile=True):
         self.reset()
@@ -206,7 +215,8 @@ class CantoConfig():
             val, groups = settings[option]
             r = self.get_transform_by_name(val)
             if r:
-                self.validated[section][option] = r
+                self.validated[section][option] = val
+                return
 
             # Failing find by name, try to compile it on the fly.
             try:
@@ -390,6 +400,15 @@ class CantoConfig():
                     ordered_feeds[valsec["order"]] = feed
                 else:
                     unordered_feeds.append(feed)
+
+            elif section.startswith("Tag "):
+                self.final[section] = valsec
+
+                if "transform" not in valsec:
+                    valsec["transform"] = None
+
+                self.tag_transforms[section[4:]] =\
+                        eval_transform(valsec["transform"])
 
         # Make order explicit, regardless of whether it was in the first place.
         self.feeds = filter(None, ordered_feeds + unordered_feeds)

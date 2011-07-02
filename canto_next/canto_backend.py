@@ -252,12 +252,23 @@ class CantoBackend(CantoServer):
         filter_immune = lambda x :\
                 protection.protected_by(x, (socket, "filter-immune"))
 
+        tagobj = alltags.get_tag(tag)
+
+        # Global transform
         if self.conf.global_transform:
-            tag = self.conf.global_transform(tag, filter_immune)
+            tagobj = self.conf.global_transform(tagobj, filter_immune)
+
+        # Tag level transform
+        if tag in self.conf.tag_transforms and\
+                self.conf.tag_transforms[tag]:
+            tagobj = self.conf.tag_transforms[tag](tagobj, filter_immune)
+
+        # Temporary socket transform
         if socket in self.socket_transforms and\
                 self.socket_transforms[socket]:
-            tag = self.socket_transforms[socket](tag, filter_immune)
-        return tag
+            tagobj = self.socket_transforms[socket](tagobj, filter_immune)
+
+        return tagobj
 
     # Fetch any feeds that need fetching.
 
@@ -331,7 +342,7 @@ class CantoBackend(CantoServer):
 
         for tag in args:
             # get_tag returns a list invariably, but may be empty.
-            response[tag] = self.apply_transforms(socket, alltags.get_tag(tag))
+            response[tag] = self.apply_transforms(socket, tag)
 
             # ITEMS must protect all given items automatically to
             # avoid instances where an item disappears before a PROTECT
