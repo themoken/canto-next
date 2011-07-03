@@ -6,6 +6,7 @@
 #   it under the terms of the GNU General Public License version 2 as 
 #   published by the Free Software Foundation.
 
+from plugins import PluginHandler, Plugin
 from feed import allfeeds
 
 from threading import Thread
@@ -17,9 +18,20 @@ import time
 
 log = logging.getLogger("CANTO-FETCH")
 
-class CantoFetchThread(Thread):
+class DaemonFetchThreadPlugin(Plugin):
+    pass
+
+# This is the first time I've ever had a need for multiple inheritance.
+# I'm not sure if that's a good thing or not =)
+
+class CantoFetchThread(PluginHandler, Thread):
     def __init__(self, feed):
+        PluginHandler.__init__(self)
         Thread.__init__(self)
+
+        self.plugin_class = DaemonFetchThreadPlugin
+        self.update_plugin_lookups()
+
         self.feed = feed
 
     def run(self):
@@ -84,6 +96,22 @@ class CantoFetchThread(Thread):
         self.feed.update_contents["canto_update"] = time.time()
 
         log.debug("Parsed %s" % self.feed.URL)
+
+        # Allow DaemonFetchThreadPlugins to do any sort of fetch stuff
+        # before the thread is marked as complete.
+
+        for attr in self.plugin_attrs.keys():
+            if not attr.startswith("fetch_"):
+                continue
+
+            try:
+                a = getattr(self, attr)
+                a(feed = self.feed, newcontent = self.feed.update_contents)
+            except:
+                log.error("Error running fetch thread plugin")
+                log.error(traceback.format_exc())
+
+        log.debug("Plugins complete.")
 
 class CantoFetch():
     def __init__(self, shelf, conf):
