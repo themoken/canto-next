@@ -405,7 +405,7 @@ class CantoConfig():
                 self.final[section] = valsec
 
                 if "transform" not in valsec:
-                    valsec["transform"] = None
+                    valsec["transform"] = "None"
 
                 self.tag_transforms[section[4:]] =\
                         eval_transform(valsec["transform"])
