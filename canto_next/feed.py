@@ -10,6 +10,8 @@
 from plugins import PluginHandler, Plugin
 from protect import protection
 from tag import alltags
+
+import traceback
 import logging
 
 log = logging.getLogger("FEED")
@@ -325,7 +327,6 @@ class CantoFeed(PluginHandler):
             except:
                 log.error("Error running feed editing plugin")
                 log.error(traceback.format_exc())
-
 
         # Commit the updates to disk.
         self.shelf[self.URL] = self.update_contents
