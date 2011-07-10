@@ -9,8 +9,10 @@
 
 from hooks import on_hook
 
+import traceback
 import logging
 import shelve
+import anydbm
 
 log = logging.getLogger("SHELF")
 
@@ -49,6 +51,27 @@ class CantoShelf():
     def sync(self):
         self.shelf.sync()
 
+        # This is a workaround for shelves implemented with database types
+        # (like gdbm) that won't shrink themselves.
+
+        # Because we're a delete heavy workload (as we drop items that are no
+        # longer relevant), we check for reorganize() and use it on close,
+        # which should shrink the DB and keep it from growing into perpetuity.
+
+        try:
+            db = anydbm.open(self.filename, "w")
+            if hasattr(db, 'reorganize'):
+                reorg = getattr(db, 'reorganize')
+                reorg()
+            db.close()
+        except Exception, e:
+            log.warn("Failed to reorganize db:")
+            log.warn(traceback.format_exc())
+
     def close(self):
+        # Syncing is done on close by shelve, but we do it manually to
+        # potentially reorganize (trim) the database
+
+        self.sync()
         self.shelf.close()
         self.shelf = None
