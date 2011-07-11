@@ -18,6 +18,7 @@ log = logging.getLogger("SHELF")
 
 class CantoShelf():
     def __init__(self, filename, writeback):
+        self.set_flag = False
         self.filename = filename
 
         if writeback:
@@ -32,6 +33,7 @@ class CantoShelf():
         on_hook("exit", self.close)
 
     def __setitem__(self, name, value):
+        self.set_flag = True
         name = name.encode("UTF-8")
         self.shelf[name] = value
 
@@ -50,6 +52,11 @@ class CantoShelf():
 
     def sync(self):
         self.shelf.sync()
+
+        if not self.set_flag:
+            return
+
+        self.set_flag = False
 
         # This is a workaround for shelves implemented with database types
         # (like gdbm) that won't shrink themselves.
