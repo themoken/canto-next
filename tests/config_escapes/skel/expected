@@ -14,7 +14,7 @@ REMOTE_WAIT 1
 
 # Check that arguments given from clients are properly unescaped.
 REMOTE_WAIT 1
-(u'CONFIGS', {'Test=': {'opt2': None}})
+(u'CONFIGS', {'Test\\=': {'opt': u'val2', 'opt2': u'val3'}})
 
 >>> Remote #2 <<<
 SETCONFIGS { "Test\=" : { "opt" : "val2", "opt2" : "val3" } }

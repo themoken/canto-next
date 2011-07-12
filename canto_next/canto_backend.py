@@ -430,8 +430,11 @@ class CantoBackend(CantoServer):
 
             for setting in args[section]:
                 self.conf.set(section, setting, args[section][setting])
-                changes.update({ section :\
-                        { setting : args[section][setting]}})
+                c = { setting : args[section][setting] }
+                if section in changes:
+                    changes[section].update(c)
+                else:
+                    changes[section] = c
 
         call_hook("config_change", [changes, socket])
 
