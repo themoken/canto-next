@@ -49,6 +49,9 @@ logging.basicConfig(
 
 log = logging.getLogger("CANTO-DAEMON")
 
+FETCH_CHECK_INTERVAL = 60
+TRIM_INTERVAL = 300
+
 class CantoBackend(CantoServer):
 
     def init(self):
@@ -58,6 +61,10 @@ class CantoBackend(CantoServer):
         # Shelf for feeds:
         self.fetch = None
         self.fetch_timer = 0
+
+        # Timer to flush the database changes
+        # and trim the file down to size.
+        self.trim_timer = TRIM_INTERVAL
 
         # Whether fetching is inhibited.
         self.no_fetch = False
@@ -274,7 +281,7 @@ class CantoBackend(CantoServer):
 
     def do_fetch(self, force = False):
         self.fetch.fetch(force)
-        self.fetch_timer = 60
+        self.fetch_timer = FETCH_CHECK_INTERVAL
 
     # VERSION -> X.Y
 
@@ -524,6 +531,7 @@ class CantoBackend(CantoServer):
             if self.alarmed:
                 # Decrement all timers
                 self.fetch_timer -= 1
+                self.trim_timer -= 1
 
                 if self.verbosity > 1:
                     log.debug("Alarmed.")
@@ -533,6 +541,12 @@ class CantoBackend(CantoServer):
 
                 if self.fetch_timer <= 0 and not self.no_fetch:
                     self.do_fetch()
+
+                # Trim the database file.
+
+                if self.trim_timer <= 0:
+                    self.shelf.trim()
+                    self.trim_timer = TRIM_INTERVAL
 
                 self.alarmed = False
 

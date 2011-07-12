@@ -18,13 +18,10 @@ log = logging.getLogger("SHELF")
 
 class CantoShelf():
     def __init__(self, filename, writeback):
-        self.set_flag = False
+        self.writeback = writeback
         self.filename = filename
 
-        if writeback:
-            self.shelf = shelve.open(self.filename, 'c', None, True)
-        else:
-            self.shelf = shelve.open(self.filename)
+        self._open()
 
         # Sync after a block of requests has been fulfilled,
         # close the database all together on exit.
@@ -32,8 +29,13 @@ class CantoShelf():
         on_hook("work_done", self.sync)
         on_hook("exit", self.close)
 
+    def _open(self):
+        if self.writeback:
+            self.shelf = shelve.open(self.filename, 'c', None, True)
+        else:
+            self.shelf = shelve.open(self.filename)
+
     def __setitem__(self, name, value):
-        self.set_flag = True
         name = name.encode("UTF-8")
         self.shelf[name] = value
 
@@ -53,11 +55,11 @@ class CantoShelf():
     def sync(self):
         self.shelf.sync()
 
-        if not self.set_flag:
-            return
+    def trim(self):
+        self.close()
+        self._open()
 
-        self.set_flag = False
-
+    def _reorganize(self):
         # This is a workaround for shelves implemented with database types
         # (like gdbm) that won't shrink themselves.
 
@@ -76,9 +78,6 @@ class CantoShelf():
             log.warn(traceback.format_exc())
 
     def close(self):
-        # Syncing is done on close by shelve, but we do it manually to
-        # potentially reorganize (trim) the database
-
-        self.sync()
         self.shelf.close()
+        self._reorganize()
         self.shelf = None
