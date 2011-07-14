@@ -201,8 +201,8 @@ class CantoRemote(CantoClient):
 
         term = sys.argv[1]
 
-        for f in self._get_feeds():
-            matches = [ f["url"], f["tag"]]
+        for idx, f in enumerate(self._get_feeds()):
+            matches = [ f["url"], f["tag"], "%s" % idx]
             if "alias" in f:
                 matches.append(f["alias"])
 
