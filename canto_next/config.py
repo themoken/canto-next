@@ -74,13 +74,13 @@ class CantoConfig():
                 ("order", self.validate_int, False),
                 ("username", self.validate_string, False),
                 ("password", self.validate_string, False),
-                ("tags", self.validate_string_list, False),
         ]
 
         self.feed_defaults = {}
 
         self.tag_validators = [
                 ("transform", self.validate_set_transform, False),
+                ("extra_tags", self.validate_string_list, False),
         ]
 
         self.tag_defaults = {}
@@ -107,7 +107,6 @@ class CantoConfig():
         self.urls = []
 
         self.global_transform = None
-        self.tag_transforms = {}
 
     def parse(self, fromfile=True):
         self.reset()
@@ -358,8 +357,33 @@ class CantoConfig():
             if section == "defaults":
                 self.final["defaults"] = valsec
 
-            # Collect arguments to instantiate.
-            elif section.startswith("Feed "):
+            elif section.startswith("Tag "):
+                self.final[section] = valsec
+
+                if "transform" not in valsec:
+                    valsec["transform"] = "None"
+                if "extra_tags" not in valsec:
+                    valsec["extra_tags"] = []
+
+                alltags.tag_transform(section[4:],\
+                        eval_transform(valsec["transform"]))
+                alltags.set_extra_tags(section[4:], valsec["extra_tags"])
+
+        # Identical invariant as the above, but this ensures that Feed objects
+        # are instantiated last, after defaults and tags are setup. This is
+        # important so that when the feed items add themselves to the maintags,
+        # any extra tags (which would be handled above) are honored.
+
+        # Forcing this separation keeps the extra_tag logic in CantoTags simple
+        # as it can rely on getting an add_tag for every item, rather than
+        # having to keep extra_tags up to date on update. Iterating twice over
+        # the config headers is most likely quicker than iterating over the
+        # potentially huge tag lists required for an update of that nature.
+
+        for section in self.validated:
+            valsec = self.validated[section]
+
+            if section.startswith("Feed "):
                 self.final[section] = valsec
                 name = section[5:]
 
@@ -369,7 +393,7 @@ class CantoConfig():
                     valsec["keep"] = self.validated["defaults"]["keep"]
 
                 kws = {}
-                for k in ["password", "username", "tags"]:
+                for k in ["password", "username"]:
                     if k in valsec:
                         kws[k] = valsec[k]
 
@@ -389,15 +413,6 @@ class CantoConfig():
                     ordered_feeds[valsec["order"]] = feed
                 else:
                     unordered_feeds.append(feed)
-
-            elif section.startswith("Tag "):
-                self.final[section] = valsec
-
-                if "transform" not in valsec:
-                    valsec["transform"] = "None"
-
-                self.tag_transforms[section[4:]] =\
-                        eval_transform(valsec["transform"])
 
         # Make order explicit, regardless of whether it was in the first place.
         self.feeds = filter(None, ordered_feeds + unordered_feeds)

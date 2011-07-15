@@ -266,9 +266,9 @@ class CantoBackend(CantoServer):
             tagobj = self.conf.global_transform(tagobj, filter_immune)
 
         # Tag level transform
-        if tag in self.conf.tag_transforms and\
-                self.conf.tag_transforms[tag]:
-            tagobj = self.conf.tag_transforms[tag](tagobj, filter_immune)
+        if tag in alltags.tag_transforms and\
+                alltags.tag_transforms[tag]:
+            tagobj = alltags.tag_transforms[tag](tagobj, filter_immune)
 
         # Temporary socket transform
         if socket in self.socket_transforms and\

@@ -84,10 +84,6 @@ class CantoFeed(PluginHandler):
         if "password" in kwargs:
             self.password = kwargs["password"]
 
-        self.tags = []
-        if "tags" in kwargs:
-            self.tags = kwargs["tags"]
-
         self.update_contents = None
         self.items = []
         self.olditems = []
@@ -251,8 +247,6 @@ class CantoFeed(PluginHandler):
             cacheitem["id"] = (self.URL, item["id"])
 
             alltags.add_tag(cacheitem["id"], self.name, "maintag")
-            for tag in self.tags:
-                alltags.add_tag(cacheitem["id"], tag, "feed")
 
             # Move over custom content from item.
             # Custom content is denoted with a key that
