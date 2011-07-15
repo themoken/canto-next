@@ -73,3 +73,15 @@ def escsplit(arg, delim, maxsplit=0, minsplit=0):
         r += [ None ] * ((minsplit + 1) - len(r))
 
     return r
+
+conf_chars = [ '.', ':', '=' ]
+
+def conf_escape(s):
+    for char in conf_chars:
+        s = s.replace(char, "\\" + char)
+    return s
+
+def conf_unescape(s):
+    for char in conf_chars:
+        s = s.replace("\\" + char, char)
+    return s

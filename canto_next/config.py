@@ -10,7 +10,7 @@
 from encoding import decoder, locale_enc
 from transform import eval_transform
 from feed import allfeeds, CantoFeed
-from format import escsplit
+from format import escsplit, conf_escape, conf_unescape
 from tag import alltags
 
 import ConfigParser
@@ -41,7 +41,6 @@ class CantoConfig():
     def __init__(self, filename, shelf):
         self.filename = filename
         self.shelf = shelf
-        self.conf_chars = [ '.', ':', '=' ]
 
         # Validator list because order is important, things like global
         # transforms need to be evaluated *after* the transforms are defined for
@@ -94,16 +93,6 @@ class CantoConfig():
                 ("Tag .*", self.tag_validators, self.tag_defaults),
         ]
 
-    def escape(self, s):
-        for char in self.conf_chars:
-            s = s.replace(char, "\\" + char)
-        return s
-
-    def unescape(self, s):
-        for char in self.conf_chars:
-            s = s.replace("\\" + char, char)
-        return s
-
     def reset(self):
         allfeeds.reset()
         alltags.reset()
@@ -150,7 +139,7 @@ class CantoConfig():
             log.info("Read %s" % self.filename)
 
         for section in self.cfgp.sections():
-            esection = decoder(self.escape(section))
+            esection = decoder(conf_escape(section))
             self.parsed[esection] = {}
 
             for option in self.cfgp.options(section):
@@ -427,7 +416,7 @@ class CantoConfig():
         log.debug("setting %s.%s = %s" % (section, option, value))
 
         # Unescape from backend
-        section = self.unescape(section)
+        section = conf_unescape(section)
 
         # Config escape %%
         if type(value) in [unicode, str]:
@@ -472,7 +461,7 @@ class CantoConfig():
 
     def remove_section(self, section):
         del self.final[section]
-        return self.cfgp.remove_section(self.unescape(section))
+        return self.cfgp.remove_section(conf_unescape(section))
 
     def write(self):
         try:
