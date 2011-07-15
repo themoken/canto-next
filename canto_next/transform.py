@@ -6,7 +6,9 @@
 #   it under the terms of the GNU General Public License version 2 as 
 #   published by the Free Software Foundation.
 
+from format import conf_escape
 from feed import allfeeds
+from tag import alltags
 
 import logging
 import re
@@ -191,6 +193,38 @@ class AnyTransform(CantoTransform):
                     good_items.append(item)
         return good_items
 
+class InTags(CantoTransform):
+    def __init__(self, *args):
+        name = "in tags: %s" % (args,)
+
+        CantoTransform.__init__(self, name)
+
+        # Attempt to conf_escape, so that users can specify "tag:extra" for
+        # example, and it will match up with the escaped "tag\:extra" in
+        # alltags
+
+        self.tags = []
+        for tag in args:
+            self.tags.append(conf_escape(tag))
+
+    def needed_attributes(self, tag):
+        return []
+
+    def transform(self, items, attrs, immune):
+        good = []
+
+        for item in items:
+            if immune(item):
+                good.append(item)
+                continue
+
+            for itag in alltags.items_to_tags([item]):
+                if itag in self.tags:
+                    good.append(item)
+                    break
+
+        return good
+
 # Transform_locals is a list of elements that we pass to the eval() call when
 # evaluating a transform line from the config. Passing these into the local
 # scope allows simple filters to be created on the fly.
@@ -200,6 +234,7 @@ transform_locals["ContentFilterRegex"] = ContentFilterRegex
 transform_locals["ContentFilter"] = ContentFilter
 transform_locals["All"] = AllTransform
 transform_locals["Any"] = AnyTransform
+transform_locals["InTags"] = InTags
 
 transform_locals["filter_read"] = StateFilter("read")
 transform_locals["sort_alphabetical"] =\
