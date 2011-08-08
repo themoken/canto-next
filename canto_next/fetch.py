@@ -114,9 +114,8 @@ class CantoFetchThread(PluginHandler, Thread):
         log.debug("Plugins complete.")
 
 class CantoFetch():
-    def __init__(self, shelf, conf):
+    def __init__(self, shelf):
         self.shelf = shelf
-        self.conf = conf
         self.threads = []
 
     def needs_update(self, feed):
@@ -143,7 +142,7 @@ class CantoFetch():
         return False
 
     def fetch(self, force):
-        for feed in self.conf.feeds:
+        for feed in allfeeds.get_feeds():
             if not force and not self.needs_update(feed):
                 continue
 

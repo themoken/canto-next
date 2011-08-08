@@ -6,7 +6,6 @@
 #   it under the terms of the GNU General Public License version 2 as 
 #   published by the Free Software Foundation.
 
-from format import conf_escape
 from feed import allfeeds
 from tag import alltags
 
@@ -198,14 +197,7 @@ class InTags(CantoTransform):
         name = "in tags: %s" % (args,)
 
         CantoTransform.__init__(self, name)
-
-        # Attempt to conf_escape, so that users can specify "tag:extra" for
-        # example, and it will match up with the escaped "tag\:extra" in
-        # alltags
-
-        self.tags = []
-        for tag in args:
-            self.tags.append(conf_escape(tag))
+        self.tags = args
 
     def needed_attributes(self, tag):
         return []

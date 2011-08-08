@@ -13,10 +13,10 @@
 # 0.2 - Modified tags to escape the : separator such that tags handed out are
 #       immediaely read to be used as [ Tag -whatever- ] config headers.
 
-CANTO_PROTOCOL_VERSION = 0.2
+CANTO_PROTOCOL_VERSION = 0.3
 
 from feed import allfeeds
-from encoding import encoder, decoder
+from encoding import encoder, decoder, locale_enc
 from protect import protection
 from server import CantoServer
 from config import CantoConfig
@@ -159,9 +159,7 @@ class CantoBackend(CantoServer):
             else:
                 allfeeds.really_dead(feed)
 
-    # Propagate config changes to watching sockets.
-
-    def on_config_change(self, change, originating_socket):
+    def _reparse_config(self, originating_socket):
         self.conf.parse(False)
 
         if self.conf.errors:
@@ -170,29 +168,27 @@ class CantoBackend(CantoServer):
         else:
             self.conf.write()
 
-        # Force check of fetching. This automatically starts the fetch.
-        # for new feeds, but also takes any new settings (like rates)
-        # into account.
+        self.check_dead_feeds()
+        alltags.del_old_tags()
+
+    # Propagate config changes to watching sockets.
+
+    def on_config_change(self, change, originating_socket):
+
+        self._reparse_config(originating_socket)
+
+        # Force check of fetching. This automatically starts the fetch. For new
+        # feeds, but also takes any new settings (like rates) into account.
 
         self.fetch_timer = 0
 
-        # Create changed_items as arguments for CONFIGS to send changed
-        # keys to other sockets. This should cause CONFIGS to be sent
-        # with the exact contents of the change variable, but this uses the
-        # CONFIGS machinery.
-
-        changed_items = [ ]
-        for key in change.keys():
-            for opt in change[key].keys():
-                changed_items.append("%s.%s" % (key, opt))
+        # Pretend that the sockets *other* than the ones that made the change
+        # issued a CONFIGS for each of the root keys.
 
         for socket in self.watches["config"]:
             # Don't echo changes back to socket that made them.
             if socket != originating_socket:
-                self.cmd_configs(socket, changed_items)
-
-        self.check_dead_feeds()
-        alltags.del_old_tags()
+                self.cmd_configs(socket, change.keys())
 
     # Notify clients of new tags.
 
@@ -300,8 +296,8 @@ class CantoBackend(CantoServer):
 
     def cmd_listtags(self, socket, args):
         r = []
-        for feed in self.conf.feeds:
-            r.append("maintag\\:" + feed.name)
+        for feed in allfeeds.get_feeds():
+            r.append("maintag:" + feed.name)
         for tag in alltags.get_tags():
             if tag not in r:
                 r.append(tag)
@@ -394,49 +390,55 @@ class CantoBackend(CantoServer):
         for t in tags:
             call_hook("tag_change", [ t ])
 
-    # CONFIGS [ config.options ] -> { "option" : "value" ... }
+    # CONFIGS [ "top_sec", ... ] -> { "top_sec" : full_value }
 
     def cmd_configs(self, socket, args):
         if args:
             ret = {}
-            for opt in args:
-                section, setting = escsplit(opt, ".", 1, 1)
-                if not setting:
-                    ret[opt] = self.conf.get_section(opt)
-                    continue
-
-                try:
-                    val = self.conf.get(section, setting)
-                    if section in ret:
-                        ret[section].update({ setting : val })
-                    else:
-                        ret[section] = { setting : val }
-                except:
-                    log.error("Exception getting option %s" % opt)
+            for topsec in args:
+                if topsec in self.conf.json:
+                    ret[topsec] = self.conf.json[topsec]
         else:
-            ret = self.conf.get_sections()
+            ret = self.conf.json
 
         self.write(socket, "CONFIGS", ret)
 
-    # SETCONFIGS { "section" : {"option" : "value" } ... }
+    # Please NOTE that SET and DEL do no locking, no revision tracking
+    # whatsoever. There's no forcing clients to only make changes to
+    # configurations that they've already acknowledged.
+
+    # What I *have* done is harden the data structures so that with a little
+    # care, clients can do non-destructive changes to the config. For example,
+    # list objects in the config can have items added from multiple clients,
+    # without each client having to know it's complete contents. So two feeds
+    # added by different clients will still race (you can't tell which order
+    # the feeds will be in in relation to each other), but one add won't blow
+    # away the other.
+
+    # The bottom line though is that I don't want to implement any sort of
+    # config rejection capability (i.e. conflict handling) or lock /
+    # synchronization mechanism (on *either* the daemon or client side) just to
+    # allow users to do two diametrically opposed config settings in two
+    # different clients at the exact same time.
+
+    # It's just not worth it.
+
+    # SETCONFIGS { "key" : "value", ...}
 
     def cmd_setconfigs(self, socket, args):
-        changes = {}
-        for section in args.keys():
-            if not args[section]:
-                if self.conf.has_section(section):
-                    self.conf.remove_section(section)
-                continue
 
-            for setting in args[section]:
-                self.conf.set(section, setting, args[section][setting])
-                c = { setting : args[section][setting] }
-                if section in changes:
-                    changes[section].update(c)
-                else:
-                    changes[section] = c
+        self.conf.merge(args.copy())
 
-        call_hook("config_change", [changes, socket])
+        call_hook("config_change", [args, socket])
+
+
+    # DELCONFIGS { "key" : "DELETE", ...}
+
+    def cmd_delconfigs(self, socket, args):
+
+        self.conf.delete(args.copy())
+
+        call_hook("config_change", [args, socket])
 
     # WATCHCONFIGS
 
@@ -687,16 +689,16 @@ class CantoBackend(CantoServer):
         self.conf = CantoConfig(self.conf_path, self.shelf)
         self.conf.parse()
         if self.conf.errors:
-            print "ERRORS!"
-            for s in self.conf.errors:
-                for o in self.conf.errors[s]:
-                    print "%s.%s = %s <-- %s" %\
-                            (s, o, self.conf.errors[s][o][0],
-                                    self.conf.errors[s][o][1])
+            print "ERRORS:"
+            for key in self.conf.errors.keys():
+                for value, error in self.conf.errors[key]:
+                    s = "\t%s -> %s: %s" % (key, value, error)
+                    print s.encode(locale_enc)
+
             sys.exit(-1)
 
     def get_fetch(self):
-        self.fetch = CantoFetch(self.shelf, self.conf)
+        self.fetch = CantoFetch(self.shelf)
 
     def start(self):
         try:

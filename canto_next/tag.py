@@ -53,10 +53,10 @@ class CantoTags():
         # identified (maintag:Reddit), vs. tags added at the tag config level
         # (tag:Reddit), etc.
 
-        name = category + "\\:" + name
+        name = category + ":" + name
 
         if name in self.extra_tags:
-            extras = [ "tag\\:" + x for x in self.extra_tags[name] ]
+            extras = [ "tag:" + x for x in self.extra_tags[name] ]
         else:
             extras = []
 

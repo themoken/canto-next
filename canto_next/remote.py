@@ -10,6 +10,7 @@ from client import CantoClient
 from encoding import encoder, decoder
 from format import escsplit
 
+from xml.sax.saxutils import escape as xml_escape
 import xml.parsers.expat
 import feedparser
 import traceback
@@ -20,6 +21,56 @@ import sys
 
 def print_wrap(s):
     print encoder(s)
+
+# This is a hack to get around the fact that you can't do assignment in an eval
+# environment, without using some execfile trickery or parsing the variable
+# manually. This is most definitely eval abuse.
+
+# NOTE: var must be read to be eval'd, which basically means that it needs to
+# have \ escaped to \\ or it will escape the following character, which could
+# screw the assignment. Val, on the other hand, can just be a standard python
+# object
+
+# Any eval errors will be thrown, other than KeyError
+
+def assign_to_dict(d, var, val):
+    def add_to_dict(d, newkey):
+        cur = d
+        while cur.keys():
+            cur = cur[cur.keys()[0]]
+        cur[newkey] = {}
+
+    def merge_into(s, new, val):
+        while new.keys():
+
+            k = new.keys()[0]
+
+            # If new[k] is empty, this is the terminal value to overwrite
+            # with val and we're done.
+
+            if not new[k]:
+                s[k] = val
+                return
+
+            # If it's not in S, create a value
+            if new.keys()[0] not in s:
+                s[k] = {}
+
+            new = new[k]
+            s = s[k]
+
+    new = {}
+    com = "new" + var
+
+    while True:
+        try:
+            eval(com, {}, { "new" : new })
+        except KeyError, e:
+            add_to_dict(new, e.args[0])
+            continue
+        break
+
+    merge_into(d, new, val)
 
 class CantoRemote(CantoClient):
     def __init__(self):
@@ -76,21 +127,13 @@ class CantoRemote(CantoClient):
                     return r[1]
                 elif r[0] == "ERRORS":
                     print_wrap("ERRORS!")
-                    for s in r[1]:
-                        for o in r[1][s]:
-                            print_wrap("%s.%s = %s <-- %s" %\
-                                    (s, o, r[1][s][o][0], r[1][s][o][1]))
+                    for key in r[1].keys():
+                        for val, err in r[1][key]:
+                            print_wrap("%s -> %s: %s" % (key, val, err))
             elif r:
                 print_wrap("Unknown return: %s" % r)
                 break
         return None
-
-    def _read_back_config(self):
-        sections = self._wait_response("CONFIGS")
-        for section in sections:
-            for secvar in sections[section].keys():
-                print_wrap("%s.%s = %s" % (section, secvar,\
-                        sections[section][secvar]))
 
     def _autoname(self, URL):
         request = urllib2.Request(URL)
@@ -110,44 +153,25 @@ class CantoRemote(CantoClient):
         return None
 
     def _get_feeds(self):
-        self.write("LISTTAGS", [])
-        r = self._wait_response("LISTTAGS")
-
-        r = [ x[9:] for x in r if x.startswith("maintag") ]
-        self.write("CONFIGS", [ "Feed " + tag for tag in r ])
+        self.write("CONFIGS", [ "feeds" ])
         c = self._wait_response("CONFIGS")
 
-        ret = []
-
-        for tag in r:
-            t = {"tag" : tag}
-            f = "Feed " + tag
-
-            # Move any other interesting settings:
-            for att in c[f]:
-                t[att] = c[f][att]
-
-            ret.append(t)
-
-        return ret
+        return c["feeds"]
 
     def _addfeed(self, attrs):
+        # Fill out
         if "name" not in attrs or not attrs["name"]:
             attrs["name"] = self._autoname(attrs["url"])
         if not attrs["name"]:
+            print_wrap("Failed to autoname, please specify!")
             return False
 
         print_wrap("Adding feed %s - %s" % (attrs["url"], attrs["name"]))
 
-        configs = {}
-        name = "Feed " + attrs["name"]
-        del attrs["name"]
+        # SET merges the config options, so f will be appended to the
+        # current value of "feeds", rather than overwriting.
 
-        configs[name] = attrs
-
-        self.write("SETCONFIGS", configs )
-        self.write("CONFIGS", [ name ])
-        self._read_back_config()
+        self.write("SETCONFIGS", { "feeds" : [ attrs ] } )
         return True
 
     def cmd_addfeed(self):
@@ -185,7 +209,7 @@ class CantoRemote(CantoClient):
             return False
 
         for idx, f in enumerate(self._get_feeds()):
-            s = ("%d. " % idx) + f["tag"] + " "
+            s = ("%d. " % idx) + f["name"] + " "
 
             if "alias" in f:
                 s += "(" + f["alias"] + ")"
@@ -202,13 +226,13 @@ class CantoRemote(CantoClient):
         term = sys.argv[1]
 
         for idx, f in enumerate(self._get_feeds()):
-            matches = [ f["url"], f["tag"], "%s" % idx]
+            matches = [ f["url"], f["name"], "%s" % idx]
             if "alias" in f:
                 matches.append(f["alias"])
 
             if term in matches:
                 print_wrap("Unsubscribing from %s" % f["url"])
-                self.write("SETCONFIGS",  { "Feed " + f["tag"] : None })
+                self.write("DELCONFIGS",  { "feeds" : [ f ] })
 
     def _config(self, args):
         sets = {}
@@ -218,29 +242,35 @@ class CantoRemote(CantoClient):
             var, val = escsplit(arg, "=", 1, 1)
             var = var.lstrip().rstrip()
 
-            section, secvar = escsplit(var, ".", 1, 1)
-            section = section.lstrip().rstrip()
+            var = var.replace("\\","\\\\")
+            val = val.replace("\\","\\\\")
 
-            if secvar:
-                secvar = secvar.lstrip().rstrip()
-
-            if not section or not secvar:
-                print_wrap("ERROR: Unable to parse \"%s\" as section.variable" % var)
-                continue
+            # We'll want to read back any value, regardless
+            gets.append(var)
 
             if val:
-                val = val.lstrip().rstrip()
-                if section in sets:
-                    sets[section].update({secvar : val})
-                else:
-                    sets[section] = { secvar : val }
 
-            if var not in gets:
-                gets.append(var)
+                try:
+                    val = eval(val, {}, {})
+                except:
+                    print_wrap("Unable to parse value %s" % (val,))
+                    continue
+
+                assign_to_dict(sets, var, val)
 
         self.write("SETCONFIGS", sets)
-        self.write("CONFIGS", gets)
-        self._read_back_config()
+
+        self.write("CONFIGS", [])
+        c = self._wait_response("CONFIGS")
+
+        for var in gets:
+            try:
+                val = eval("c" + var, {}, { "c" : c })
+            except:
+                print_wrap("Error getting %s!" % var)
+                continue
+            print_wrap("%s = %s" % (var, val))
+
         return True
 
     def cmd_one_config(self):
@@ -296,8 +326,8 @@ class CantoRemote(CantoClient):
                 feedtype = "rss"
 
             print_wrap("""\t\t<outline text="%s" xmlUrl="%s" type="%s" />""" %\
-                (encoder(f["tag"].replace("\"","\\\"")),
-                 encoder(f["url"].replace("\"","\\\"")),
+                (xml_escape(f["name"].replace("\"","\\\"")),
+                 xml_escape(f["url"]),
                  feedtype))
 
         print_wrap("""\t</body>""")
@@ -343,6 +373,7 @@ class CantoRemote(CantoClient):
 
         parser = xml.parsers.expat.ParserCreate()
         parser.StartElementHandler = parse_opml
+        print data.encode("UTF-8")
         parser.Parse(data.encode("UTF-8"), 1)
 
         for feed in feeds:
@@ -378,7 +409,7 @@ class CantoRemote(CantoClient):
                 num = int(line.split(" ", 1)[-1])
                 for i in xrange(num):
                     r = self._wait_response(None)
-                    pp.pprint(r)
+                    print_wrap(pp.pformat(r))
                     sys.__stdout__.flush()
 
             elif line.startswith("REMOTE_IGNORE "):

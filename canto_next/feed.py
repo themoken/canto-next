@@ -18,10 +18,12 @@ log = logging.getLogger("FEED")
 
 class CantoFeeds():
     def __init__(self):
+        self.order = []
         self.feeds = {}
         self.dead_feeds = {}
 
     def add_feed(self, URL, feed):
+        self.order.append(URL)
         self.feeds[URL] = feed
         if URL in self.dead_feeds:
             del self.dead_feeds[URL]
@@ -31,6 +33,9 @@ class CantoFeeds():
             return self.feeds[URL]
         if URL in self.dead_feeds:
             return self.dead_feeds[URL]
+
+    def get_feeds(self):
+        return [ self.get_feed(URL) for URL in self.order]
 
     def items_to_feeds(self, items):
         f = {}
@@ -56,6 +61,7 @@ class CantoFeeds():
     def reset(self):
         self.dead_feeds = self.feeds
         self.feeds = {}
+        self.order = []
 
 allfeeds = CantoFeeds()
 

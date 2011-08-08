@@ -10,56 +10,54 @@
 from encoding import decoder, locale_enc
 from transform import eval_transform
 from feed import allfeeds, CantoFeed
-from format import escsplit, conf_escape, conf_unescape
 from tag import alltags
 
-import ConfigParser
 import traceback
 import logging
 import locale
 import codecs
+import json
 import os
 import re
 
 log = logging.getLogger("CONFIG")
 
-default_config = """\
-[Feed Canto]
-url = http://codezen.org/static/canto.xml
-order = 0
+default_config =\
+{
+        "defaults" :
+        {
+            "rate" : 10,
+            "keep" : 0,
+            "global_transform" : "None"
+        },
 
-[Feed Slashdot]
-url = http://rss.slashdot.org/slashdot/Slashdot
-order = 1
-
-[Feed Reddit]
-url = http://reddit.com/.rss
-order = 2
-"""
+        "feeds" : [
+            {
+                "name" : "Canto",
+                "url" : "http://codezen.org/static/canto.xml"
+            },
+            {
+                "name" : "Slashdot",
+                "url" : "http://rss.slashdot.org/slashdot/Slashdot"
+            },
+            {
+                "name" : "Reddit",
+                "url": "http://reddit.com/.rss"
+            }
+        ]
+}
 
 class CantoConfig():
     def __init__(self, filename, shelf):
         self.filename = filename
         self.shelf = shelf
-
-        # Validator list because order is important, things like global
-        # transforms need to be evaluated *after* the transforms are defined for
-        # example
+        self.json = {}
 
         self.defaults_validators = [
-                ("rate", self.validate_int, False),
-                ("keep", self.validate_int, False),
-                ("transform.(?P<idx>\d+).(?P<field>(name|func))",
-                    self.validate_transforms, False),
-                ("global_transform", self.validate_set_transform, False),
+                ("rate", self.validate_int, True),
+                ("keep", self.validate_int, True),
+                ("global_transform", self.validate_set_transform, True),
         ]
-
-        # Defaults are native values and are *not* validated so that they can be
-        # easily substituted even if validation fails on a user provided value.
-
-        # Usually this means that the defaults listed here are in their end for.
-        # For eval'd values, like transforms, they will eval'd in the
-        # instantiation phase, so they should be strings at defaults.
 
         self.defaults_defaults = {
                 "rate" : 10,
@@ -68,10 +66,10 @@ class CantoConfig():
         }
 
         self.feed_validators = [
+                ("name", self.validate_unique_feed_name, True),
                 ("url", self.validate_unique_url, True),
                 ("rate", self.validate_int, False),
                 ("keep", self.validate_int, False),
-                ("order", self.validate_int, False),
                 ("username", self.validate_string, False),
                 ("password", self.validate_string, False),
         ]
@@ -85,402 +83,311 @@ class CantoConfig():
 
         self.tag_defaults = {}
 
-        # Map sections to validator lists
-
-        self.validators = [
-                ("defaults", self.defaults_validators, self.defaults_defaults),
-                ("Feed .*", self.feed_validators, self.feed_defaults),
-                ("Tag .*", self.tag_validators, self.tag_defaults),
-        ]
-
     def reset(self):
         allfeeds.reset()
         alltags.reset()
 
         self.errors = {}
-        self.parsed = {}
-        self.validated = {}
         self.final = {}
 
-        self.feeds = []
-        self.transforms = []
+        # Accumulators for verifying uniqueness
         self.urls = []
-
-        self.global_transform = None
+        self.feed_names = []
 
     def parse(self, fromfile=True):
         self.reset()
         self.read_config(fromfile)
-        self.validate()
-        self.instantiate()
+        if self.validate():
+            self.instantiate()
 
     def read_config(self, fromfile):
-        env = { "home" : os.getenv("HOME"),
-                "cwd" : os.getcwd() }
-
         if fromfile:
-            self.cfgp = ConfigParser.SafeConfigParser(env)
-
-            # Make sure we are case sensitive, especially for things
-            # like keybinds where e and E are different things.
-
-            self.cfgp.optionxform = str
-
-            log.debug("New Parser with env: %s" % env)
-
             if not os.path.exists(self.filename):
                 log.info("No config found, writing default.")
-                f = open(self.filename, "wb")
-                f.write(default_config)
-                f.close()
+                self.json = default_config.copy()
+                self.write()
 
-            self.cfgp.readfp(codecs.open(self.filename, "rb", locale_enc))
+            self.json = json.load(codecs.open(self.filename, "rb", locale_enc))
             log.info("Read %s" % self.filename)
 
-        for section in self.cfgp.sections():
-            esection = decoder(conf_escape(section))
-            self.parsed[esection] = {}
+        log.debug("Parsed into: %s" % self.json)
 
-            for option in self.cfgp.options(section):
-                # ConfigParser tacks these on to every section and they
-                # aren't very interesting unless used in interpolation.
+    def error(self, ident, val, error):
+        if ident in self.errors:
+            self.errors[ident].append((val, error))
+        else:
+            self.errors[ident] = [(val, error)]
 
-                if option in env:
+    def _validate_unique(self, ident, value, accumulator, desc):
+        if not self.validate_string(ident, value):
+            return False
+
+        if value in accumulator:
+            self.error(ident, value, "%s already used!" % (desc,))
+            return False
+
+        accumulator.append(value)
+        return (True, value)
+
+    def validate_unique_url(self, ident, value):
+        return self._validate_unique(ident, value, self.urls, "URL")
+
+    def validate_unique_feed_name(self, ident, value):
+        return self._validate_unique(ident, value, self.feed_names, "Feed name")
+
+    def validate_int(self, ident, value):
+        if type(value) != int:
+            self.error(ident, value, "Not integer!")
+            return False
+        return (True, value)
+
+    def validate_string(self, ident, value):
+        if type(value) != unicode:
+            self.error(ident, value, "Not unicode!")
+            return False
+        return (True, value)
+
+    def validate_string_list(self, ident, value):
+        if type(value) != list:
+            self.error(ident, value, "Not list!")
+            return False
+
+        for idx, item in enumerate(value):
+            item_ident = ident + ("[%d]" % idx)
+            if not self.validate_string(item_ident, item):
+                return False
+
+        return (True, value)
+
+    # Unfortunately, this must return the value, so that the JSON doesn't get
+    # tainted with non-serializable values.
+
+    def validate_set_transform(self, ident, value):
+        try:
+            r = eval_transform(value)
+        except Exception, e:
+            tb = traceback.format_exc(e)
+            msg = "\n" + "".join(tb)
+            self.error(ident, value, "Invalid transform: %s" % msg)
+            return False
+
+        return (True, value)
+
+    def validate_dict(self, ident_prefix, d, validators):
+        section_invalidated = False
+        for rgx, validator, required in validators:
+            r = re.compile(rgx)
+
+            found = False
+
+            for opt in d.keys():
+                match = r.match(opt)
+                if not match:
                     continue
 
-                eoption = decoder(option)
-                self.parsed[esection][eoption] =\
-                        decoder(self.cfgp.get(section, option))
+                found = True
+                ident = ident_prefix + ("[%s]" % opt)
 
-        log.debug("Parsed into: %s" % self.parsed)
+                ret = validator(ident, d[opt])
+                if not ret:
+                    if required:
+                        self.error(ident, d[opt],\
+                                "Set but invalid and required!")
+                        section_invalidated = True
+                    else:
+                        self.error(ident, d[opt], "Set but invalid!")
+                        del d[opt]
+                else:
+                    # NOTE: we're ignoring the first tuple, it should
+                    # always be True. If it wasn't for the fact that (val,)
+                    # looks terrible that could also be returned from the
+                    # validators.
 
-    def error(self, section, option, val, error):
-        if section not in self.errors:
-            self.errors[section] = {}
-        self.errors[section][option] = (val, error)
+                    d[opt] = ret[1]
 
-    def validate_unique_url(self, section, settings):
-        for option in settings:
-            val, groups = settings[option]
-            if val in self.urls:
-                self.error(section, option, val, "URL is not unique!")
-                continue
+            if not found and required:
+                ident = ident_prefix + "[%s]" % rgx
+                self.error(ident, None,\
+                        "No matching value found on required option!")
+                section_invalidated = True
 
-            self.validated[section][option] = val
-            self.urls.append(val)
+            if section_invalidated:
+                break
 
-    def validate_int(self, section, settings):
-        for option in settings:
-            val, groups = settings[option]
-            try:
-                val = int(val)
-            except:
-                self.error(section, option, val, "Must be integer")
-                continue
-
-            self.validated[section][option] = val
-
-    # i.e. no validation since everything we get is a string.
-    def validate_string(self, section, settings):
-        for option in settings:
-            val, groups = settings[option]
-            self.validates[section][option] = val
-
-    def validate_string_list(self, section, settings):
-        for option in settings:
-            val, groups = settings[option]
-            l = [ s.strip().lstrip().rstrip() for s in escsplit(val, ",")]
-            self.validated[section][option] = l
-
-    def get_transform_by_name(self, name):
-        for transform in self.transforms:
-            if transform["name"] == name:
-                return transform
-        return None
-
-    def validate_set_transform(self, section, settings):
-        for option in settings:
-            val, groups = settings[option]
-            r = self.get_transform_by_name(val)
-            if r:
-                self.validated[section][option] = val
-                return
-
-            # Failing find by name, try to compile it on the fly.
-            try:
-                r = eval_transform(val)
-            except Exception, e:
-                tb = traceback.format_exc(e)
-                msg = "\n" + "".join(tb)
-                self.error(section, option, val,
-                        "Invalid transform: %s" % msg)
-                continue
-
-            self.validated[section][option] = val
-
-    def validate_transforms(self, section, settings):
-        transforms = []
-
-        # First, pair up settings by index
-
-        for option in settings:
-            val, groups = settings[option]
-
-            # This won't except it's already %d+ from the regex
-            idx = int(groups["idx"])
-
-            # Extend list to right length
-            if idx >= len(transforms):
-                transforms += [ {} ] * ((idx - len(transforms)) + 1)
-
-            transforms[idx][groups["field"]] = val
-
-        # Now, ensure that every transform has a valid function
-        # and finalize the validated["transforms"] list.
-
-        for idx, transform in enumerate(transforms):
-
-            # Keep track of initial idx so that we can still reference
-            # by config index without having to keep a sparse list.
-
-            transform["idx"] = idx
-
-            # Ensure there's a function specified for this transform
-            if "func" not in transform:
-                self.error(section, "transform.%d.func" % idx, "",\
-                        "Transform %d missing function" % idx)
-                continue
-
-            # If no name specified, use the text representation of the function
-            if "name" not in transform:
-                transform["name"] = transform["func"]
-
-            # Ensure the transform name is unique.
-            if self.get_transform_by_name(transform["name"]):
-                self.error(section, "transform.%d.name" % idx,
-                        transform["name"],
-                        "Transform already exists with that name")
-                continue
-
-            # Ensure that the function is valid.
-            try:
-                transform["func"] = eval_transform(transform["func"])
-            except Exception, e:
-                tb = traceback.format_exc(e)
-                msg = "\n" + "".join(tb)
-                self.error(section, "transform.%d.func" % idx,
-                        transform["func"],
-                        "Invalid transform: %s" % msg)
-                continue
-
-            self.transforms.append(transform)
-
-    # Take the raw parsed values and validate them. The output (self.validated)
-    # resembles the final product as the options are no longer just strings but
-    # native types, however it's still an intermediate form as complex objects
-    # (Feeds) haven't actually been created with the config'd values.
+        return not section_invalidated
 
     def validate(self):
-        for section_rgx, validator_list, defaults in self.validators:
-            sr = re.compile(section_rgx)
+        # Because we have to ensure that all items in the JSON are
+        # simple, we can do this cheap deepcopy intead of importing
+        # copy or doing it ourselves.
 
-            for section in self.parsed.keys():
-                smatch = sr.match(section)
-                if not smatch:
-                    continue
+        self.final = eval(repr(self.json), {}, {})
 
-                if section not in self.validated:
-                    self.validated[section] = {}
+        if "defaults" in self.final:
+            good = self.validate_dict("[defaults]", self.final["defaults"],
+                    self.defaults_validators)
+            if not good:
+                del self.final["defaults"]
+        else:
+            self.final["defaults"] = self.defaults_defaults.copy()
 
-                # Sub in defaults to be overridden.
-                for option in defaults:
-                    if option not in self.validated[section]:
-                        self.validated[section][option] =\
-                                defaults[option]
+        if "tags" in self.final and not self.errors:
+            for tag in self.final["tags"].keys():
+                good = self.validate_dict("[tags][" + tag + "]", self.final["tags"],
+                        self.tag_validators)
+                if not good:
+                    del self.final["tags"][tag]
 
-                # Validate all matching settings.
-                for rgx, validator, required in validator_list:
-                    r = re.compile(rgx)
-                    settings = {}
-                    found = False
-
-                    for option in self.parsed[section].keys():
-                        match = r.match(option)
-                        if not match:
-                            continue
-
-                        found = True
-                        settings[option] = (self.parsed[section][option],\
-                                match.groupdict())
-
-                    # Detect unset, required settings.
-
-                    if required and not found:
-                        self.error(section, rgx, "", "Must be set")
-                    else:
-                        validator(section, settings)
-
-                        # Detect invalid, required settings by their absence
-                        # from the validated dict after validation.
-
-                        if required:
-                            invalid_section = False
-                            for s in settings:
-                                if s not in self.validated[section]:
-                                    del self.validated[section]
-                                    invalid_section = True
-                                    break
-                            if invalid_section:
-                                break
-
-        # If there's no defaults section we must create one before
-        # feeds start trying to use it.
-
-        if "defaults" not in self.validated:
-            self.validated["defaults"] = self.defaults_defaults.copy()
+        if "feeds" in self.final and not self.errors:
+            for i, feed in enumerate(self.final["feeds"][:]):
+                good = self.validate_dict("[feeds][%s]" % i, feed,
+                        self.feed_validators)
+                if not good:
+                    self.final["feeds"].remove(feed)
 
         if self.errors:
-            log.error("ERRORS: %s" % self.errors)
-        log.info("Validated: %s" % self.validated)
+            log.error("ERRORS:")
+            for key in self.errors.keys():
+                log.error("%s:" % key)
+                for value, error in self.errors[key]:
+                    log.error("\t%s -> %s" % (value, error))
+            return False
 
-    # This takes the self.validated created by validate() and actually creates
-    # the Feeds().
+        log.info("Validated: %s" % self.final)
+        return True
+
+    # Create Tag and Feed objects based on final validated config
 
     def instantiate(self):
-        ordered_feeds = []
-        unordered_feeds = []
 
-        for section in self.validated:
-            valsec = self.validated[section]
+        if "tags" in self.final:
+            for tag in self.final["tags"]:
+                defs = self.final["tags"][tag]
 
-            # Move over defaults, no instantiation necessary.
-            if section == "defaults":
-                self.final["defaults"] = valsec
+                if "transform" not in defs:
+                    defs["transform"] = "None"
+                else:
+                    defs["transform"] = eval_transform(defs["transform"])
 
-            elif section.startswith("Tag "):
-                self.final[section] = valsec
+                if "extra_tags" not in defs:
+                    defs["extra_tags"] = []
 
-                if "transform" not in valsec:
-                    valsec["transform"] = "None"
-                if "extra_tags" not in valsec:
-                    valsec["extra_tags"] = []
+                alltags.tag_transform(tag, defs["transform"])
+                alltags.set_extra_tags(tag, defs["extra_tags"])
 
-                alltags.tag_transform(section[4:],\
-                        eval_transform(valsec["transform"]))
-                alltags.set_extra_tags(section[4:], valsec["extra_tags"])
+        # Feeds must be instantiated *after* tags, so tag settings like extra_tags
+        # can rely on getting an add_tag for each item after all tag settings have
+        # been handled.
 
-        # Identical invariant as the above, but this ensures that Feed objects
-        # are instantiated last, after defaults and tags are setup. This is
-        # important so that when the feed items add themselves to the maintags,
-        # any extra tags (which would be handled above) are honored.
+        if "feeds" in self.final:
+            for feed in self.final["feeds"]:
 
-        # Forcing this separation keeps the extra_tag logic in CantoTags simple
-        # as it can rely on getting an add_tag for every item, rather than
-        # having to keep extra_tags up to date on update. Iterating twice over
-        # the config headers is most likely quicker than iterating over the
-        # potentially huge tag lists required for an update of that nature.
+                # Mandatory arguments to CantoFeed
+                if "rate" not in feed:
+                    feed["rate"] = self.final["defaults"]["rate"]
+                if "keep" not in feed:
+                    feed["keep"] = self.final["defaults"]["keep"]
 
-        for section in self.validated:
-            valsec = self.validated[section]
-
-            if section.startswith("Feed "):
-                self.final[section] = valsec
-                name = section[5:]
-
-                if "rate" not in valsec:
-                    valsec["rate"] = self.validated["defaults"]["rate"]
-                if "keep" not in valsec:
-                    valsec["keep"] = self.validated["defaults"]["keep"]
-
+                # Optional arguments in kwargs
                 kws = {}
                 for k in ["password", "username"]:
-                    if k in valsec:
-                        kws[k] = valsec[k]
+                    if k in feed:
+                        kws[k] = feed[k]
 
-                feed = CantoFeed(self.shelf, name,\
-                        valsec["url"], valsec["rate"],
-                        valsec["keep"], **kws)
+                feed = CantoFeed(self.shelf, feed["name"],\
+                        feed["url"], feed["rate"], feed["keep"], **kws)
 
-                if "order" in valsec:
-                    if valsec["order"] >= len(ordered_feeds):
-                        ordered_feeds += [None] * ((valsec["order"] + 1) -
-                                len(ordered_feeds))
-                    elif ordered_feeds[valsec["order"]]:
-                        log.warn("Two feeds with same order (%d)! Demoting %s" %
-                                (valsec["order"], name))
-                        unordered_feeds.insert(0, feed)
-                        continue
-                    ordered_feeds[valsec["order"]] = feed
+        # Set global transform.
+
+        self.global_transform = eval_transform(\
+                self.final["defaults"]["global_transform"])
+
+    # Delete settings from the JSON. Any key equal to "DELETE" will be removed,
+    # keys that are lists will items removed if specified.
+
+    def _delete(self, deletions, current):
+        for key in deletions.keys():
+
+            # Nothing to do.
+
+            if key not in current:
+                continue
+
+            # Delete surface fields.
+
+            if deletions[key] == "DELETE":
+                del current[key]
+
+            # Delete potential fields in deeper dicts.
+
+            elif type(deletions[key]) == dict:
+                self._delete(deletions[key], current[key])
+
+            # If we've specified a list for and are operating on a list,
+            # then eliminate those.
+
+            elif type(deletions[key]) == list and\
+                    type(current[key]) == list:
+
+                log.debug("Deleting items from list lists:")
+                log.debug("\\%s" % deletions[key])
+                log.debug("\\%s" % current[key])
+
+                for item in deletions[key]:
+                    if item in current[key]:
+                        current[key].remove(item)
+
+    def delete(self, deletions):
+        self._delete(deletions, self.json)
+
+    def _merge(self, change, current):
+        for key in change.keys():
+            # Move over missing keys
+
+            if key not in current:
+                current[key] = change[key]
+
+            # Merge subsequent dicts, or overwrite if wrong types
+            # (in a well-behaved merge that shouldn't happen)
+
+            elif type(change[key]) == dict:
+                if type(current[key]) != dict:
+                    log.warn("Old value of ['%s'] not dict!? Ignoring!" %
+                            (key,))
                 else:
-                    unordered_feeds.append(feed)
+                    self._merge(change[key], current[key])
 
-        # Make order explicit, regardless of whether it was in the first place.
-        self.feeds = filter(None, ordered_feeds + unordered_feeds)
-        for i, feed in enumerate(self.feeds):
-            self.set("Feed " + feed.name, "order", unicode(i))
+            # Merge lists (append change items not present in current and
+            # potentially change their order based on the contents in change).
 
-        # Move over any string-based extra (client) configs
-        for section in self.parsed:
-            if section not in self.validated:
-                self.final[section] = self.parsed[section]
+            elif type(change[key]) == list:
+                if type(current[key]) != list:
+                    log.warn("Old value of ['%s'] not list!? Ignoring!" %
+                            (key, ))
+                else:
+                    log.debug("Merging lists:")
+                    log.debug("\\%s" % change[key])
+                    log.debug("\\%s" % current[key])
 
-        self.global_transform =\
-            eval_transform(self.validated["defaults"]["global_transform"])
+                    # Any items not in change are prepended.  This allows the
+                    # simple n-item append to work as expected, it allows the
+                    # sort case to work as expected, and gives consistent
+                    # behavior in the case of items unaccounted for in change.
 
-    def set(self, section, option, value):
-        log.debug("setting %s.%s = %s" % (section, option, value))
+                    current[key] = [ i for i in current[key] if i not in change[key] ] +\
+                            change[key]
 
-        # Unescape from backend
-        section = conf_unescape(section)
+            # Move over present
 
-        # Config escape %%
-        if type(value) in [unicode, str]:
-            value = value.replace("%","%%")
+            else:
+                current[key] = change[key]
 
-        try:
-            if not self.cfgp.has_section(section):
-                self.cfgp.add_section(section)
-        except ValueError:
-            log.error("couldn't create section %s, variable not set!" %\
-                    section)
-            return
-        return self.cfgp.set(section, option, value)
-
-    def get(self, section, option):
-        if section not in self.final:
-            log.warn("tried to get non-existent section: %s" % section)
-            return None
-        if option not in self.final[section]:
-            log.warn("tried to get non-existent option: %s.%s" %\
-                    (section, option))
-            return None
-        return self.final[section][option]
-
-    def get_section(self, section):
-        if section in self.final:
-            return self.final[section]
-        return {}
-
-    def get_sections(self, sections=None):
-        if not sections:
-            return self.final
-
-        r = {}
-        for section in sections:
-            if section in self.final:
-                r[section] = self.final[section]
-        return r
-
-    def has_section(self, section):
-        return section in self.final
-
-    def remove_section(self, section):
-        del self.final[section]
-        return self.cfgp.remove_section(conf_unescape(section))
+    def merge(self, newconfigs):
+        self._merge(newconfigs, self.json)
 
     def write(self):
         try:
             f = codecs.open(self.filename, "wb", locale_enc)
-            self.cfgp.write(f)
+            json.dump(self.json, f, ensure_ascii=False, sort_keys=True, indent=4)
         finally:
             f.close()
