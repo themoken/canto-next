@@ -104,4 +104,3 @@ class CantoServer(CantoSocket):
         for conn, t in self.connections:
             conn.shutdown(SHUT_RDWR)
             conn.close()
-            t.join()
