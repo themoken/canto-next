@@ -243,13 +243,12 @@ class CantoRemote(CantoClient):
             var = var.lstrip().rstrip()
 
             var = var.replace("\\","\\\\")
-            val = val.replace("\\","\\\\")
 
             # We'll want to read back any value, regardless
             gets.append(var)
 
             if val:
-
+                val = val.replace("\\","\\\\")
                 try:
                     val = eval(val, {}, {})
                 except:
