@@ -86,6 +86,7 @@ class CantoServer(CantoSocket):
                 Thread(target = self.queue_loop,\
                 args = (conn[0],))))
 
+        self.connections[-1][1].daemon = True
         self.connections[-1][1].start()
         log.debug("Spawned new thread.")
 
