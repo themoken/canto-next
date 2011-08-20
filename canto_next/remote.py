@@ -22,55 +22,34 @@ import sys
 def print_wrap(s):
     print encoder(s)
 
-# This is a hack to get around the fact that you can't do assignment in an eval
-# environment, without using some execfile trickery or parsing the variable
-# manually. This is most definitely eval abuse.
-
-# NOTE: var must be read to be eval'd, which basically means that it needs to
-# have \ escaped to \\ or it will escape the following character, which could
-# screw the assignment. Val, on the other hand, can just be a standard python
-# object
-
-# Any eval errors will be thrown, other than KeyError
-
 def assign_to_dict(d, var, val):
-    def add_to_dict(d, newkey):
-        cur = d
-        while cur.keys():
-            cur = cur[cur.keys()[0]]
-        cur[newkey] = {}
+    terms = escsplit(var, '.')
+    cur = d
 
-    def merge_into(s, new, val):
-        while new.keys():
+    for term in terms[:-1]:
+        if term not in cur:
+            cur[term] = {}
+        elif type(cur[term]) != dict:
+            return (False, "Term %s is not dict" % term)
+        cur = cur[term]
 
-            k = new.keys()[0]
+    cur[terms[-1]] = val
+    return (True, val)
 
-            # If new[k] is empty, this is the terminal value to overwrite
-            # with val and we're done.
+def access_dict(d, var):
+    terms = escsplit(var, '.')
+    cur = d
 
-            if not new[k]:
-                s[k] = val
-                return
+    for term in terms[:-1]:
+        if term not in cur:
+            return (False, False)
+        elif type(cur) != dict:
+            return (False, False)
+        cur = cur[term]
 
-            # If it's not in S, create a value
-            if new.keys()[0] not in s:
-                s[k] = {}
-
-            new = new[k]
-            s = s[k]
-
-    new = {}
-    com = "new" + var
-
-    while True:
-        try:
-            eval(com, {}, { "new" : new })
-        except KeyError, e:
-            add_to_dict(new, e.args[0])
-            continue
-        break
-
-    merge_into(d, new, val)
+    if terms[-1] not in cur:
+        return (False, False)
+    return (True, cur[terms[-1]])
 
 class CantoRemote(CantoClient):
     def __init__(self):
@@ -242,20 +221,13 @@ class CantoRemote(CantoClient):
             var, val = escsplit(arg, "=", 1, 1)
             var = var.lstrip().rstrip()
 
-            var = var.replace("\\","\\\\")
-
             # We'll want to read back any value, regardless
             gets.append(var)
 
             if val:
-                val = val.replace("\\","\\\\")
-                try:
-                    val = eval(val, {}, {})
-                except:
-                    print_wrap("Unable to parse value %s" % (val,))
-                    continue
-
-                assign_to_dict(sets, var, val)
+                valid, ret = assign_to_dict(sets, var, val)
+                if not valid:
+                    print_wrap(ret)
 
         self.write("SETCONFIGS", sets)
 
@@ -263,12 +235,11 @@ class CantoRemote(CantoClient):
         c = self._wait_response("CONFIGS")
 
         for var in gets:
-            try:
-                val = eval("c" + var, {}, { "c" : c })
-            except:
-                print_wrap("Error getting %s!" % var)
-                continue
-            print_wrap("%s = %s" % (var, val))
+            valid, value = access_dict(c, var)
+            if valid:
+                print_wrap("%s = %s" % (var, value))
+            else:
+                print_wrap("Couldn't get %s!" % var)
 
         return True
 
