@@ -23,8 +23,11 @@ class CantoServer(CantoSocket):
         kwargs["server"] = True
         CantoSocket.__init__(self, socket_name, **kwargs)
         self.queue = queue
+        self.conn_thread = None
         self.connections = [] # (socket, thread) tuples
         self.alive = True
+
+        self.start_conn_loop()
 
     # Endlessly consume data from the connection. If there's enough data
     # for a complete command, toss it on the shared Queue.Queue
@@ -44,6 +47,31 @@ class CantoServer(CantoSocket):
             log.error("\n" + "".join(tb))
             return
 
+    # Sit and select for connections on sockets:
+
+    def conn_loop(self, sockets):
+        try:
+            while self.alive:
+                r, w, x = select.select(sockets, [], sockets)
+                for s in sockets:
+                    # If socket is readable, it's got a pending connection.
+                    if s in r:
+                        conn = s.accept()
+                        log.info("conn %s from sock %s" % (conn, s))
+                        self.queue.put((conn[0], ("NEWCONN","")))
+        except Exception, e:
+            tb = traceback.format_exc(e)
+            log.error("Connection monitor thread dead on exception:")
+            log.error("\n" + "".join(tb))
+            return
+
+    def start_conn_loop(self):
+        self.conn_thread = Thread(target = self.conn_loop,
+                args = (self.sockets,))
+        self.conn_thread.daemon = True
+        self.conn_thread.start()
+        log.debug("Spawned connection monitor thread.")
+
     # Remove dead connection threads.
 
     def no_dead_conns(self):
@@ -57,34 +85,15 @@ class CantoServer(CantoSocket):
                 t.join()
         self.connections = live_conns
 
-    # Cleanup dead threads, check for new connections and spawn a new
-    # thread if necessary
-
-    def check_conns(self):
-        # Dead thread maintenance.
-        self.no_dead_conns()
-
-        # Try all sockets for new connections.
-
-        conn = None
-        for sock in self.sockets:
-            try:
-                conn = sock.accept()
-                log.info("conn %s from sock %s" % (conn, sock))
-            except:
-                continue # No new connection, try next
-
-        # No sockets had connections, we're done.
-        if not conn:
-            return
+    def accept_conn(self, conn):
 
         # Notify watchers about new socket.
-        call_hook("new_socket", [conn[0]])
+        call_hook("new_socket", [conn])
 
-        # New connection == Spawn a queue_loop thread.
-        self.connections.append((conn[0],\
+        self.connections.append((conn,\
                 Thread(target = self.queue_loop,\
-                args = (conn[0],))))
+                       args = (conn,))
+                ))
 
         self.connections[-1][1].daemon = True
         self.connections[-1][1].start()

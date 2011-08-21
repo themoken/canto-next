@@ -142,8 +142,10 @@ class CantoBackend(CantoServer):
             sys.exit(-1)
 
         # Signal handlers kickoff after everything else is init'd
+
         self.alarmed = 0
         self.interrupted = 0
+
         signal.signal(signal.SIGALRM, self.sig_alrm)
         signal.signal(signal.SIGINT, self.sig_int)
         signal.signal(signal.SIGTERM, self.sig_int)
@@ -497,13 +499,34 @@ class CantoBackend(CantoServer):
     # The workhorse that maps all requests to their handlers.
     def run(self):
         log.debug("Beginning to serve...")
-        while 1:
-            if not self.queue.empty():
-                (socket, (cmd, args)) = self.queue.get()
 
+        while 1:
+            try:
+                if self.interrupted:
+                    log.info("Interrupted. Exiting.")
+                    return
+
+                # If we've received a SIGALARM, we switch to a shorter timeout
+                # until we've cleared the queue and get an exception, which
+                # will let us handle the alarm.
+
+                # It really sucks that we don't get signals will in a Queue.get
+                # =(
+
+                if self.alarmed:
+                    (socket, (cmd, args)) = self.queue.get(True, 0.1)
+                else:
+                    (socket, (cmd, args)) = self.queue.get(True, 1)
+            except Queue.Empty:
+                pass
+            else:
                 if cmd == "DIE":
                     log.info("Received DIE.")
                     return
+
+                if cmd == "NEWCONN":
+                    self.accept_conn(socket)
+                    continue
 
                 cmdf = "cmd_" + cmd.lower()
                 if hasattr(self, cmdf):
@@ -522,40 +545,33 @@ class CantoBackend(CantoServer):
                 # another one instead of doing feed processing in between.
                 continue
 
+            self.alarmed = 0
             call_hook("work_done", [])
 
-            # Caught SIGINT
-            if self.interrupted:
-                break
+            # Clean up any dead connection threads.
 
-            self.check_conns()
+            self.no_dead_conns()
 
             # Process any possible feed updates.
+
             self.fetch.process()
 
-            if self.alarmed:
-                # Decrement all timers
-                self.fetch_timer -= 1
-                self.trim_timer -= 1
+            # Decrement all timers
 
-                if self.verbosity > 1:
-                    log.debug("Alarmed.")
+            self.fetch_timer -= 1
+            self.trim_timer -= 1
 
-                # Check whether feeds need to be updated and fetch
-                # them if necessary.
+            # Check whether feeds need to be updated and fetch
+            # them if necessary.
 
-                if self.fetch_timer <= 0 and not self.no_fetch:
-                    self.do_fetch()
+            if self.fetch_timer <= 0 and not self.no_fetch:
+                self.do_fetch()
 
-                # Trim the database file.
+            # Trim the database file.
 
-                if self.trim_timer <= 0:
-                    self.shelf.trim()
-                    self.trim_timer = TRIM_INTERVAL
-
-                self.alarmed = False
-
-            time.sleep(0.01)
+            if self.trim_timer <= 0:
+                self.shelf.trim()
+                self.trim_timer = TRIM_INTERVAL
 
     # This function parses and validates all of the command line arguments.
     def args(self):
