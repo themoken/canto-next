@@ -266,8 +266,8 @@ class CantoConfig():
 
                 if "transform" not in defs:
                     defs["transform"] = "None"
-                else:
-                    defs["transform"] = eval_transform(defs["transform"])
+
+                defs["transform"] = eval_transform(defs["transform"])
 
                 if "extra_tags" not in defs:
                     defs["extra_tags"] = []
