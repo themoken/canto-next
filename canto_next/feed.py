@@ -337,6 +337,9 @@ class CantoFeed(PluginHandler):
         # No more updates
         self.update_contents = None
 
+        self.old_contents = None
+        self.olditems = []
+
     def destroy(self):
         # Check for existence in case of delete quickly
         # after add.
