@@ -37,7 +37,7 @@ def get_formatter(fmt, keys):
         return s
     return formatter
 
-def escsplit(arg, delim, maxsplit=0, minsplit=0):
+def escsplit(arg, delim, maxsplit=0, minsplit=0, escapeterms=False):
     r = []
     acc = ""
     escaped = False
@@ -52,7 +52,13 @@ def escsplit(arg, delim, maxsplit=0, minsplit=0):
 
         elif c == '\\':
             escaped = True
-            acc += c
+
+            # Don't unescape things that may need to be split again. Most
+            # notably canto-remote splitting on = and then on .
+
+            if not escapeterms:
+                acc += c
+
         elif c == delim:
             r.append(acc)
             acc = ""

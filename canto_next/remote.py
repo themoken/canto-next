@@ -23,7 +23,7 @@ def print_wrap(s):
     print encoder(s)
 
 def assign_to_dict(d, var, val):
-    terms = escsplit(var, '.')
+    terms = escsplit(var, '.', 0, 0, True)
     cur = d
 
     for term in terms[:-1]:
@@ -37,7 +37,7 @@ def assign_to_dict(d, var, val):
     return (True, val)
 
 def access_dict(d, var):
-    terms = escsplit(var, '.')
+    terms = escsplit(var, '.', 0, 0, True)
     cur = d
 
     for term in terms[:-1]:
@@ -172,7 +172,7 @@ class CantoRemote(CantoClient):
         # Grab any feedopts from the commandline.
 
         for arg in sys.argv[2:]:
-            opt, val = escsplit(arg, "=", 1, 1)
+            opt, val = escsplit(arg, "=", 1, 1, True)
             if not opt or not val:
                 print_wrap("ERROR: can't parse '%s' as x=y setting." % arg)
                 continue

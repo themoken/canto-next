@@ -24,7 +24,6 @@ from storage import CantoShelf
 from fetch import CantoFetch
 from hooks import on_hook, call_hook
 from tag import alltags
-from format import escsplit
 from transform import eval_transform
 from plugins import try_plugins
 
