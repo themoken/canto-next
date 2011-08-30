@@ -92,7 +92,6 @@ class CantoFeed(PluginHandler):
 
         self.update_contents = None
         self.items = []
-        self.olditems = []
 
         # Pull items from disk on instantiation.
         self.index()
@@ -106,8 +105,8 @@ class CantoFeed(PluginHandler):
         return True
 
     # Remove old items from all tags.
-    def clear_tags(self):
-        for olditem in self.olditems:
+    def clear_tags(self, olditems):
+        for olditem in olditems:
             for item in self.items:
                 # Same ID exists in new items
                 if item["id"] == olditem["id"]:
@@ -216,16 +215,16 @@ class CantoFeed(PluginHandler):
         if self.URL not in self.shelf:
             # Stub empty feed
             log.debug("Previous content not found.")
-            self.old_contents = {"entries" : []}
+            old_contents = {"entries" : []}
         else:
-            self.old_contents = self.shelf[self.URL]
+            old_contents = self.shelf[self.URL]
             log.debug("Fetched previous content.")
 
         # BEWARE: At this point, update_contents could either be
         # fresh from feedparser or fresh from disk, so it's possible that the
         # old contents and the new contents are identical.
 
-        self.olditems = self.items
+        olditems = self.items
         self.items = []
         for item in self.update_contents["entries"][:]:
 
@@ -259,7 +258,7 @@ class CantoFeed(PluginHandler):
             # starts with "canto", but not "canto_update",
             # which changes invariably.
 
-            for olditem in self.old_contents["entries"]:
+            for olditem in old_contents["entries"]:
                 if item["id"] == olditem["id"]:
                     for key in olditem:
                         if key == "canto_update":
@@ -282,7 +281,7 @@ class CantoFeed(PluginHandler):
 
         unprotected_old = []
 
-        for i, olditem in enumerate(self.olditems):
+        for i, olditem in enumerate(olditems):
             for item in self.items:
                 if olditem["id"] == item["id"]:
                     log.debug("still in self.items")
@@ -292,7 +291,7 @@ class CantoFeed(PluginHandler):
                     log.debug("Saving committed item: %s" % olditem)
                     self.items.append(olditem)
                     self.update_contents["entries"].append(\
-                            self.old_contents["entries"][i])
+                            old_contents["entries"][i])
                 else:
                     unprotected_old.append((i, olditem))
 
@@ -310,7 +309,7 @@ class CantoFeed(PluginHandler):
             log.debug("From list: %s" % unprotected_old)
             for idx, item in unprotected_old[:fill]:
                 self.update_contents["entries"].append(\
-                        self.old_contents["entries"][idx])
+                        old_contents["entries"][idx])
                 self.items.append(item)
 
 
@@ -332,13 +331,10 @@ class CantoFeed(PluginHandler):
         self.shelf[self.URL] = self.update_contents
 
         # Remove non-existent IDs from all tags
-        self.clear_tags()
+        self.clear_tags(olditems)
 
         # No more updates
         self.update_contents = None
-
-        self.old_contents = None
-        self.olditems = []
 
     def destroy(self):
         # Check for existence in case of delete quickly
