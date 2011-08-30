@@ -213,7 +213,7 @@ class CantoRemote(CantoClient):
                 print_wrap("Unsubscribing from %s" % f["url"])
                 self.write("DELCONFIGS",  { "feeds" : [ f ] })
 
-    def _config(self, args):
+    def _config(self, args, evaled=False):
         sets = {}
         gets = []
 
@@ -225,8 +225,21 @@ class CantoRemote(CantoClient):
             gets.append(var)
 
             if val:
-                valid, ret = assign_to_dict(sets, var, val)
-                if not valid:
+                val = val.lstrip().rstrip()
+
+                if evaled:
+                    try:
+                        val = eval(val, {},{})
+                        val_ok = True
+                    except Exception, e:
+                        print_wrap("Unable to eval value: %s - %s" % (val, e))
+                        val_ok = False
+                else:
+                    val_ok = True
+
+            if val_ok:
+                val_ok, ret = assign_to_dict(sets, var, val)
+                if not val_ok:
                     print_wrap(ret)
 
         self.write("SETCONFIGS", sets)
@@ -244,7 +257,7 @@ class CantoRemote(CantoClient):
         return True
 
     def cmd_one_config(self):
-        """USAGE: canto-remote one-config [option] ( = value)
+        """USAGE: canto-remote one-config [--eval] [option] ( = value)
     Where option is a full variable declaration like 'section.variable' and
     value is any string. If value is omitted, the current value will be printed.
 
@@ -252,6 +265,9 @@ class CantoRemote(CantoClient):
     it allows lax argument parsing (i.e. one-config CantoCurses.browser =
     firefox %u will work as expected, without quoting.)
 
+    If the value you're setting is a type other than string, you must specify
+    --eval and the value will be eval'd into a proper type.
+
     NOTE: validation is done by the client that uses the variable, canto-remote
     will let you give bad values, or even set values to non-existent
     variables."""
@@ -259,18 +275,21 @@ class CantoRemote(CantoClient):
         if len(sys.argv) < 2:
             return False
 
-        arg = " ".join(sys.argv[1:])
-
-        return self._config([arg])
+        if sys.argv[1] == "--eval":
+            return self._config([" ".join(sys.argv[2:])], True)
+        return self._config([" ".join(sys.argv[1:])], False)
 
     def cmd_config(self):
-        """USAGE: canto-remote config [option](=value) ...
+        """USAGE: canto-remote config [--eval] [option](=value) ...
     Where option is a full variable declaration like 'section.variable' and
     value is any string. If value is omitted, the current value will be printed.
 
     This differs from one-config as multiple sets/gets can be done, but it is
     more strict in terms of argument parsing.
 
+    If the value you're setting is a type other than string, you must specify
+    --eval and the value will be eval'd into a proper type.
+
     NOTE: validation is done by the client that uses the variable, canto-remote
     will let you give bad values, or even set values to non-existent
     variables."""
@@ -278,7 +297,9 @@ class CantoRemote(CantoClient):
         if len(sys.argv) < 2:
             return False
 
-        return self._config(sys.argv[1:])
+        if sys.argv[1] == "--eval":
+            return self._config(sys.argv[2:], True)
+        return self._config(sys.argv[1:], False)
 
     def cmd_export(self):
         """USAGE: canto-remote export
