@@ -237,10 +237,10 @@ class CantoRemote(CantoClient):
                 else:
                     val_ok = True
 
-            if val_ok:
-                val_ok, ret = assign_to_dict(sets, var, val)
-                if not val_ok:
-                    print_wrap(ret)
+                if val_ok:
+                    val_ok, ret = assign_to_dict(sets, var, val)
+                    if not val_ok:
+                        print_wrap(ret)
 
         self.write("SETCONFIGS", sets)
 
