@@ -67,8 +67,12 @@ class CantoShelf():
         # longer relevant), we check for reorganize() and use it on close,
         # which should shrink the DB and keep it from growing into perpetuity.
 
+        # Counter intuitively, this only requires read permissions and, in
+        # fact there seems to be an issue lately with shelves getting EAGAIN
+        # on open if this is a writer.
+
         try:
-            db = anydbm.open(self.filename, "w")
+            db = anydbm.open(self.filename, "r")
             if hasattr(db, 'reorganize'):
                 reorg = getattr(db, 'reorganize')
                 reorg()
