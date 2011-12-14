@@ -76,6 +76,8 @@ class CantoBackend(CantoServer):
                          "config" : [],
                          "tags" : {} }
 
+        self.autoattr = {}
+
         # Per socket transforms.
         self.socket_transforms = {}
 
@@ -338,11 +340,22 @@ class CantoBackend(CantoServer):
         # Echo back on successful compilation.
         self.write(socket, "TRANSFORM", args)
 
+    # AUTOATTR [ attrs ... ] -> Follow up each items request with
+    # an attributes request for attrs.
+
+    # This command is intended to reduce round trip time and allow
+    # clients to become informative quickly by making the individual
+    # story IDs unnecessary to request information about them.
+
+    def cmd_autoattr(self, socket, args):
+        self.autoattr[socket] = args
+
     # ITEMS [tags] -> { tag : [ ids ], tag2 : ... }
 
     def cmd_items(self, socket, args):
         ids = []
         response = {}
+        attr_req = {}
 
         for tag in args:
             # get_tag returns a list invariably, but may be empty.
@@ -354,7 +367,14 @@ class CantoBackend(CantoServer):
 
             protection.protect((socket, "auto"), response[tag])
 
+            if socket in self.autoattr:
+                for id in response[tag]:
+                    attr_req[id] = self.autoattr[socket][:]
+
         self.write(socket, "ITEMS", response)
+
+        if attr_req:
+            self.cmd_attributes(socket, attr_req)
 
     # FEEDATTRIBUTES { 'url' : [ attribs .. ] .. } ->
     # { url : { attribute : value } ... }
