@@ -9,12 +9,19 @@
 
 from plugins import PluginHandler, Plugin
 from protect import protection
+from encoding import decoder, encoder
 from tag import alltags
 
 import traceback
 import logging
+import json
 
 log = logging.getLogger("FEED")
+
+def dict_id(i):
+    if type(i) == dict:
+        return i
+    return json.loads(encoder(i))
 
 class CantoFeeds():
     def __init__(self):
@@ -40,12 +47,14 @@ class CantoFeeds():
     def items_to_feeds(self, items):
         f = {}
         for i in items:
-            if i[0] in self.feeds:
-                feed = self.feeds[i[0]]
-            elif i[0] in self.dead_feeds:
-                feed = self.dead_feeds[i[0]]
+            d_i = dict_id(i)
+
+            if d_i["URL"] in self.feeds:
+                feed = self.feeds[d_i["URL"]]
+            elif d_i["URL"] in self.dead_feeds:
+                feed = self.dead_feeds[d_i["URL"]]
             else:
-                raise Exception("Can't find feed: %s" % i[0])
+                raise Exception("Can't find feed: %s" % d_i["URL"])
 
             if feed in f:
                 f[feed].append(i)
@@ -100,7 +109,7 @@ class CantoFeed(PluginHandler):
     def unique_item(self, item):
         for cur_item in self.items:
             # Just the non-URL part will match
-            if cur_item["id"][1] == item["id"]:
+            if dict_id(cur_item["id"])["ID"] == item["id"]:
                 return False
         return True
 
@@ -249,7 +258,8 @@ class CantoFeed(PluginHandler):
             # At this point, we're sure item's going to be added.
 
             cacheitem = {}
-            cacheitem["id"] = (self.URL, item["id"])
+            cacheitem["id"] = decoder(json.dumps(\
+                    { "URL" : self.URL, "ID" : item["id"] } ))
 
             alltags.add_tag(cacheitem["id"], self.name, "maintag")
 

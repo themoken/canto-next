@@ -534,7 +534,7 @@ class CantoBackend(CantoServer):
                         func(socket, args)
                     except Exception, e:
                         tb = "".join(traceback.format_exc(e))
-                        self.write(socket, "EXCEPT", e)
+                        self.write(socket, "EXCEPT", tb)
                         log.error("Protocol exception:")
                         log.error("\n" + tb)
                 else:

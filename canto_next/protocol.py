@@ -14,6 +14,7 @@ import logging
 import socket
 import select
 import errno
+import json
 import time
 import os
 
@@ -134,8 +135,8 @@ class CantoSocket:
                 self.fragments[conn].split(PROTO_TERMINATOR, 1)
 
         try:
-            cmd, args = message.split(' ', 1)
-            return (cmd, eval(args))
+            cmd, args = eval(repr(json.loads(message)), {}, {})
+            return (cmd, args)
         except:
             log.error("Failed to parse message: %s" % message)
 
@@ -222,7 +223,7 @@ class CantoSocket:
 
     def _do_write(self, conn, cmd, args):
 
-        message = cmd + " " + repr(args) + PROTO_TERMINATOR
+        message = json.dumps((cmd, args)) + PROTO_TERMINATOR
 
         poll = select.poll()
         tosend = message
