@@ -352,8 +352,9 @@ class CantoConfig():
 
             elif type(change[key]) == dict:
                 if type(current[key]) != dict:
-                    log.warn("Old value of ['%s'] not dict!? Ignoring!" %
+                    log.warn("Type change! Old value of ['%s'] not dict." %
                             (key,))
+                    current[key] = change[key]
                 else:
                     self._merge(change[key], current[key])
 
@@ -362,8 +363,9 @@ class CantoConfig():
 
             elif type(change[key]) == list:
                 if type(current[key]) != list:
-                    log.warn("Old value of ['%s'] not list!? Ignoring!" %
+                    log.warn("Type change! Old value of ['%s'] not list." %
                             (key, ))
+                    current[key] = change[key]
                 else:
                     log.debug("Merging lists:")
                     log.debug("\\%s" % change[key])
