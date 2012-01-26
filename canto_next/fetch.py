@@ -11,6 +11,7 @@ from feed import allfeeds
 
 from threading import Thread
 import feedparser
+import traceback
 import urlparse
 import urllib2
 import logging
