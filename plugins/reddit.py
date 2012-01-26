@@ -15,12 +15,15 @@ PREPEND_SCORE = True
 
 PREPEND_SUBREDDIT = True
 
+# You shouldn't have to change anything beyond this line.
+
 from canto_next.fetch import DaemonFetchThreadPlugin
 from canto_next.feed import DaemonFeedPlugin
 from canto_next.transform import transform_locals, CantoTransform 
 
 import urllib2
 import logging
+import time
 import json
 import re
 
@@ -38,26 +41,51 @@ class RedditFetchJSON(DaemonFetchThreadPlugin):
         if "reddit.com" not in kwargs["feed"].URL:
             return
 
+        last_fetch = 0
+
+        # We don't canonicalize these IDs as the daemon does because reddit has
+        # the id set already.
+
+        new_ids = [ i["id"] for i in kwargs["newcontent"]["entries"] ]
+
+        old_attrs = kwargs["feed"].get_attributes(new_ids, ["reddit-json"])
+
         for entry in kwargs["newcontent"]["entries"]:
             if "reddit-json" in entry:
                 continue
 
-            # Grab the story summary. Alternatively, we could grab
-            # entry["link"] + "/.json" but that includes comments and
-            # can be fairly large for popular threads.
+            if entry["id"] in old_attrs and\
+                    "reddit-json" in old_attrs[entry["id"]]:
+                entry["reddit-json"] = old_attrs[entry["id"]]["reddit-json"]
+            else:
 
-            try:
-                m = self.id_regex.match(entry["link"])
-                reddit_id = m.groups()[0]
+                # Reddit now enforces a maximum of 1 request every 2 seconds.
+                # We can afford to play by the rules because this runs in a
+                # separate thread.
 
-                response = urllib2.urlopen(\
-                        "http://reddit.com/by_id/t3_" + reddit_id + ".json")
+                cur_time = time.time()
+                delta = cur_time - last_fetch
+                if delta < 2:
+                    log.debug("Waiting %s seconds" % (2 - delta))
+                    time.sleep(2 - delta)
+                last_fetch = cur_time
 
-                r = json.load(response)
-                entry["reddit-json"] = r
-            except Exception, e:
-                log.error("Error fetching Reddit JSON: %s" % e)
-                entry["reddit-json"] = {}
+                # Grab the story summary. Alternatively, we could grab
+                # entry["link"] + "/.json" but that includes comments and
+                # can be fairly large for popular threads.
+
+                try:
+                    m = self.id_regex.match(entry["link"])
+                    reddit_id = m.groups()[0]
+
+                    response = urllib2.urlopen(\
+                            "http://reddit.com/by_id/t3_" + reddit_id + ".json")
+
+                    r = json.load(response)
+                    entry["reddit-json"] = r
+                except Exception, e:
+                    log.error("Error fetching Reddit JSON: %s" % e)
+                    entry["reddit-json"] = {}
 
 class RedditScoreSort(CantoTransform):
     def __init__(self):
