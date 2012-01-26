@@ -233,7 +233,7 @@ class CantoConfig():
 
         if "tags" in self.final and not self.errors:
             for tag in self.final["tags"].keys():
-                good = self.validate_dict("[tags][" + tag + "]", self.final["tags"],
+                good = self.validate_dict("[tags][" + tag + "]", self.final["tags"][tag],
                         self.tag_validators)
                 if not good:
                     del self.final["tags"][tag]
