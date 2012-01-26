@@ -130,7 +130,7 @@ class PluginHandler(object):
         def newfunc(*args, **kwargs):
             r = argt(args[0], origin_obj, *args[1:], **kwargs)
             if not r:
-                return
+                return False
 
             args, kwargs = r
             r = realfunc(*args, **kwargs)
