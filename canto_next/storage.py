@@ -13,6 +13,8 @@ import traceback
 import logging
 import shelve
 import anydbm
+import sys
+import os
 
 log = logging.getLogger("SHELF")
 
@@ -67,15 +69,19 @@ class CantoShelf():
         # longer relevant), we check for reorganize() and use it on close,
         # which should shrink the DB and keep it from growing into perpetuity.
 
-        # Counter intuitively, this only requires read permissions and, in
-        # fact there seems to be an issue lately with shelves getting EAGAIN
-        # on open if this is a writer.
-
         try:
             db = anydbm.open(self.filename, "r")
             if hasattr(db, 'reorganize'):
-                reorg = getattr(db, 'reorganize')
-                reorg()
+
+                # Workaround Python bug 13947 (gdbm reorganize leaving hanging
+                # file descriptors) by opening the extra fds in a temporary
+                # process.
+
+                pid = os.fork()
+                if not pid:
+                    getattr(db, 'reorganize')()
+                    sys.exit(0)
+
             db.close()
         except Exception, e:
             log.warn("Failed to reorganize db:")
