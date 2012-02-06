@@ -150,7 +150,6 @@ class CantoBackend(CantoServer):
         signal.signal(signal.SIGALRM, self.sig_alrm)
         signal.signal(signal.SIGINT, self.sig_int)
         signal.signal(signal.SIGTERM, self.sig_int)
-        signal.signal(signal.SIGCHLD, self.sig_chld)
         signal.alarm(1)
 
     def check_dead_feeds(self):
@@ -640,13 +639,6 @@ class CantoBackend(CantoServer):
 
     def sig_int(self, a, b):
         self.interrupted = 1
-
-    # We don't fork for anything but the 13947 workaround (storage.py)
-    def sig_chld(self, a, b):
-        try:
-            os.waitpid(-1, os.WNOHANG)
-        except:
-            pass
 
     # This function makes sure that the configuration paths are all R/W or
     # creatable.

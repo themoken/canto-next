@@ -69,6 +69,8 @@ class CantoShelf():
         # longer relevant), we check for reorganize() and use it on close,
         # which should shrink the DB and keep it from growing into perpetuity.
 
+        log.debug("Checking for DB trim")
+
         try:
             need_reorg = False
             db = anydbm.open(self.filename, "r")
@@ -85,8 +87,17 @@ class CantoShelf():
                 if not pid:
                     db = anydbm.open(self.filename, "w")
                     getattr(db, 'reorganize')()
+                    log.debug("Reorged - dying\n")
                     db.close()
                     sys.exit(0)
+
+                log.debug("Reorg forked as %d" % pid)
+                while True:
+                    try:
+                        os.waitpid(pid, 0)
+                        break
+                    except Exception, e:
+                        log.debug("Waiting, got: %s" % e)
 
         except Exception, e:
             log.warn("Failed to reorganize db:")
