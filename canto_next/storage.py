@@ -70,19 +70,24 @@ class CantoShelf():
         # which should shrink the DB and keep it from growing into perpetuity.
 
         try:
+            need_reorg = False
             db = anydbm.open(self.filename, "r")
             if hasattr(db, 'reorganize'):
+                need_reorg = True
+            db.close()
 
+            if need_reorg:
                 # Workaround Python bug 13947 (gdbm reorganize leaving hanging
                 # file descriptors) by opening the extra fds in a temporary
                 # process.
 
                 pid = os.fork()
                 if not pid:
+                    db = anydbm.open(self.filename, "w")
                     getattr(db, 'reorganize')()
+                    db.close()
                     sys.exit(0)
 
-            db.close()
         except Exception, e:
             log.warn("Failed to reorganize db:")
             log.warn(traceback.format_exc())
