@@ -2,10 +2,11 @@
 
 === Requirements ===
 - Typical Canto requirements
+    - python 3
     - libncursesw5-dev
     - libncurses5-dev
     - python-dev
-    - feedparser (system, not builtin in alpha yet)
+    - feedparser
 
 === Install ===
 
