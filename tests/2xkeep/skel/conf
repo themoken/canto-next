@@ -1,6 +1,0 @@
-[defaults]
-global_transform = None
-
-[Feed Static]
-url = file:///tmp/canto.xml
-order = 0

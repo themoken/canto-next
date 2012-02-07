@@ -30,7 +30,7 @@ def get_decoder(errors = "replace", encoding = None):
         encoding = locale_enc
 
     def decoder(s):
-        if type(s) != unicode:
+        if type(s) != str:
             return s.decode(encoding, errors)
         return s
     return decoder

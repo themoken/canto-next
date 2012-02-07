@@ -15,23 +15,23 @@
 
 CANTO_PROTOCOL_VERSION = 0.3
 
-from feed import allfeeds
-from encoding import encoder, decoder, locale_enc
-from protect import protection
-from server import CantoServer
-from config import CantoConfig
-from storage import CantoShelf
-from fetch import CantoFetch
-from hooks import on_hook, call_hook
-from tag import alltags
-from transform import eval_transform
-from plugins import try_plugins
+from .feed import allfeeds
+from .encoding import encoder, decoder, locale_enc
+from .protect import protection
+from .server import CantoServer
+from .config import CantoConfig
+from .storage import CantoShelf
+from .fetch import CantoFetch
+from .hooks import on_hook, call_hook
+from .tag import alltags
+from .transform import eval_transform
+from .plugins import try_plugins
 
 import traceback
 import logging
 import signal
 import getopt
-import Queue
+import queue
 import fcntl
 import errno
 import time
@@ -129,15 +129,15 @@ class CantoBackend(CantoServer):
 
         try:
             if self.port < 0:
-                CantoServer.__init__(self, sp, Queue.Queue())
+                CantoServer.__init__(self, sp, queue.Queue())
             else:
                 log.info("Listening on interface %s:%d" %\
                         (self.intf, self.port))
-                CantoServer.__init__(self, sp, Queue.Queue(),\
+                CantoServer.__init__(self, sp, queue.Queue(),\
                         port = self.port, interface = self.intf)
-        except Exception, e:
+        except Exception as e:
             err = "Error: %s" % e
-            print err
+            print(err)
             log.error(err)
             call_hook("exit", [])
             sys.exit(-1)
@@ -153,7 +153,7 @@ class CantoBackend(CantoServer):
         signal.alarm(1)
 
     def check_dead_feeds(self):
-        for URL in allfeeds.dead_feeds.keys():
+        for URL in list(allfeeds.dead_feeds.keys()):
             feed = allfeeds.dead_feeds[URL]
             for item in feed.items:
                 if protection.protected(item["id"]):
@@ -191,7 +191,7 @@ class CantoBackend(CantoServer):
         for socket in self.watches["config"]:
             # Don't echo changes back to socket that made them.
             if socket != originating_socket:
-                self.cmd_configs(socket, change.keys())
+                self.cmd_configs(socket, list(change.keys()))
 
     # Notify clients of new tags.
 
@@ -229,7 +229,7 @@ class CantoBackend(CantoServer):
             while socket in self.watches["tags"][tag]:
                 self.watches["tags"][tag].remove(socket)
 
-        if socket in self.socket_transforms.keys():
+        if socket in list(self.socket_transforms.keys()):
             del self.socket_transforms[socket]
 
         protection.unprotect((socket, "auto"))
@@ -290,7 +290,7 @@ class CantoBackend(CantoServer):
     # PING -> PONG
 
     def cmd_ping(self, socket, args):
-        self.write(socket, "PONG", u"")
+        self.write(socket, "PONG", "")
 
     # LISTTAGS -> [ "tag1", "tag2", .. ]
     # This makes no guarantee on order *other* than the fact that
@@ -381,7 +381,7 @@ class CantoBackend(CantoServer):
 
     def cmd_feedattributes(self, socket, args):
         r = {}
-        for url in args.keys():
+        for url in list(args.keys()):
             feed = allfeeds.get_feed(url)
             if not feed:
                 continue
@@ -393,7 +393,7 @@ class CantoBackend(CantoServer):
 
     def cmd_attributes(self, socket, args):
         ret = {}
-        feeds = allfeeds.items_to_feeds(args.keys())
+        feeds = allfeeds.items_to_feeds(list(args.keys()))
         for f in feeds:
             ret.update(f.get_attributes(feeds[f], args))
 
@@ -403,11 +403,11 @@ class CantoBackend(CantoServer):
 
     def cmd_setattributes(self, socket, args):
 
-        feeds = allfeeds.items_to_feeds(args.keys())
+        feeds = allfeeds.items_to_feeds(list(args.keys()))
         for f in feeds:
             f.set_attributes(feeds[f], args)
 
-        tags = alltags.items_to_tags(args.keys())
+        tags = alltags.items_to_tags(list(args.keys()))
         for t in tags:
             call_hook("tag_change", [ t ])
 
@@ -536,7 +536,7 @@ class CantoBackend(CantoServer):
                     (socket, (cmd, args)) = self.queue.get(True, 0.1)
                 else:
                     (socket, (cmd, args)) = self.queue.get(True, 1)
-            except Queue.Empty:
+            except queue.Empty:
                 pass
             else:
                 if cmd == "DIE":
@@ -552,7 +552,7 @@ class CantoBackend(CantoServer):
                     func = getattr(self, cmdf)
                     try:
                         func(socket, args)
-                    except Exception, e:
+                    except Exception as e:
                         tb = "".join(traceback.format_exc(e))
                         self.write(socket, "EXCEPT", tb)
                         log.error("Protocol exception:")
@@ -597,11 +597,11 @@ class CantoBackend(CantoServer):
         try:
             optlist = getopt.getopt(sys.argv[1:], 'D:vp:a:n',\
                     ["dir=", "port=", "address=", "nofetch", "nowb"])[0]
-        except getopt.GetoptError, e:
+        except getopt.GetoptError as e:
             log.error("Error: %s" % e.msg)
             return -1
 
-        self.conf_dir = os.path.expanduser(u"~/.canto-ng/")
+        self.conf_dir = os.path.expanduser("~/.canto-ng/")
 
         for opt, arg in optlist:
             # -D base configuration directory. Highest priority.
@@ -657,7 +657,7 @@ class CantoBackend(CantoServer):
         else:
             try:
                 os.makedirs(self.conf_dir)
-            except Exception, e:
+            except Exception as e:
                 log.error("Exception making %s : %s" % (self.conf_dir, e))
                 return -1
         return self.ensure_files()
@@ -693,7 +693,7 @@ class CantoBackend(CantoServer):
             self.pidfile.truncate()
             self.pidfile.write("%d" % os.getpid())
             self.pidfile.flush()
-        except IOError, e:
+        except IOError as e:
             if e.errno == errno.EAGAIN:
                 log.error("Error: Another canto-daemon is running here.")
                 return -1
@@ -724,11 +724,11 @@ class CantoBackend(CantoServer):
         self.conf = CantoConfig(self.conf_path, self.shelf)
         self.conf.parse()
         if self.conf.errors:
-            print "ERRORS:"
-            for key in self.conf.errors.keys():
+            print("ERRORS:")
+            for key in list(self.conf.errors.keys()):
                 for value, error in self.conf.errors[key]:
                     s = "\t%s -> %s: %s" % (key, value, error)
-                    print s.encode(locale_enc)
+                    print(s.encode(locale_enc))
 
             sys.exit(-1)
 
@@ -746,7 +746,7 @@ class CantoBackend(CantoServer):
             pass
 
         # Pretty print any non-Keyboard exceptions.
-        except Exception, e:
+        except Exception as e:
             tb = traceback.format_exc(e)
             log.error("Exiting on exception:")
             log.error("\n" + "".join(tb))

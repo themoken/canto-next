@@ -7,9 +7,9 @@
 #   it under the terms of the GNU General Public License version 2 as 
 #   published by the Free Software Foundation.
 
-from protocol import CantoSocket
-from encoding import decoder
-from hooks import call_hook
+from .protocol import CantoSocket
+from .encoding import decoder
+from .hooks import call_hook
 
 import logging
 import select
@@ -42,11 +42,11 @@ class CantoClient(CantoSocket):
             optlist, sys.argv =\
                     getopt.getopt(sys.argv[1:], 'D:p:a:' + extrashort,\
                     ["dir=", "port=", "address="] + extralong)
-        except getopt.GetoptError, e:
+        except getopt.GetoptError as e:
             log.error("Error: %s" % e.msg)
             return -1
 
-        self.conf_dir = os.path.expanduser(u"~/.canto-ng/")
+        self.conf_dir = os.path.expanduser("~/.canto-ng/")
 
         self.location_args = []
 
@@ -85,7 +85,7 @@ class CantoClient(CantoSocket):
                 fcntl.flock(pf.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
                 fcntl.flock(pf.fileno(), fcntl.LOCK_UN)
                 pf.close()
-            except IOError, e:
+            except IOError as e:
                 if e.errno == errno.EAGAIN:
                     # If we failed to get a lock, then the daemon is running
                     # and we're done.

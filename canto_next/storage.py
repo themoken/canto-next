@@ -7,12 +7,12 @@
 #   it under the terms of the GNU General Public License version 2 as 
 #   published by the Free Software Foundation.
 
-from hooks import on_hook
+from .hooks import on_hook
 
 import traceback
 import logging
 import shelve
-import anydbm
+import dbm
 import sys
 import os
 
@@ -38,20 +38,16 @@ class CantoShelf():
             self.shelf = shelve.open(self.filename)
 
     def __setitem__(self, name, value):
-        name = name.encode("UTF-8")
         self.shelf[name] = value
 
     def __getitem__(self, name):
-        name = name.encode("UTF-8")
         r = self.shelf[name]
         return r
 
     def __contains__(self, name):
-        name = name.encode("UTF-8")
         return name in self.shelf
 
     def __delitem__(self, name):
-        name = name.encode("UTF-8")
         del self.shelf[name]
 
     def sync(self):
@@ -73,7 +69,7 @@ class CantoShelf():
 
         try:
             need_reorg = False
-            db = anydbm.open(self.filename, "r")
+            db = dbm.open(self.filename, "r")
             if hasattr(db, 'reorganize'):
                 need_reorg = True
             db.close()
@@ -85,7 +81,7 @@ class CantoShelf():
 
                 pid = os.fork()
                 if not pid:
-                    db = anydbm.open(self.filename, "w")
+                    db = dbm.open(self.filename, "w")
                     getattr(db, 'reorganize')()
                     log.debug("Reorged - dying\n")
                     db.close()
@@ -96,10 +92,10 @@ class CantoShelf():
                     try:
                         os.waitpid(pid, 0)
                         break
-                    except Exception, e:
+                    except Exception as e:
                         log.debug("Waiting, got: %s" % e)
 
-        except Exception, e:
+        except Exception as e:
             log.warn("Failed to reorganize db:")
             log.warn(traceback.format_exc())
 

@@ -7,10 +7,10 @@
 #   it under the terms of the GNU General Public License version 2 as 
 #   published by the Free Software Foundation.
 
-from encoding import decoder, locale_enc
-from transform import eval_transform
-from feed import allfeeds, CantoFeed
-from tag import alltags
+from .encoding import decoder, locale_enc
+from .transform import eval_transform
+from .feed import allfeeds, CantoFeed
+from .tag import alltags
 
 import traceback
 import logging
@@ -142,7 +142,7 @@ class CantoConfig():
         return (True, value)
 
     def validate_string(self, ident, value):
-        if type(value) != unicode:
+        if type(value) != str:
             self.error(ident, value, "Not unicode!")
             return False
         return (True, value)
@@ -165,7 +165,7 @@ class CantoConfig():
     def validate_set_transform(self, ident, value):
         try:
             r = eval_transform(value)
-        except Exception, e:
+        except Exception as e:
             tb = traceback.format_exc(e)
             msg = "\n" + "".join(tb)
             self.error(ident, value, "Invalid transform: %s" % msg)
@@ -180,7 +180,7 @@ class CantoConfig():
 
             found = False
 
-            for opt in d.keys():
+            for opt in list(d.keys()):
                 match = r.match(opt)
                 if not match:
                     continue
@@ -232,7 +232,7 @@ class CantoConfig():
             self.final["defaults"] = self.defaults_defaults.copy()
 
         if "tags" in self.final and not self.errors:
-            for tag in self.final["tags"].keys():
+            for tag in list(self.final["tags"].keys()):
                 good = self.validate_dict("[tags][" + tag + "]", self.final["tags"][tag],
                         self.tag_validators)
                 if not good:
@@ -247,7 +247,7 @@ class CantoConfig():
 
         if self.errors:
             log.error("ERRORS:")
-            for key in self.errors.keys():
+            for key in list(self.errors.keys()):
                 log.error("%s:" % key)
                 for value, error in self.errors[key]:
                     log.error("\t%s -> %s" % (value, error))
@@ -306,7 +306,7 @@ class CantoConfig():
     # keys that are lists will items removed if specified.
 
     def _delete(self, deletions, current):
-        for key in deletions.keys():
+        for key in list(deletions.keys()):
 
             # Nothing to do.
 
@@ -341,7 +341,7 @@ class CantoConfig():
         self._delete(deletions, self.json)
 
     def _merge(self, change, current):
-        for key in change.keys():
+        for key in list(change.keys()):
             # Move over missing keys
 
             if key not in current:

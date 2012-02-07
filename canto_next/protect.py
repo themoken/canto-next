@@ -24,7 +24,7 @@ class Protection():
     # Return whether a single item tuple is protected.
 
     def protected(self, item):
-        for key in self.prot.keys():
+        for key in list(self.prot.keys()):
             if item in self.prot[key]:
                 log.debug("item %s is protected." % (item,))
                 return True

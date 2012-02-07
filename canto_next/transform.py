@@ -6,8 +6,8 @@
 #   it under the terms of the GNU General Public License version 2 as 
 #   published by the Free Software Foundation.
 
-from feed import allfeeds
-from tag import alltags
+from .feed import allfeeds
+from .tag import alltags
 
 import logging
 import re
@@ -101,7 +101,7 @@ class ContentFilterRegex(CantoTransform):
             if self.attribute not in a:
                 r.append(item)
                 continue
-            if type(a[self.attribute]) != unicode:
+            if type(a[self.attribute]) != str:
                 log.error("Can't match non-string!")
                 continue
 

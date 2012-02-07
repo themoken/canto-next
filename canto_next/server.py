@@ -7,8 +7,8 @@
 #   it under the terms of the GNU General Public License version 2 as 
 #   published by the Free Software Foundation.
 
-from protocol import CantoSocket
-from hooks import call_hook
+from .protocol import CantoSocket
+from .hooks import call_hook
 
 from socket import SHUT_RDWR
 from threading import Thread
@@ -41,7 +41,7 @@ class CantoServer(CantoSocket):
                         log.info("Connection ended.")
                         return
                     self.queue.put((conn, d))
-        except Exception, e:
+        except Exception as e:
             tb = traceback.format_exc(e)
             log.error("Response thread dead on exception:")
             log.error("\n" + "".join(tb))
@@ -59,7 +59,7 @@ class CantoServer(CantoSocket):
                         conn = s.accept()
                         log.info("conn %s from sock %s" % (conn, s))
                         self.queue.put((conn[0], ("NEWCONN","")))
-        except Exception, e:
+        except Exception as e:
             tb = traceback.format_exc(e)
             log.error("Connection monitor thread dead on exception:")
             log.error("\n" + "".join(tb))

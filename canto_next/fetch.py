@@ -6,14 +6,14 @@
 #   it under the terms of the GNU General Public License version 2 as 
 #   published by the Free Software Foundation.
 
-from plugins import PluginHandler, Plugin
-from feed import allfeeds
+from .plugins import PluginHandler, Plugin
+from .feed import allfeeds
 
 from threading import Thread
 import feedparser
 import traceback
-import urlparse
-import urllib2
+import urllib.parse
+import urllib.request, urllib.error, urllib.parse
 import logging
 import time
 
@@ -37,7 +37,7 @@ class CantoFetchThread(PluginHandler, Thread):
         self.feed = feed
 
     def run(self):
-        request = urllib2.Request(self.feed.URL)
+        request = urllib.request.Request(self.feed.URL)
         request.add_header('User-Agent',\
                 'Canto/0.8.0 + http://codezen.org/canto')
 
@@ -45,20 +45,20 @@ class CantoFetchThread(PluginHandler, Thread):
             result = None
             # Passworded Feed
             if self.feed.username or self.feed.password:
-                mgr = urllib2.HTTPPasswordMgrWithDefaultRealm()
-                domain = urlparse.urlparse(self.feed.URL)[1]
+                mgr = urllib.request.HTTPPasswordMgrWithDefaultRealm()
+                domain = urllib.parse.urlparse(self.feed.URL)[1]
                 mgr.add_password(None, domain, self.feed.username,
                         self.feed.password)
 
                 # Try Basic Authentication
-                auth = urllib2.HTTPBasicAuthHandler(mgr)
-                opener = urllib2.build_opener(auth)
+                auth = urllib.request.HTTPBasicAuthHandler(mgr)
+                opener = urllib.request.build_opener(auth)
                 try:
                     result = feedparser.parse(opener.open(request))
                 except:
                     # And, failing that, Digest Authentication
-                    auth = urllib2.HTTPDigestAuthHandler(mgr)
-                    opener = urllib2.build_opener(auth)
+                    auth = urllib.request.HTTPDigestAuthHandler(mgr)
+                    opener = urllib.request.build_opener(auth)
                     result = feedparser.parse(opener.open(request))
 
             # No password
@@ -66,7 +66,7 @@ class CantoFetchThread(PluginHandler, Thread):
                 result = feedparser.parse(feedparser.urllib2.urlopen(request))
 
             self.feed.update_contents = result
-        except Exception, e:
+        except Exception as e:
             log.error("ERROR: try to parse %s, got %s" % (self.feed.URL, e))
             self.feed.update_contents = None
             return
@@ -76,7 +76,7 @@ class CantoFetchThread(PluginHandler, Thread):
         # any other broken feed.
 
         if "bozo_exception" in self.feed.update_contents:
-            if self.feed.update_contents["bozo_exception"] == urllib2.URLError:
+            if self.feed.update_contents["bozo_exception"] == urllib.error.URLError:
                 log.error("ERROR: couldn't grab %s : %s" %\
                         (self.feed.URL,\
                         self.feed.update_contents["bozo_exception"].reason))
@@ -102,7 +102,7 @@ class CantoFetchThread(PluginHandler, Thread):
         # Allow DaemonFetchThreadPlugins to do any sort of fetch stuff
         # before the thread is marked as complete.
 
-        for attr in self.plugin_attrs.keys():
+        for attr in list(self.plugin_attrs.keys()):
             if not attr.startswith("fetch_"):
                 continue
 

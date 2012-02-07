@@ -6,21 +6,21 @@
 #   it under the terms of the GNU General Public License version 2 as 
 #   published by the Free Software Foundation.
 
-from client import CantoClient
-from encoding import encoder, decoder
-from format import escsplit
+from .client import CantoClient
+from .encoding import encoder, decoder
+from .format import escsplit
 
 from xml.sax.saxutils import escape as xml_escape
 import xml.parsers.expat
 import feedparser
 import traceback
-import urllib2
+import urllib.request, urllib.error, urllib.parse
 import pprint
 import time
 import sys
 
 def print_wrap(s):
-    print encoder(s)
+    print(encoder(s))
 
 def assign_to_dict(d, var, val):
     terms = escsplit(var, '.', 0, 0, True)
@@ -63,7 +63,7 @@ class CantoRemote(CantoClient):
             else:
                 CantoClient.__init__(self, None,\
                         port = self.port, address = self.addr)
-        except Exception, e:
+        except Exception as e:
             print_wrap("Error: %s" % e)
             print_wrap(self.socket_path)
             sys.exit(-1)
@@ -106,7 +106,7 @@ class CantoRemote(CantoClient):
                     return r[1]
                 elif r[0] == "ERRORS":
                     print_wrap("ERRORS!")
-                    for key in r[1].keys():
+                    for key in list(r[1].keys()):
                         for val, err in r[1][key]:
                             print_wrap("%s -> %s: %s" % (key, val, err))
             elif r:
@@ -115,12 +115,12 @@ class CantoRemote(CantoClient):
         return None
 
     def _autoname(self, URL):
-        request = urllib2.Request(URL)
+        request = urllib.request.Request(URL)
         request.add_header('User-Agent',\
                 'Canto-Remote/0.8.0 + http://codezen.org/canto')
         try:
             content = feedparser.parse(feedparser.urllib2.urlopen(request))
-        except Exception, e:
+        except Exception as e:
             print_wrap("ERROR: Couldn't determine name: %s" % e)
             return None
 
@@ -231,7 +231,7 @@ class CantoRemote(CantoClient):
                     try:
                         val = eval(val, {},{})
                         val_ok = True
-                    except Exception, e:
+                    except Exception as e:
                         print_wrap("Unable to eval value: %s - %s" % (val, e))
                         val_ok = False
                 else:
@@ -337,7 +337,7 @@ class CantoRemote(CantoClient):
 
         try:
             data = decoder(open(opmlpath, "r").read())
-        except Exception, e:
+        except Exception as e:
             print_wrap("Couldn't read OPML file:")
             traceback.print_exc()
             return
@@ -364,7 +364,7 @@ class CantoRemote(CantoClient):
 
         parser = xml.parsers.expat.ParserCreate()
         parser.StartElementHandler = parse_opml
-        print data.encode("UTF-8")
+        print(data.encode("UTF-8"))
         parser.Parse(data.encode("UTF-8"), 1)
 
         for feed in feeds:
@@ -398,14 +398,14 @@ class CantoRemote(CantoClient):
 
             if line.startswith("REMOTE_WAIT "):
                 num = int(line.split(" ", 1)[-1])
-                for i in xrange(num):
+                for i in range(num):
                     r = self._wait_response(None)
                     print_wrap(pp.pformat(r))
                     sys.__stdout__.flush()
 
             elif line.startswith("REMOTE_IGNORE "):
                 num = int(line.split(" ", 1)[-1])
-                for i in xrange(num):
+                for i in range(num):
                     self._wait_response(None)
 
             # Hang with socket open so that the daemon thinks

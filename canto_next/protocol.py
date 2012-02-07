@@ -7,7 +7,7 @@
 #   it under the terms of the GNU General Public License version 2 as 
 #   published by the Free Software Foundation.
 
-from hooks import on_hook
+from .hooks import on_hook
 
 from threading import Thread
 import logging
@@ -99,7 +99,7 @@ class CantoSocket:
                 try:
                     sock.connect(addr)
                     break
-                except Exception, e:
+                except Exception as e:
                     if e[0] != errno.ECONNREFUSED or tries == 1:
                         raise
                 time.sleep(1)
@@ -117,7 +117,7 @@ class CantoSocket:
 
     def prot_new_frag(self, newconn):
         if newconn not in self.fragments:
-            self.fragments[newconn] = u""
+            self.fragments[newconn] = ""
 
     def prot_kill_frag(self, deadconn):
         if deadconn in self.fragments:
@@ -167,7 +167,7 @@ class CantoSocket:
         # We only care about the first (only) descriptor's event
         try:
             p = poll.poll(timeout)
-        except select.error, e:
+        except select.error as e:
             if e[0] == errno.EINTR:
                 return
             log.debug("Raising error: %s" % e[1])
@@ -184,8 +184,8 @@ class CantoSocket:
             return select.POLLHUP
         if e & select.POLLIN:
             try:
-                fragment = conn.recv(1024)
-            except Exception, e:
+                fragment = conn.recv(1024).decode()
+            except Exception as e:
                 if e[0] == errno.EINTR:
                     return
                 log.error("Error sending: %s" % e[1])
@@ -244,7 +244,7 @@ class CantoSocket:
 
             try:
                 p = poll.poll()
-            except select.error, e:
+            except select.error as e:
                 if e[0] == errno.EINTR:
                     eintr_count += 1
                     if eintr_count >= 3:
@@ -268,8 +268,8 @@ class CantoSocket:
                 return select.POLLHUP
             if e & select.POLLOUT:
                 try:
-                    sent = conn.send(tosend)
-                except Exception, e:
+                    sent = conn.send(tosend.encode("UTF-8"))
+                except Exception as e:
                     if e[0] == errno.EINTR:
                         continue
                     log.error("Error sending: %s" % e[1])

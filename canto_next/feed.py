@@ -7,10 +7,10 @@
 #   it under the terms of the GNU General Public License version 2 as 
 #   published by the Free Software Foundation.
 
-from plugins import PluginHandler, Plugin
-from protect import protection
-from encoding import decoder, encoder
-from tag import alltags
+from .plugins import PluginHandler, Plugin
+from .protect import protection
+from .encoding import decoder, encoder
+from .tag import alltags
 
 import traceback
 import logging
@@ -21,7 +21,7 @@ log = logging.getLogger("FEED")
 def dict_id(i):
     if type(i) == dict:
         return i
-    return json.loads(encoder(i))
+    return json.loads(i)
 
 class CantoFeeds():
     def __init__(self):
@@ -128,7 +128,7 @@ class CantoFeed(PluginHandler):
             if ci["id"] == i:
                 return (ci, idx)
         else:
-            raise Exception, "%s not found in self.items" % (i,)
+            raise Exception("%s not found in self.items" % (i,))
 
     # Return { attribute : value ... }
     def get_feedattributes(self, attributes):
@@ -258,8 +258,8 @@ class CantoFeed(PluginHandler):
             # At this point, we're sure item's going to be added.
 
             cacheitem = {}
-            cacheitem["id"] = decoder(json.dumps(\
-                    { "URL" : self.URL, "ID" : item["id"] } ))
+            cacheitem["id"] = json.dumps(\
+                    { "URL" : self.URL, "ID" : item["id"] } )
 
             alltags.add_tag(cacheitem["id"], self.name, "maintag")
 
@@ -326,7 +326,7 @@ class CantoFeed(PluginHandler):
         # Allow plugins DaemonFeedPlugins defining edit_* functions to have a
         # crack at the contents before we commit to disk.
 
-        for attr in self.plugin_attrs.keys():
+        for attr in list(self.plugin_attrs.keys()):
             if not attr.startswith("edit_"):
                 continue
 

@@ -21,7 +21,7 @@ from canto_next.fetch import DaemonFetchThreadPlugin
 from canto_next.feed import DaemonFeedPlugin
 from canto_next.transform import transform_locals, CantoTransform 
 
-import urllib2
+import urllib.request, urllib.error, urllib.parse
 import logging
 import time
 import json
@@ -78,12 +78,12 @@ class RedditFetchJSON(DaemonFetchThreadPlugin):
                     m = self.id_regex.match(entry["link"])
                     reddit_id = m.groups()[0]
 
-                    response = urllib2.urlopen(\
+                    response = urllib.request.urlopen(\
                             "http://reddit.com/by_id/t3_" + reddit_id + ".json")
 
                     r = json.load(response)
                     entry["reddit-json"] = r
-                except Exception, e:
+                except Exception as e:
                     log.error("Error fetching Reddit JSON: %s" % e)
                     entry["reddit-json"] = {}
 
@@ -117,8 +117,10 @@ class RedditScoreSort(CantoTransform):
             else:
                 unscored.append(item)
 
-        scored.sort(lambda x, y :\
-                attrs[y]["reddit-score"] - attrs[x]["reddit-score"])
+        scored = [ (attrs[x]["reddit-score"], x) for x in scored ]
+        scored.sort()
+        scored.reverse()
+        scored = [ x for (s, x) in scored ]
 
         return scored + unscored
 

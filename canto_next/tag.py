@@ -5,7 +5,7 @@
 #   it under the terms of the GNU General Public License version 2 as 
 #   published by the Free Software Foundation.
 
-from hooks import on_hook, call_hook
+from .hooks import on_hook, call_hook
 
 import logging
 
@@ -81,12 +81,12 @@ class CantoTags():
                 self.tag_changed(tag)
 
     def get_tag(self, tag):
-        if tag in self.tags.keys():
+        if tag in list(self.tags.keys()):
             return self.tags[tag]
         return []
 
     def get_tags(self):
-        return self.tags.keys()
+        return list(self.tags.keys())
 
     def del_old_tags(self):
         oldtags = []

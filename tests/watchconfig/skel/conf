@@ -1,5 +1,0 @@
-[Feed Canto]
-url=http://codezen.org/static/canto.xml
-
-[defaults]
-global_transform = None

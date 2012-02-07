@@ -23,7 +23,7 @@ def try_plugins(topdir):
         log.info("Creating plugins directory.")
         try:
             os.mkdir(p)
-        except Exception, e:
+        except Exception as e:
             tb = traceback.format_exc(e)
             log.error("Exception creating plugin directory")
             log.error("\n" + "".join(tb))
@@ -37,7 +37,7 @@ def try_plugins(topdir):
         try:
             f = open(pinit, "w")
             f.close()
-        except Exception, e:
+        except Exception as e:
             tb = traceback.format_exc(e)
             log.error("Exception creating plugin __init__.py")
             log.error("\n" + "".join(tb))
@@ -53,7 +53,7 @@ def try_plugins(topdir):
                 proper = fname[:-3]
                 log.info("[plugin] %s" % proper)
                 __import__("plugins." + proper)
-            except Exception, e:
+            except Exception as e:
                 tb = traceback.format_exc(e)
                 log.error("Exception importing file %s" % fname)
                 log.error("\n" + "".join(tb))
@@ -84,13 +84,13 @@ class PluginHandler(object):
         for iclass in self.plugin_class_instances[:]:
             try:
                 # Warn if we're overriding a previously defined plugin attr
-                for iclass_attr in iclass.plugin_attrs.keys():
+                for iclass_attr in list(iclass.plugin_attrs.keys()):
                     if iclass_attr in self.plugin_attrs:
                         log.warn("Multiply defined plugin attribute!: %s" %\
                                 iclass_attr)
 
                 self.plugin_attrs.update(iclass.plugin_attrs)
-            except Exception, e:
+            except Exception as e:
                 log.error("Error initializing plugins:")
                 log.error(traceback.format_exc())
 
