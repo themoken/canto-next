@@ -37,33 +37,33 @@ class CantoFetchThread(PluginHandler, Thread):
         self.feed = feed
 
     def run(self):
-        request = urllib.request.Request(self.feed.URL)
-        request.add_header('User-Agent',\
-                'Canto/0.8.0 + http://codezen.org/canto')
+        extra_headers = { 'User-Agent' :\
+                'Canto/0.8.0 + http://codezen.org/canto' }
 
         try:
             result = None
             # Passworded Feed
             if self.feed.username or self.feed.password:
-                mgr = urllib.request.HTTPPasswordMgrWithDefaultRealm()
                 domain = urllib.parse.urlparse(self.feed.URL)[1]
-                mgr.add_password(None, domain, self.feed.username,
+                auth = urllib.request.HTTPBasicAuthHandler()
+                auth.add_password(None, domain, self.feed.username,
                         self.feed.password)
 
-                # Try Basic Authentication
-                auth = urllib.request.HTTPBasicAuthHandler(mgr)
-                opener = urllib.request.build_opener(auth)
                 try:
-                    result = feedparser.parse(opener.open(request))
+                    result = feedparser.parse(self.feed.URL, handlers=[auth],
+                            request_headers = extra_headers)
                 except:
                     # And, failing that, Digest Authentication
-                    auth = urllib.request.HTTPDigestAuthHandler(mgr)
-                    opener = urllib.request.build_opener(auth)
-                    result = feedparser.parse(opener.open(request))
+                    auth = urllib.request.HTTPDigestAuthHandler()
+                    auth.add_password(None, domain, self.feed.username,
+                            self.feed.password)
+                    result = feedparser.parse(self.feed.URL, handlers=[auth],
+                            request_headers = extra_headers)
 
             # No password
             else:
-                result = feedparser.parse(feedparser.urllib2.urlopen(request))
+                result = feedparser.parse(self.feed.URL,
+                        request_headers = extra_headers)
 
             self.feed.update_contents = result
         except Exception as e:
