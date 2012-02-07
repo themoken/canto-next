@@ -9,7 +9,7 @@
 
 from .plugins import PluginHandler, Plugin
 from .protect import protection
-from .encoding import decoder, encoder
+from .encoding import encoder
 from .tag import alltags
 
 import traceback

@@ -16,7 +16,7 @@
 CANTO_PROTOCOL_VERSION = 0.3
 
 from .feed import allfeeds
-from .encoding import encoder, decoder, locale_enc
+from .encoding import encoder
 from .protect import protection
 from .server import CantoServer
 from .config import CantoConfig
@@ -606,7 +606,7 @@ class CantoBackend(CantoServer):
         for opt, arg in optlist:
             # -D base configuration directory. Highest priority.
             if opt in ["-D", "--dir"]:
-                self.conf_dir = os.path.expanduser(decoder(arg))
+                self.conf_dir = os.path.expanduser(arg)
                 self.conf_dir = os.path.realpath(self.conf_dir)
 
             # -v increase verbosity
@@ -615,7 +615,7 @@ class CantoBackend(CantoServer):
 
             elif opt in ["-p", "--port"]:
                 try:
-                    self.port = int(decoder(arg))
+                    self.port = int(arg)
                     if self.port < 0:
                         raise Exception
                 except:
@@ -623,7 +623,7 @@ class CantoBackend(CantoServer):
                     return -1
 
             elif opt in ["-a", "--address"]:
-                self.intf = decoder(arg)
+                self.intf = arg
 
             elif opt in ["-n", "--nofetch"]:
                 self.no_fetch = True
@@ -728,7 +728,7 @@ class CantoBackend(CantoServer):
             for key in list(self.conf.errors.keys()):
                 for value, error in self.conf.errors[key]:
                     s = "\t%s -> %s: %s" % (key, value, error)
-                    print(s.encode(locale_enc))
+                    print(encoder(s))
 
             sys.exit(-1)
 

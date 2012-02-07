@@ -8,7 +8,6 @@
 #   published by the Free Software Foundation.
 
 from .protocol import CantoSocket
-from .encoding import decoder
 from .hooks import call_hook
 
 import logging
@@ -52,13 +51,13 @@ class CantoClient(CantoSocket):
 
         for opt, arg in optlist:
             if opt in [ "-D", "--dir"]:
-                self.conf_dir = os.path.expanduser(decoder(arg))
+                self.conf_dir = os.path.expanduser(arg)
                 self.conf_dir = os.path.realpath(self.conf_dir)
                 self.location_args += [ opt, arg ]
 
             elif opt in [ "-p", "--port"]:
                 try:
-                    self.port = int(decoder(arg))
+                    self.port = int(arg)
                     if self.port < 0:
                         raise Exception
                 except:
@@ -67,7 +66,7 @@ class CantoClient(CantoSocket):
                 self.location_args += [ opt, arg ]
 
             elif opt in [ "-a", "--address"]:
-                self.addr = decoder(arg)
+                self.addr = arg
                 self.location_args += [ opt, arg ]
 
         self.socket_path = self.conf_dir + "/.canto_socket"

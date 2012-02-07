@@ -24,15 +24,3 @@ def get_encoder(errors = "replace", encoding = None):
     return encoder
 
 encoder = get_encoder()
-
-def get_decoder(errors = "replace", encoding = None):
-    if not encoding:
-        encoding = locale_enc
-
-    def decoder(s):
-        if type(s) != str:
-            return s.decode(encoding, errors)
-        return s
-    return decoder
-
-decoder = get_decoder()

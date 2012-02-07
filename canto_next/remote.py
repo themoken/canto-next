@@ -7,7 +7,7 @@
 #   published by the Free Software Foundation.
 
 from .client import CantoClient
-from .encoding import encoder, decoder
+from .encoding import encoder
 from .format import escsplit
 
 from xml.sax.saxutils import escape as xml_escape
@@ -336,7 +336,7 @@ class CantoRemote(CantoClient):
         opmlpath = sys.argv[1]
 
         try:
-            data = decoder(open(opmlpath, "r").read())
+            data = open(opmlpath, "r").read()
         except Exception as e:
             print_wrap("Couldn't read OPML file:")
             traceback.print_exc()
@@ -456,8 +456,6 @@ class CantoRemote(CantoClient):
         if len(sys.argv) < 1:
             self.print_help()
             return
-
-        sys.argv = [ decoder(a) for a in sys.argv ]
 
         command = "cmd_" + sys.argv[0].replace("-","_")
 

@@ -100,7 +100,7 @@ class CantoSocket:
                     sock.connect(addr)
                     break
                 except Exception as e:
-                    if e[0] != errno.ECONNREFUSED or tries == 1:
+                    if e.args[0] != errno.ECONNREFUSED or tries == 1:
                         raise
                 time.sleep(1)
                 tries -= 1
@@ -168,7 +168,7 @@ class CantoSocket:
         try:
             p = poll.poll(timeout)
         except select.error as e:
-            if e[0] == errno.EINTR:
+            if e.args[0] == errno.EINTR:
                 return
             log.debug("Raising error: %s" % e[1])
             raise
@@ -186,7 +186,7 @@ class CantoSocket:
             try:
                 fragment = conn.recv(1024).decode()
             except Exception as e:
-                if e[0] == errno.EINTR:
+                if e.args[0] == errno.EINTR:
                     return
                 log.error("Error sending: %s" % e[1])
                 log.error("Interpreting as HUP")
@@ -245,7 +245,7 @@ class CantoSocket:
             try:
                 p = poll.poll()
             except select.error as e:
-                if e[0] == errno.EINTR:
+                if e.args[0] == errno.EINTR:
                     eintr_count += 1
                     if eintr_count >= 3:
                         log.error("conn %s appears valid, but unresponsive." % conn)
@@ -270,7 +270,7 @@ class CantoSocket:
                 try:
                     sent = conn.send(tosend.encode("UTF-8"))
                 except Exception as e:
-                    if e[0] == errno.EINTR:
+                    if e.args[0] == errno.EINTR:
                         continue
                     log.error("Error sending: %s" % e[1])
                     log.error("Interpreting as HUP")

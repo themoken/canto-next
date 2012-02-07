@@ -117,17 +117,16 @@ class ContentFilter(ContentFilterRegex):
         ContentFilterRegex.__init__(self, attribute, string)
 
 class SortTransform(CantoTransform):
-    def __init__(self, name, attr, sortfunc = None):
+    def __init__(self, name, attr):
         CantoTransform.__init__(self, name)
         self.attr = attr
-        self.sort = sortfunc
 
     def needed_attributes(self, tag):
         return [ self.attr ]
 
     def transform(self, items, attrs, immune):
         r = [ ( attrs[item][self.attr], item ) for item in items ]
-        r.sort(self.sort)
+        r.sort()
         return [ item[1] for item in r ]
 
 # Meta-filter for AND

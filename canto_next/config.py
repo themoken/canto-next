@@ -7,7 +7,7 @@
 #   it under the terms of the GNU General Public License version 2 as 
 #   published by the Free Software Foundation.
 
-from .encoding import decoder, locale_enc
+from .encoding import locale_enc
 from .transform import eval_transform
 from .feed import allfeeds, CantoFeed
 from .tag import alltags
