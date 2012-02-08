@@ -115,11 +115,10 @@ class CantoRemote(CantoClient):
         return None
 
     def _autoname(self, URL):
-        request = urllib.request.Request(URL)
-        request.add_header('User-Agent',\
-                'Canto-Remote/0.8.0 + http://codezen.org/canto')
+        extra_headers = { 'User-Agent' :\
+                'Canto/0.8.0 + http://codezen.org/canto' }
         try:
-            content = feedparser.parse(feedparser.urllib2.urlopen(request))
+            content = feedparser.parse(URL, request_headers = extra_headers)
         except Exception as e:
             print_wrap("ERROR: Couldn't determine name: %s" % e)
             return None
