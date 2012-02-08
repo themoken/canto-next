@@ -81,7 +81,7 @@ class RedditFetchJSON(DaemonFetchThreadPlugin):
                     response = urllib.request.urlopen(\
                             "http://reddit.com/by_id/t3_" + reddit_id + ".json")
 
-                    r = json.load(response)
+                    r = json.loads(response.read().decode())
                     entry["reddit-json"] = r
                 except Exception as e:
                     log.error("Error fetching Reddit JSON: %s" % e)
