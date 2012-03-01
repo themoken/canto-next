@@ -42,7 +42,7 @@ class CantoServer(CantoSocket):
                         return
                     self.queue.put((conn, d))
         except Exception as e:
-            tb = traceback.format_exc(e)
+            tb = traceback.format_exc()
             log.error("Response thread dead on exception:")
             log.error("\n" + "".join(tb))
             return
@@ -60,7 +60,7 @@ class CantoServer(CantoSocket):
                         log.info("conn %s from sock %s" % (conn, s))
                         self.queue.put((conn[0], ("NEWCONN","")))
         except Exception as e:
-            tb = traceback.format_exc(e)
+            tb = traceback.format_exc()
             log.error("Connection monitor thread dead on exception:")
             log.error("\n" + "".join(tb))
             return

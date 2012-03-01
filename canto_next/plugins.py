@@ -24,7 +24,7 @@ def try_plugins(topdir):
         try:
             os.mkdir(p)
         except Exception as e:
-            tb = traceback.format_exc(e)
+            tb = traceback.format_exc()
             log.error("Exception creating plugin directory")
             log.error("\n" + "".join(tb))
             return
@@ -38,7 +38,7 @@ def try_plugins(topdir):
             f = open(pinit, "w")
             f.close()
         except Exception as e:
-            tb = traceback.format_exc(e)
+            tb = traceback.format_exc()
             log.error("Exception creating plugin __init__.py")
             log.error("\n" + "".join(tb))
             return
@@ -54,7 +54,7 @@ def try_plugins(topdir):
                 log.info("[plugin] %s" % proper)
                 __import__("plugins." + proper)
             except Exception as e:
-                tb = traceback.format_exc(e)
+                tb = traceback.format_exc()
                 log.error("Exception importing file %s" % fname)
                 log.error("\n" + "".join(tb))
 

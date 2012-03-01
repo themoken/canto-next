@@ -166,7 +166,7 @@ class CantoConfig():
         try:
             r = eval_transform(value)
         except Exception as e:
-            tb = traceback.format_exc(e)
+            tb = traceback.format_exc()
             msg = "\n" + "".join(tb)
             self.error(ident, value, "Invalid transform: %s" % msg)
             return False

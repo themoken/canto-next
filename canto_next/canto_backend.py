@@ -553,7 +553,7 @@ class CantoBackend(CantoServer):
                     try:
                         func(socket, args)
                     except Exception as e:
-                        tb = "".join(traceback.format_exc(e))
+                        tb = "".join(traceback.format_exc())
                         self.write(socket, "EXCEPT", tb)
                         log.error("Protocol exception:")
                         log.error("\n" + tb)
@@ -747,7 +747,7 @@ class CantoBackend(CantoServer):
 
         # Pretty print any non-Keyboard exceptions.
         except Exception as e:
-            tb = traceback.format_exc(e)
+            tb = traceback.format_exc()
             log.error("Exiting on exception:")
             log.error("\n" + "".join(tb))
 
