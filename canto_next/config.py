@@ -99,6 +99,7 @@ class CantoConfig():
         self.read_config(fromfile)
         if self.validate():
             self.instantiate()
+            self.write()
 
     def read_config(self, fromfile):
         if fromfile:
@@ -296,6 +297,15 @@ class CantoConfig():
 
                 feed = CantoFeed(self.shelf, feed["name"],\
                         feed["url"], feed["rate"], feed["keep"], **kws)
+
+        # Now that feeds have instantiated the tags, trim out the tags that
+        # have configuration but are unused.
+
+        if "tags" in self.final:
+            for tag in dict(self.final["tags"]):
+                if tag not in alltags.get_tags():
+                    del self.final["tags"][tag]
+                    del self.json["tags"][tag]
 
         # Set global transform.
 
