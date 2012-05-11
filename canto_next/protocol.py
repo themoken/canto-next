@@ -198,7 +198,7 @@ class CantoSocket:
                 log.debug("Read POLLIN with no data")
                 return select.POLLHUP
 
-            log.debug("Read Buffer: %s" % fragment )
+            log.debug("Read Buffer: %s" % fragment.replace("\0",""))
             return self.parse(conn, fragment)
 
         # Parse POLLHUP last so if we still got POLLIN, any data
@@ -235,7 +235,7 @@ class CantoSocket:
             log.error("Interpreting as HUP")
             return select.POLLHUP
 
-        log.debug("Sending: %s" % tosend)
+        log.debug("Sending: %s" % tosend.replace("\0",""))
         eintr_count = 0
 
         while tosend:
