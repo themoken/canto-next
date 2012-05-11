@@ -58,16 +58,17 @@ class RedditFetchJSON(DaemonFetchThreadPlugin):
                     "reddit-json" in old_attrs[entry["id"]]:
                 entry["reddit-json"] = old_attrs[entry["id"]]["reddit-json"]
             else:
-
                 # Reddit now enforces a maximum of 1 request every 2 seconds.
                 # We can afford to play by the rules because this runs in a
                 # separate thread.
 
+                period = 2
+
                 cur_time = time.time()
                 delta = cur_time - last_fetch
-                if delta < 2:
-                    log.debug("Waiting %s seconds" % (2 - delta))
-                    time.sleep(2 - delta)
+                if delta < period:
+                    log.debug("Waiting %s seconds" % (period - delta))
+                    time.sleep(period - delta)
                 last_fetch = cur_time
 
                 # Grab the story summary. Alternatively, we could grab
@@ -78,14 +79,17 @@ class RedditFetchJSON(DaemonFetchThreadPlugin):
                     m = self.id_regex.match(entry["link"])
                     reddit_id = m.groups()[0]
 
-                    response = urllib.request.urlopen(\
-                            "http://reddit.com/by_id/t3_" + reddit_id + ".json")
+                    req = urllib.request.Request(\
+                            "http://reddit.com/by_id/t3_" + reddit_id + ".json",
+                            headers = { "User-Agent" : "Canto-Reddit-Plugin"})
+                    response = urllib.request.urlopen(req)
+
+                    entry["reddit-id"] = reddit_id
 
                     r = json.loads(response.read().decode())
                     entry["reddit-json"] = r
                 except Exception as e:
                     log.error("Error fetching Reddit JSON: %s" % e)
-                    entry["reddit-json"] = {}
 
 class RedditScoreSort(CantoTransform):
     def __init__(self):
@@ -138,7 +142,7 @@ class RedditAnnotate(DaemonFeedPlugin):
                 continue
 
             json = entry["reddit-json"]
-            if not json:
+            if not json or "error" in json:
                 log.debug("JSON EMPTY, bailing")
                 continue
 
