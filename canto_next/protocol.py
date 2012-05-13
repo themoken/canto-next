@@ -59,7 +59,6 @@ class CantoSocket:
 
     # Server setup, potentially both unix and inet sockets.
     def connect(self):
-        self.sockets = []
         if self.server:
             if self.socket_name:
                 # Remove old unix socket.

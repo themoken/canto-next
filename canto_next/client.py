@@ -28,8 +28,7 @@ class CantoClient(CantoSocket):
 
     def connect(self):
         CantoSocket.connect(self)
-        self.conn = self.sockets[0]
-        call_hook("new_socket", [self.conn])
+        call_hook("new_socket", [self.sockets[-1]])
 
     # Sets self.conf_dir and self.socket_path
 
@@ -112,9 +111,9 @@ class CantoClient(CantoSocket):
         return pid
 
     # Write a (cmd, args)
-    def write(self, cmd, args):
-        return self.do_write(self.conn, cmd, args)
+    def write(self, cmd, args, conn=0):
+        return self.do_write(self.sockets[conn], cmd, args)
 
     # Read a (cmd, args)
-    def read(self, timeout=None):
-        return self.do_read(self.conn, timeout)
+    def read(self, timeout=None, conn=0):
+        return self.do_read(self.sockets[conn], timeout)
