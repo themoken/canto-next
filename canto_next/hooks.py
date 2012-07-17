@@ -7,9 +7,6 @@
 #   it under the terms of the GNU General Public License version 2 as 
 #   published by the Free Software Foundation.
 
-import logging
-log = logging.getLogger("HOOK")
-
 hooks = {}
 
 # Since the inception of the work_done hook that's called from the main loop
@@ -18,7 +15,6 @@ hooks = {}
 # with -vv, but most of the time will be extraneous.
 
 def on_hook(hook, func):
-    log.log(8, "Registering func %s for hook: %s" % (func, hook))
     if hook in hooks:
         hooks[hook].append(func)
     else:
@@ -29,14 +25,10 @@ def remove_hook(hook, func):
         hooks[hook].remove(func)
 
 def call_hook(hook, args):
-    log.log(8, "Calling funcs for hook: %s" % hook)
     if hook in hooks:
 
         # List copy here so hooks can remove themselves
         # without effecting our iteration.
 
         for func in hooks[hook][:]:
-            log.log(8, "\t%s(%s)" % (func, args))
             func(*args)
-    else:
-        log.log(8, "\tNone.")
