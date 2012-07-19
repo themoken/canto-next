@@ -129,6 +129,10 @@ class CantoFetch():
         if feed.URL in self.shelf:
             f = self.shelf[feed.URL]
 
+            if "canto_update" not in f:
+                log.warn("No canto_update in feed w/ URL: %s" % feed.URL)
+                return True
+
             passed = time.time() - f["canto_update"]
             if passed < feed.rate * 60:
                 log.debug("Not enough time passed on %s (only %sm)" %
