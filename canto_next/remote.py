@@ -223,21 +223,20 @@ class CantoRemote(CantoClient):
             # We'll want to read back any value, regardless
             gets.append(var)
 
-            if val:
-                if evaled:
-                    try:
-                        val = eval(val, {},{})
-                        val_ok = True
-                    except Exception as e:
-                        print("Unable to eval value: %s - %s" % (val, e))
-                        val_ok = False
-                else:
+            if evaled:
+                try:
+                    val = eval(val, {},{})
                     val_ok = True
+                except Exception as e:
+                    print("Unable to eval value: %s - %s" % (val, e))
+                    val_ok = False
+            else:
+                val_ok = True
 
-                if val_ok:
-                    val_ok, ret = assign_to_dict(sets, var, val)
-                    if not val_ok:
-                        print(ret)
+            if val_ok:
+                val_ok, ret = assign_to_dict(sets, var, val)
+                if not val_ok:
+                    print(ret)
 
         self.write("SETCONFIGS", sets)
 
