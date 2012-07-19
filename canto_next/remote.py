@@ -360,7 +360,6 @@ class CantoRemote(CantoClient):
 
         parser = xml.parsers.expat.ParserCreate()
         parser.StartElementHandler = parse_opml
-        print(data.encode("UTF-8"))
         parser.Parse(data.encode("UTF-8"), 1)
 
         for feed in feeds:
