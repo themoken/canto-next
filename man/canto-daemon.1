@@ -1,0 +1,56 @@
+.TH Canto-daemon 1 "Canto-daemon"
+
+.SH NAME
+Canto-daemon \- An extensible RSS aggregation daemon.
+
+.SH COMMAND LINE USAGE
+
+.TP
+\-D/\-\-dir [directory]
+Change base directory for canto-daemon (default: ~/.canto-ng)
+
+.TP
+\-\-nowb
+Disable database writeback. Hurts performance, saves memory.
+
+.TP
+\-n/--nofetch
+Do not fetch new content while running (debug).
+
+.TP
+\-a/--address [IP]
+Listen on address in addition to local Unix socket.
+
+.TP
+\-p/--port [port]
+Use port when listening with -a
+
+.TP
+\-v
+Enable verbose logging (debug)
+
+.SH CONFIGURATION
+
+For configuration details, please visit http://codezen.org/canto-new/manual .
+
+.SH FILES
+.TP
+.I ~/.canto-ng/conf
+
+Shared daemon configuration file.
+
+.TP
+.I ~/.canto-ng/daemon-log
+
+Canto-daemon log file.
+
+.TP
+.I ~/.canto-ng/plugins/
+
+Canto-daemon plugins directory
+
+.SH HOMEPAGE
+http://codezen.org/canto-new
+
+.SH AUTHOR
+Jack Miller <jack@codezen.org>

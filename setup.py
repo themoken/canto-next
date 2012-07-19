@@ -8,4 +8,5 @@ setup(name='Canto',
       url='http://codezen.org/canto',
       packages=['canto_next'],
       scripts=['bin/canto-daemon','bin/canto-remote'],
+      data_files = [("share/man/man1/", ["man/canto-daemon.1", "man/canto-remote.1"])],
      )
