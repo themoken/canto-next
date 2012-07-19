@@ -147,6 +147,9 @@ class CantoRemote(CantoClient):
         # current value of "feeds", rather than overwriting.
 
         self.write("SETCONFIGS", { "feeds" : [ attrs ] } )
+        self.write("PING", [])
+        self._wait_response("PONG")
+
         return True
 
     def cmd_addfeed(self):
