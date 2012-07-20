@@ -217,6 +217,11 @@ class CantoRemote(CantoClient):
         gets = []
 
         for arg in args:
+
+            if "=" not in arg:
+                gets.append(arg)
+                continue
+
             var, val = escsplit(arg, "=", 1, 1)
             var = var.lstrip().rstrip()
 
