@@ -13,6 +13,8 @@
 # 0.2 - Modified tags to escape the : separator such that tags handed out are
 #       immediaely read to be used as [ Tag -whatever- ] config headers.
 
+version = REPLACE_WITH_VERSION
+
 CANTO_PROTOCOL_VERSION = 0.3
 
 from .feed import allfeeds
@@ -595,7 +597,7 @@ class CantoBackend(CantoServer):
     # This function parses and validates all of the command line arguments.
     def args(self):
         try:
-            optlist = getopt.getopt(sys.argv[1:], 'D:vp:a:n',\
+            optlist = getopt.getopt(sys.argv[1:], 'D:vp:a:nV',\
                     ["dir=", "port=", "address=", "nofetch", "nowb"])[0]
         except getopt.GetoptError as e:
             log.error("Error: %s" % e.msg)
@@ -630,6 +632,10 @@ class CantoBackend(CantoServer):
 
             elif opt in ["--nowb"]:
                 self.writeback = False
+
+            elif opt in ['-V']:
+                print("canto-daemon " + version)
+                return 1
 
         return 0
 

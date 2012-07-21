@@ -6,6 +6,8 @@
 #   it under the terms of the GNU General Public License version 2 as 
 #   published by the Free Software Foundation.
 
+version = REPLACE_WITH_VERSION
+
 from .client import CantoClient
 from .encoding import encoder
 from .format import escsplit
@@ -50,6 +52,10 @@ def access_dict(d, var):
 
 class CantoRemote(CantoClient):
     def __init__(self):
+        if "-V" in sys.argv:
+            print("canto-remote " + version)
+            sys.exit(-1)
+
         if self.common_args() == -1:
             sys.exit(-1)
 
