@@ -213,7 +213,7 @@ class CantoFeed(PluginHandler):
     def index(self):
 
         if not self.update_contents:
-            if not self.items and self.URL in self.shelf:
+            if self.URL in self.shelf:
                 self.update_contents = self.shelf[self.URL]
 
             # If we got nothing, and there's not anything already resident, at
