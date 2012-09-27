@@ -520,7 +520,7 @@ class CantoBackend(CantoServer):
     # The workhorse that maps all requests to their handlers.
     def run(self):
         log.debug("Beginning to serve...")
-
+        call_hook("serving", [])
         while 1:
             try:
                 if self.interrupted:

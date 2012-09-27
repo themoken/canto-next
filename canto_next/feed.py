@@ -204,6 +204,20 @@ class CantoFeed(PluginHandler):
 
         self.shelf[self.URL] = d
 
+        # Allow DaemonFeed plugins to define set_attribute_* functions
+        # to receive notifications of changed attributes
+
+        for attr in list(self.plugin_attrs.keys()):
+            if not attr.startswith("set_attributes_"):
+                continue
+
+            try:
+                a = getattr(self, attr)
+                a(feed = self, items = items, attributes = attributes, content = d)
+            except:
+                log.error("Error running feed set_attr plugin")
+                log.error(traceback.format_exc())
+
     # Re-index contents
     # If we have self.update_contents, use that
     # If not, at least populate self.items from disk.
