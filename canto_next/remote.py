@@ -198,7 +198,7 @@ class CantoRemote(CantoClient):
             if "alias" in f:
                 s += "(" + f["alias"] + ")"
 
-            s += "\n   " + f["url"] + "\n"
+            s += "\n" + f["url"] + "\n"
             print(s)
 
     def cmd_delfeed(self):
