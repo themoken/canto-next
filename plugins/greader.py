@@ -1,6 +1,6 @@
 # Google Reader Sync Plugin
 # by Jack Miller
-# v1.0
+# v0.2
 #
 # If this is placed in the .canto-ng/plugins directory, along with a copy of
 # the libgreader source ported to py3k and you set the USERNAME and PASSWORD
@@ -26,10 +26,6 @@
 # about the daemon not taking a connection fast enough.
 #
 # TODO
-#
-# - Get subscription synchronization working (infra works when run outside of
-# plugin interface, haven't quite gotten the internal implementation right.
-# - Should probably stop using canto-remote
 # - Speed
 
 USERNAME="user@gmail.com"
@@ -37,67 +33,53 @@ PASSWORD="password"
 
 # You shouldn't have to change anything beyond this line.
 
-from canto_next.feed import DaemonFeedPlugin
-from canto_next.hooks import on_hook, remove_hook
+from canto_next.feed import DaemonFeedPlugin, allfeeds
+from canto_next.hooks import call_hook, on_hook
 from plugins.libgreader import GoogleReader, ClientAuthMethod
 
 from threading import Lock
+import traceback
 import subprocess
 import logging
 import sys
-import os
 
 log = logging.getLogger("GREADER")
-
-sub_synced = False
-
-def get_reader_urls(reader):
-    reader.buildSubscriptionList()
-    return [ f.feedUrl for f in reader.getSubscriptionList() ]
-
-def get_canto_urls():
-    listfeeds = subprocess.check_output(['canto-remote', 'listfeeds'])
-    listfeeds = listfeeds.decode("UTF-8")
-    return [ l for l in listfeeds.split('\n') if l.startswith('http') ]
-
-def add_reader_urls(reader, new_urls):
-    for url in new_urls:
-        log.info("Adding %s to Google Reader" % url)
-        r = reader.subscribe("feed/" + url)
-        if r:
-            log.info("...OK")
-        else:
-            log.info("...FAILED!")
-
-def add_canto_urls(new_urls):
-    for url in new_urls:
-        subprocess.check_output(['canto-remote', 'addfeed', url])
 
 def sync_subscriptions():
     log.info("Syncing subscriptions with Google")
 
     auth = ClientAuthMethod(USERNAME, PASSWORD)
     reader = GoogleReader(auth)
+    reader.buildSubscriptionList()
 
-    if os.fork():
-        gurls = get_reader_urls(reader)
-        curls = get_canto_urls()
+    gurls = [ (f.title, f.feedUrl) for f in reader.getSubscriptionList() ]
+    curls = [ f.URL for f in allfeeds.get_feeds() ]
+    names = [ f.name for f in allfeeds.get_feeds() ]
 
-        for gurl in gurls[:]:
-            if gurl in curls:
-                gurls.remove(gurl)
+    new_feeds = []
+    for gtitle, gurl in gurls[:]:
+        if gurl not in curls:
 
-        for curl in curls[:]:
-            if curl in gurls:
-                curls.remove(curl)
+            # Handle name collisions because we're not prepared to handle ERROR
+            # responses from config
 
-        self.add_reader_urls(reader, curls)
-        self.add_canto_urls(gurls)
-        sys.exit(0)
+            if gtitle in names:
+                offset = 2
+                while (gtitle + " (%d)" % offset) in names:
+                    offset += 1
+                gtitle = gtitle + " (%d)" % offset
 
-    remove_hook("serving", sync_subscriptions)
+            attrs = { "url" : gurl, "name" : gtitle }
+            new_feeds.append(attrs)
+            names.append(gtitle)
 
-#on_hook("serving", sync_subscriptions)
+    call_hook("set_configs", [ None, { "feeds" : new_feeds }])
+
+    for curl in curls[:]:
+        if curl not in gurls:
+            reader.subscribe('feed/' + curl)
+
+on_hook("serving", sync_subscriptions)
 
 auth = ClientAuthMethod(USERNAME, PASSWORD)
 
@@ -107,10 +89,12 @@ reader = GoogleReader(auth)
 def lock_reader(fn):
     def lock_wrap(*args, **kwargs):
         reader_lock.acquire()
-        log.debug("got reader_lock")
-        r = fn(*args, **kwargs)
+        try:
+            r = fn(*args, **kwargs)
+        except:
+            log.error("FAILURE")
+            log.error(traceback.format_exc())
         reader_lock.release()
-        log.debug("released reader_lock")
         return r
     return lock_wrap
 

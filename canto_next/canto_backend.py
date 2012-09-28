@@ -178,6 +178,9 @@ class CantoBackend(CantoServer):
 
     # Propagate config changes to watching sockets.
 
+    # On_config_change must be prepared to have originating_socket = None for internal requests that
+    # nonetheless must be propagated.
+
     def on_config_change(self, change, originating_socket):
 
         self._reparse_config(originating_socket)
@@ -237,6 +240,9 @@ class CantoBackend(CantoServer):
         protection.unprotect((socket, "auto"))
         self.check_dead_feeds()
 
+    def queue_internal(self, cb, func, args):
+        self.queue.put((cb, func, args))
+
     # We need to be alerted on certain events, ensure
     # we get notified about them.
 
@@ -246,6 +252,11 @@ class CantoBackend(CantoServer):
         on_hook("config_change", self.on_config_change)
         on_hook("tag_change", self.on_tag_change)
         on_hook("kill_socket", self.on_kill_socket)
+
+        # For plugins
+        on_hook("set_configs", lambda x, y : self.queue_internal(x, self.in_setconfigs, y))
+        on_hook("del_configs", lambda x, y : self.queue_internal(x, self.in_delconfigs, y))
+        on_hook("get_configs", lambda x, y : self.queue_internal(x, self.in_configs, y))
 
     # Return list of item tuples after global transforms have
     # been performed on them.
@@ -415,7 +426,9 @@ class CantoBackend(CantoServer):
 
     # CONFIGS [ "top_sec", ... ] -> { "top_sec" : full_value }
 
-    def cmd_configs(self, socket, args):
+    # Internal
+
+    def in_configs(self, args):
         if args:
             ret = {}
             for topsec in args:
@@ -423,7 +436,12 @@ class CantoBackend(CantoServer):
                     ret[topsec] = self.conf.json[topsec]
         else:
             ret = self.conf.json
+        return ret
 
+    # External
+
+    def cmd_configs(self, socket, args):
+        ret = self.in_configs(args)
         self.write(socket, "CONFIGS", ret)
 
     # Please NOTE that SET and DEL do no locking, no revision tracking
@@ -448,14 +466,21 @@ class CantoBackend(CantoServer):
 
     # SETCONFIGS { "key" : "value", ...}
 
+    def in_setconfigs(self, args):
+        self.cmd_setconfigs(None, args)
+        return self.conf.json
+
     def cmd_setconfigs(self, socket, args):
 
         self.conf.merge(args.copy())
 
         call_hook("config_change", [args, socket])
 
-
     # DELCONFIGS { "key" : "DELETE", ...}
+
+    def in_delconfigs(self, args):
+        cmd_delconfigs(None, args)
+        return self.conf.json
 
     def cmd_delconfigs(self, socket, args):
 
@@ -535,9 +560,24 @@ class CantoBackend(CantoServer):
                 # =(
 
                 if self.alarmed:
-                    (socket, (cmd, args)) = self.queue.get(True, 0.1)
+                    r = self.queue.get(True, 0.1)
                 else:
-                    (socket, (cmd, args)) = self.queue.get(True, 1)
+                    r = self.queue.get(True, 1)
+
+                log.debug("!!! %s" % (r,))
+
+                # 3-tuple = internal command
+                if len(r) == 3:
+                    cb, func, args = r
+                    r = func(args)
+                    if cb:
+                        cb(r)
+                    continue
+
+                # 2-tuple = external command
+                else:
+                    socket, (cmd, args) = r
+
             except queue.Empty:
                 pass
             else:
