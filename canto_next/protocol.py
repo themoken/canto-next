@@ -187,7 +187,7 @@ class CantoSocket:
             except Exception as e:
                 if e.args[0] == errno.EINTR:
                     return
-                log.error("Error sending: %s" % e[1])
+                log.error("Error sending: %s" % e)
                 log.error("Interpreting as HUP")
                 return select.POLLHUP
 
