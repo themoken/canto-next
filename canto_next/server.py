@@ -50,8 +50,8 @@ class CantoServer(CantoSocket):
     # Sit and select for connections on sockets:
 
     def conn_loop(self, sockets):
-        try:
-            while self.alive:
+        while self.alive:
+            try:
                 r, w, x = select.select(sockets, [], sockets)
                 for s in sockets:
                     # If socket is readable, it's got a pending connection.
@@ -59,11 +59,11 @@ class CantoServer(CantoSocket):
                         conn = s.accept()
                         log.info("conn %s from sock %s" % (conn, s))
                         self.queue.put((conn[0], ("NEWCONN","")))
-        except Exception as e:
-            tb = traceback.format_exc()
-            log.error("Connection monitor thread dead on exception:")
-            log.error("\n" + "".join(tb))
-            return
+            except Exception as e:
+                tb = traceback.format_exc()
+                log.error("Connection monitor exception:")
+                log.error("\n" + "".join(tb))
+                log.error("Attempting to continue.")
 
     def start_conn_loop(self):
         self.conn_thread = Thread(target = self.conn_loop,
