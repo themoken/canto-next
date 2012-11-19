@@ -283,8 +283,8 @@ class CantoRemote(CantoClient):
             return False
 
         if sys.argv[1] == "--eval":
-            return self._config(["".join(sys.argv[2:])], True)
-        return self._config(["".join(sys.argv[1:])], False)
+            return self._config([" ".join(sys.argv[2:])], True)
+        return self._config([" ".join(sys.argv[1:])], False)
 
     def cmd_config(self):
         """USAGE: canto-remote config [--eval] [option](=value) ...
