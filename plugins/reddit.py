@@ -1,10 +1,16 @@
 # Canto Reddit Plugin
 # by Jack Miller
-# v1.0
+# v1.1
 #
 # If this is placed in the plugins directory, it will add a new sort:
 # reddit_score_sort, and will add "score [subreddit]" to the beginning of
 # every relevant feed item.
+
+# ALWAYS REFRESH, if true, each update will re-fetch Reddit JSON to give
+# updated scores, comment counts etc. Makes each update take a lot longer,
+# and will use a lot more bandwidth.
+
+ALWAYS_REFRESH = True
 
 # PREPEND_SCORE, if true will add the score to the entry title. Note, this
 # doesn't effect the sort.
@@ -43,20 +49,28 @@ class RedditFetchJSON(DaemonFetchThreadPlugin):
 
         last_fetch = 0
 
-        # We don't canonicalize these IDs as the daemon does because reddit has
-        # the id set already.
+        new_ids = [ json.dumps({ "URL" : kwargs["feed"].URL, "ID" : i["id"] }) for i in kwargs["newcontent"]["entries"] ]
 
-        new_ids = [ i["id"] for i in kwargs["newcontent"]["entries"] ]
+        attrs = {}
+        for id in new_ids:
+            attrs[id] = ["reddit-json"]
 
-        old_attrs = kwargs["feed"].get_attributes(new_ids, ["reddit-json"])
+        old_attrs = kwargs["feed"].get_attributes(new_ids, attrs)
+        log.debug("old_attrs: %s" % old_attrs)
 
         for entry in kwargs["newcontent"]["entries"]:
-            if "reddit-json" in entry:
+            if "reddit-json" in entry and not ALWAYS_REFRESH:
                 continue
 
-            if entry["id"] in old_attrs and\
-                    "reddit-json" in old_attrs[entry["id"]]:
-                entry["reddit-json"] = old_attrs[entry["id"]]["reddit-json"]
+            entry_id = json.dumps({"URL" : kwargs["feed"].URL, "ID" : entry["id"]})
+
+            # If not always refresh, and the JSON is not empty or errored, move it over
+            if not ALWAYS_REFRESH and entry_id in old_attrs and\
+                    "reddit-json" in old_attrs[entry_id] and\
+                    old_attrs[entry_id]["reddit-json"] and\
+                    "error" not in old_attrs[entry_id]["reddit-json"]:
+                entry["reddit-json"] = old_attrs[entry_id]["reddit-json"]
+                log.debug("Using old JSON: %s" % entry["reddit-json"])
             else:
                 # Reddit now enforces a maximum of 1 request every 2 seconds.
                 # We can afford to play by the rules because this runs in a
