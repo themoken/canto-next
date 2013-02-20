@@ -55,6 +55,12 @@ TRIM_INTERVAL = 300
 
 class CantoBackend(CantoServer):
 
+    # We want to invoke CantoServer's __init__ manually, and
+    # not on instantiation.
+
+    def __init__(self):
+        pass
+
     def init(self):
         # Log verbosity
         self.verbosity = 0
@@ -801,6 +807,3 @@ class CantoBackend(CantoServer):
         self.exit()
         self.pid_unlock()
         sys.exit(0)
-
-    def __init__(self):
-        self.start()
