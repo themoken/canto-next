@@ -88,12 +88,17 @@ class CantoShelf():
                     sys.exit(0)
 
                 log.debug("Reorg forked as %d" % pid)
+                tries = 3
                 while True:
                     try:
+                        tries -= 1
                         os.waitpid(pid, 0)
                         break
                     except Exception as e:
                         log.debug("Waiting, got: %s" % e)
+                        if tries <= 0:
+                            log.debug("Abandoning %d" % pid)
+                            break
 
         except Exception as e:
             log.warn("Failed to reorganize db:")
