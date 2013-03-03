@@ -81,10 +81,17 @@ class CantoShelf():
 
                 pid = os.fork()
                 if not pid:
-                    db = dbm.open(self.filename, "w")
-                    getattr(db, 'reorganize')()
-                    log.debug("Reorged - dying\n")
-                    db.close()
+
+                    # Wrap everything to make sure we don't get back into the
+                    # primary server code.
+
+                    try:
+                        db = dbm.open(self.filename, "w")
+                        getattr(db, 'reorganize')()
+                        log.debug("Reorged - dying\n")
+                        db.close()
+                    except:
+                        pass
                     sys.exit(0)
 
                 log.debug("Reorg forked as %d" % pid)
