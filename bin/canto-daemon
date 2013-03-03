@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 from canto_next.canto_backend import CantoBackend
 import sys
