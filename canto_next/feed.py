@@ -15,6 +15,7 @@ from .tag import alltags
 import traceback
 import logging
 import json
+import time
 
 log = logging.getLogger("FEED")
 
@@ -252,6 +253,9 @@ class CantoFeed(PluginHandler):
         self.items = []
         for item in self.update_contents["entries"][:]:
 
+            # Update canto_update only for freshly seen items.
+            item["canto_update"] = self.update_contents["canto_update"]
+
             # Attempt to isolate a feed unique ID
             if "id" not in item:
                 if "link" in item:
@@ -320,23 +324,21 @@ class CantoFeed(PluginHandler):
                 else:
                     unprotected_old.append((i, olditem))
 
-        # Flesh out the kept items so that we save 2x the number of items
-        # presented in the feed naturally. This is particularly geared
-        # towards bouncy feeds (like Reddit) where an item can fade in and
-        # out of the feed and we don't want to worry about forgetting the
-        # state.
+        # Keep all items that have been seen in the feed in the last day.
 
-        factor = 2 * len(self.update_contents["entries"])
-        fill = min(factor - len(self.items), len(unprotected_old))
+        ref_time = time.time()
+        for idx, item in unprotected_old:
+            # Old item
+            if "canto_update" not in item:
+                item["canto_update"] = ref_time
+                log.debug("Subbing item time %s" % item)
 
-        if fill > 0:
-            log.debug("Saving %d old items to fill out disk" % fill)
-            log.debug("From list: %s" % unprotected_old)
-            for idx, item in unprotected_old[:fill]:
+            if (ref_time - item["canto_update"]) < 60*60*24:
                 self.update_contents["entries"].append(\
                         old_contents["entries"][idx])
                 self.items.append(item)
-
+            else:
+                log.debug("Discarding: %s", item)
 
         # Allow plugins DaemonFeedPlugins defining edit_* functions to have a
         # crack at the contents before we commit to disk.
