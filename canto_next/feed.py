@@ -79,7 +79,7 @@ class DaemonFeedPlugin(Plugin):
     pass
 
 class CantoFeed(PluginHandler):
-    def __init__(self, shelf, name, URL, rate, keep, **kwargs):
+    def __init__(self, shelf, name, URL, rate, keep_time, keep_unread, **kwargs):
         PluginHandler.__init__(self)
 
         self.plugin_class = DaemonFeedPlugin
@@ -90,7 +90,8 @@ class CantoFeed(PluginHandler):
         self.name = name
         self.URL = URL
         self.rate = rate
-        self.keep = keep
+        self.keep_time = keep_time
+        self.keep_unread = keep_unread
 
         self.username = None
         if "username" in kwargs:
@@ -329,16 +330,28 @@ class CantoFeed(PluginHandler):
         ref_time = time.time()
         for idx, item in unprotected_old:
             # Old item
-            if "canto_update" not in item:
-                item["canto_update"] = ref_time
+            if "canto_update" not in old_contents["entries"][idx]:
+                old_contents["entries"][idx]["canto_update"] = ref_time
                 log.debug("Subbing item time %s" % item)
 
-            if (ref_time - item["canto_update"]) < 60*60*24:
-                self.update_contents["entries"].append(\
-                        old_contents["entries"][idx])
-                self.items.append(item)
+            item_time = old_contents["entries"][idx]["canto_update"]
+            if "canto-state" in old_contents["entries"][idx]:
+                item_state = old_contents["entries"][idx]["canto-state"]
+            else:
+                item_state = []
+
+            if (ref_time - item_time) < self.keep_time:
+                log.debug("Item not over keep_time (%d): %s" %
+                        (self.keep_time, item))
+            elif self.keep_unread and "read" not in item_state:
+                log.debug("Keeping unread item: %s\n" % item)
             else:
                 log.debug("Discarding: %s", item)
+                continue
+
+            self.update_contents["entries"].append(\
+                    old_contents["entries"][idx])
+            self.items.append(item)
 
         # Allow plugins DaemonFeedPlugins defining edit_* functions to have a
         # crack at the contents before we commit to disk.

@@ -27,7 +27,8 @@ default_config =\
         "defaults" :
         {
             "rate" : 10,
-            "keep" : 0,
+            "keep_time" : 86400,
+            "keep_unread" : False,
             "global_transform" : "None"
         },
 
@@ -54,14 +55,16 @@ class CantoConfig():
         self.json = {}
 
         self.defaults_validators = [
-                ("rate", self.validate_int, True),
-                ("keep", self.validate_int, True),
-                ("global_transform", self.validate_set_transform, True),
+                ("rate", self.validate_int, False),
+                ("keep_time", self.validate_int, False),
+                ("keep_unread", self.validate_bool, False),
+                ("global_transform", self.validate_set_transform, False),
         ]
 
         self.defaults_defaults = {
                 "rate" : 10,
-                "keep" : 0,
+                "keep_time" : 86400,
+                "keep_unread" : False,
                 "global_transform" : "None",
         }
 
@@ -69,7 +72,8 @@ class CantoConfig():
                 ("name", self.validate_unique_feed_name, True),
                 ("url", self.validate_unique_url, True),
                 ("rate", self.validate_int, False),
-                ("keep", self.validate_int, False),
+                ("keep_time", self.validate_int, False),
+                ("keep_unread", self.validate_bool, False),
                 ("username", self.validate_string, False),
                 ("password", self.validate_string, False),
         ]
@@ -135,6 +139,12 @@ class CantoConfig():
 
     def validate_unique_feed_name(self, ident, value):
         return self._validate_unique(ident, value, self.feed_names, "Feed name")
+
+    def validate_bool(self, ident, value):
+        if type(value) != bool:
+            self.error(ident, value, "Not boolean!")
+            return False
+        return (True, value)
 
     def validate_int(self, ident, value):
         if type(value) != int:
@@ -217,6 +227,9 @@ class CantoConfig():
 
         return not section_invalidated
 
+    # Validate validates only what exists in self.final, it does not make
+    # substitutions for defaults. That's done on instantiation.
+
     def validate(self):
         # Because we have to ensure that all items in the JSON are
         # simple, we can do this cheap deepcopy intead of importing
@@ -229,8 +242,6 @@ class CantoConfig():
                     self.defaults_validators)
             if not good:
                 del self.final["defaults"]
-        else:
-            self.final["defaults"] = self.defaults_defaults.copy()
 
         if "tags" in self.final and not self.errors:
             for tag in list(self.final["tags"].keys()):
@@ -261,6 +272,13 @@ class CantoConfig():
 
     def instantiate(self):
 
+        if "defaults" in self.final:
+            for k in self.defaults_defaults.keys():
+                if k not in self.final["defaults"]:
+                    self.final["defaults"][k] = self.defaults_defaults[k]
+        else:
+            self.final["defaults"] = self.defaults_defaults.copy()
+
         if "tags" in self.final:
             for tag in self.final["tags"]:
                 defs = self.final["tags"][tag]
@@ -284,10 +302,9 @@ class CantoConfig():
             for feed in self.final["feeds"]:
 
                 # Mandatory arguments to CantoFeed
-                if "rate" not in feed:
-                    feed["rate"] = self.final["defaults"]["rate"]
-                if "keep" not in feed:
-                    feed["keep"] = self.final["defaults"]["keep"]
+                for k in [ "rate", "keep_time", "keep_unread" ]:
+                    if k not in feed:
+                        feed[k] = self.final["defaults"][k]
 
                 # Optional arguments in kwargs
                 kws = {}
@@ -296,7 +313,7 @@ class CantoConfig():
                         kws[k] = feed[k]
 
                 feed = CantoFeed(self.shelf, feed["name"],\
-                        feed["url"], feed["rate"], feed["keep"], **kws)
+                        feed["url"], feed["rate"], feed["keep_time"], feed["keep_unread"], **kws)
 
         # Now that feeds have instantiated the tags, trim out the tags that
         # have configuration but are unused.
