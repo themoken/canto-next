@@ -35,7 +35,7 @@ default_config =\
         "feeds" : [
             {
                 "name" : "Canto",
-                "url" : "http://codezen.org/static/canto.xml"
+                "url" : "http://codezen.org/canto-ng/feed/"
             },
             {
                 "name" : "Slashdot",
