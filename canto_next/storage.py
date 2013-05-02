@@ -55,7 +55,14 @@ class CantoShelf():
 
     def trim(self):
         self.close()
-        self._open()
+        tries = 3
+        while tries > 0:
+            try:
+                self._open()
+            except Exception as e:
+                log.warn("Failed to reopen db after trim:")
+                log.warn(traceback.format_exc())
+            tries -= 1
 
     def _reorganize(self):
         # This is a workaround for shelves implemented with database types
