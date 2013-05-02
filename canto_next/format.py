@@ -41,8 +41,13 @@ def escsplit(arg, delim, maxsplit=0, minsplit=0, escapeterms=False):
     r = []
     acc = ""
     escaped = False
+    skipchars = 0
 
     for i, c in enumerate(arg):
+        if skipchars > 0:
+            skipchars -= 1
+            continue
+
         if escaped:
             escaped = False
             acc += c
@@ -59,7 +64,22 @@ def escsplit(arg, delim, maxsplit=0, minsplit=0, escapeterms=False):
             if not escapeterms:
                 acc += c
 
-        elif c == delim:
+        elif c == delim[0]:
+
+            # If this is a multi-char delimiter that doesn't match
+            # keep the character and move on.
+
+            if len(delim) > 1 and\
+                    arg[i : i+len(delim)] != delim:
+                acc += c
+                continue
+
+            # If we have matched a 1 or multi-char delimiter we need
+            # to skip the remaining characters.
+
+            else:
+                skipchars = len(delim) - 1
+
             r.append(acc)
             acc = ""
 
