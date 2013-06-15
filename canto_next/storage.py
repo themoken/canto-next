@@ -12,6 +12,7 @@ from .hooks import on_hook
 import traceback
 import logging
 import shelve
+import time
 import dbm
 import sys
 import os
@@ -63,6 +64,7 @@ class CantoShelf():
                 log.warn("Failed to reopen db after trim:")
                 log.warn(traceback.format_exc())
             tries -= 1
+            time.sleep(0.5)
 
     def _reorganize(self):
         # This is a workaround for shelves implemented with database types
