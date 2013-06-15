@@ -15,7 +15,7 @@
 
 version = REPLACE_WITH_VERSION
 
-CANTO_PROTOCOL_VERSION = 0.3
+CANTO_PROTOCOL_VERSION = 0.4
 
 from .feed import allfeeds
 from .encoding import encoder
@@ -374,26 +374,37 @@ class CantoBackend(CantoServer):
     def cmd_items(self, socket, args):
         ids = []
         response = {}
-        attr_req = {}
 
         for tag in args:
             # get_tag returns a list invariably, but may be empty.
-            response[tag] = self.apply_transforms(socket, tag)
+            items = self.apply_transforms(socket, tag)
 
             # ITEMS must protect all given items automatically to
             # avoid instances where an item disappears before a PROTECT
             # call can be made by the client.
 
-            protection.protect((socket, "auto"), response[tag])
+            protection.protect((socket, "auto"), items)
 
-            if socket in self.autoattr:
-                for id in response[tag]:
-                    attr_req[id] = self.autoattr[socket][:]
+            # Divide each response into 100 items or less and dispatch them
 
-        self.write(socket, "ITEMS", response)
+            attr_list = []
 
-        if attr_req:
-            self.cmd_attributes(socket, attr_req)
+            while len(items):
+                chunk = items[:100]
+                items = items[100:]
+
+                attr_req = {}
+                if socket in self.autoattr:
+                    for id in chunk:
+                        attr_req[id] = self.autoattr[socket][:]
+
+                self.write(socket, "ITEMS", { tag : chunk })
+                attr_list.append(attr_req)
+
+            self.write(socket, "ITEMSDONE", {})
+
+            for attr_req in attr_list:
+                self.cmd_attributes(socket, attr_req)
 
     # FEEDATTRIBUTES { 'url' : [ attribs .. ] .. } ->
     # { url : { attribute : value } ... }
