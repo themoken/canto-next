@@ -42,7 +42,6 @@ import os
 
 # By default this will log to stderr.
 logging.basicConfig(
-        filemode = "w",
         format = "%(asctime)s : %(name)s -> %(message)s",
         datefmt = "%H:%M:%S",
         level = logging.INFO
