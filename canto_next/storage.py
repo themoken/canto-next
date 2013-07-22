@@ -9,6 +9,7 @@
 
 from .hooks import on_hook
 
+import threading
 import traceback
 import logging
 import shelve
@@ -19,10 +20,12 @@ import os
 
 log = logging.getLogger("SHELF")
 
+
 class CantoShelf():
     def __init__(self, filename, writeback):
         self.writeback = writeback
         self.filename = filename
+        self.lock = threading.Lock()
 
         self._open()
 
@@ -32,30 +35,46 @@ class CantoShelf():
         on_hook("work_done", self.sync)
         on_hook("exit", self.close)
 
+    def _need_lock(fn):
+        def lockfn(self, *args, **kwargs):
+            log.debug("Fuck!")
+            self.lock.acquire()
+            r = fn(self, *args, **kwargs)
+            self.lock.release()
+            return r
+        return lockfn
+
+    # Lock held above this function, unnecessary in init.
     def _open(self):
         if self.writeback:
             self.shelf = shelve.open(self.filename, 'c', None, True)
         else:
             self.shelf = shelve.open(self.filename)
 
+    @_need_lock
     def __setitem__(self, name, value):
         self.shelf[name] = value
 
+    @_need_lock
     def __getitem__(self, name):
         r = self.shelf[name]
         return r
 
+    @_need_lock
     def __contains__(self, name):
         return name in self.shelf
 
+    @_need_lock
     def __delitem__(self, name):
         del self.shelf[name]
 
+    @_need_lock
     def sync(self):
         self.shelf.sync()
 
+    @_need_lock
     def trim(self):
-        self.close()
+        self._close()
         tries = 3
         while tries > 0:
             try:
@@ -66,6 +85,7 @@ class CantoShelf():
             tries -= 1
             time.sleep(0.5)
 
+    # Lock held in close()
     def _reorganize(self):
         # This is a workaround for shelves implemented with database types
         # (like gdbm) that won't shrink themselves.
@@ -120,7 +140,11 @@ class CantoShelf():
             log.warn("Failed to reorganize db:")
             log.warn(traceback.format_exc())
 
-    def close(self):
+    def _close(self):
         self.shelf.close()
         self._reorganize()
         self.shelf = None
+
+    @_need_lock
+    def close(self):
+        self._close()
