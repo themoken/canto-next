@@ -157,6 +157,7 @@ class CantoBackend(CantoServer):
         signal.signal(signal.SIGALRM, self.sig_alrm)
         signal.signal(signal.SIGINT, self.sig_int)
         signal.signal(signal.SIGTERM, self.sig_int)
+        signal.signal(signal.SIGUSR1, self.sig_usr)
         signal.alarm(1)
 
     def check_dead_feeds(self):
@@ -701,6 +702,16 @@ class CantoBackend(CantoServer):
 
     def sig_int(self, a, b):
         self.interrupted = 1
+
+    def sig_usr(self, a, b):
+        code = []
+        for threadId, stack in sys._current_frames().items():
+            code.append("\n# ThreadID: %s" % threadId)
+            for filename, lineno, name, line in traceback.extract_stack(stack):
+                code.append('File: "%s", line %d, in %s' % (filename, lineno, name))
+                if line:
+                    code.append("  %s" % (line.strip()))
+        log.info("\n".join(code))
 
     # This function makes sure that the configuration paths are all R/W or
     # creatable.
