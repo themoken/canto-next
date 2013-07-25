@@ -37,7 +37,6 @@ class CantoShelf():
 
     def _need_lock(fn):
         def lockfn(self, *args, **kwargs):
-            log.debug("Fuck!")
             self.lock.acquire()
             r = fn(self, *args, **kwargs)
             self.lock.release()
