@@ -96,7 +96,7 @@ class RedditFetchJSON(DaemonFetchThreadPlugin):
                     req = urllib.request.Request(\
                             "http://reddit.com/by_id/t3_" + reddit_id + ".json",
                             headers = { "User-Agent" : "Canto-Reddit-Plugin"})
-                    response = urllib.request.urlopen(req)
+                    response = urllib.request.urlopen(req, None, 10)
 
                     entry["reddit-id"] = reddit_id
 
