@@ -41,7 +41,8 @@ class RedditFetchJSON(DaemonFetchThreadPlugin):
                 "fetch_redditJSON" : self.fetch_redditJSON,
         }
 
-        self.id_regex = re.compile(".*comments/([^/]*)/.*")
+        self.comment_id_regex = re.compile(".*comments/([^/]*)/.*")
+        self.tb_id_regex = re.compile(".*tb/([^/]*)")
 
     def fetch_redditJSON(self, **kwargs):
         if "reddit.com" not in kwargs["feed"].URL:
@@ -90,7 +91,10 @@ class RedditFetchJSON(DaemonFetchThreadPlugin):
                 # can be fairly large for popular threads.
 
                 try:
-                    m = self.id_regex.match(entry["link"])
+                    m = self.comment_id_regex.match(entry["link"])
+                    if not m:
+                        m = self.tb_id_regex.match(entry["link"])
+
                     reddit_id = m.groups()[0]
 
                     req = urllib.request.Request(\
