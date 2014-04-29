@@ -249,7 +249,8 @@ class CantoRemote(CantoClient):
                 if not val_ok:
                     print(ret)
 
-        self.write("SETCONFIGS", sets)
+        if sets:
+            self.write("SETCONFIGS", sets)
 
         self.write("CONFIGS", [])
         c = self._wait_response("CONFIGS")
