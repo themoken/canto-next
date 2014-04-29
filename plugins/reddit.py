@@ -21,6 +21,10 @@ PREPEND_SCORE = True
 
 PREPEND_SUBREDDIT = True
 
+# EXTRA_LOG_OUTPUT, if true will log non-error stuff with -v.
+
+EXTRA_LOG_OUTPUT = False
+
 # You shouldn't have to change anything beyond this line.
 
 from canto_next.fetch import DaemonFetchThreadPlugin
@@ -34,6 +38,10 @@ import json
 import re
 
 log = logging.getLogger("REDDIT")
+
+def debug(message):
+    if EXTRA_LOG_OUTPUT:
+        log.debug(message)
 
 class RedditFetchJSON(DaemonFetchThreadPlugin):
     def __init__(self):
@@ -57,7 +65,9 @@ class RedditFetchJSON(DaemonFetchThreadPlugin):
             attrs[id] = ["reddit-json"]
 
         old_attrs = kwargs["feed"].get_attributes(new_ids, attrs)
-        log.debug("old_attrs: %s" % old_attrs)
+
+        if EXTRA_LOG_OUTPUT:
+            debug("old_attrs: %s" % old_attrs)
 
         for entry in kwargs["newcontent"]["entries"]:
             if "reddit-json" in entry and not ALWAYS_REFRESH:
@@ -71,7 +81,8 @@ class RedditFetchJSON(DaemonFetchThreadPlugin):
                     old_attrs[entry_id]["reddit-json"] and\
                     "error" not in old_attrs[entry_id]["reddit-json"]:
                 entry["reddit-json"] = old_attrs[entry_id]["reddit-json"]
-                log.debug("Using old JSON: %s" % entry["reddit-json"])
+                if EXTRA_LOG_OUTPUT:
+                    debug("Using old JSON: %s" % entry["reddit-json"])
             else:
                 # Reddit now enforces a maximum of 1 request every 2 seconds.
                 # We can afford to play by the rules because this runs in a
@@ -82,7 +93,7 @@ class RedditFetchJSON(DaemonFetchThreadPlugin):
                 cur_time = time.time()
                 delta = cur_time - last_fetch
                 if delta < period:
-                    log.debug("Waiting %s seconds" % (period - delta))
+                    debug("Waiting %s seconds" % (period - delta))
                     time.sleep(period - delta)
                 last_fetch = cur_time
 
@@ -156,32 +167,32 @@ class RedditAnnotate(DaemonFeedPlugin):
     def edit_reddit(self, **kwargs):
         for entry in kwargs["newcontent"]["entries"]:
             if "reddit-json" not in entry:
-                log.debug("NO JSON, bailing")
+                debug("NO JSON, bailing")
                 continue
 
             json = entry["reddit-json"]
             if not json or "error" in json:
-                log.debug("JSON EMPTY, bailing")
+                debug("JSON EMPTY, bailing")
                 continue
 
             if "subreddit" not in entry:
-                log.debug("no subreddit")
+                debug("no subreddit")
                 entry["subreddit"] =\
                         json["data"]["children"][0]['data']["subreddit"]
                 if PREPEND_SUBREDDIT:
                     entry["title"] =\
                             "[" + entry["subreddit"] + "] " + entry["title"]
             else:
-                log.debug("subreddit already set")
+                debug("subreddit already set")
 
             if "reddit-score" not in entry:
-                log.debug("no score")
+                debug("no score")
                 entry["reddit-score"] =\
                         json["data"]["children"][0]['data']["score"]
                 if PREPEND_SCORE:
                     entry["title"] =\
                             ("%d " % entry["reddit-score"]) + entry["title"]
             else:
-                log.debug("score already set")
+                debug("score already set")
 
 transform_locals["reddit_score_sort"] = RedditScoreSort()
