@@ -118,6 +118,8 @@ class CantoFeed(PluginHandler):
 
             self.items = oldfeed.items
             oldfeed.items = None
+            for item in self.items:
+                alltags.add_tag(item["id"], self.name, "maintag")
         else:
             # Pull items from disk on instantiation.
             self.items = []
