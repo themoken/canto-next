@@ -31,10 +31,17 @@ class CantoFeeds():
         self.dead_feeds = {}
 
     def add_feed(self, URL, feed):
+        r = None
+
         self.order.append(URL)
         self.feeds[URL] = feed
+
+        # Return old feed object
         if URL in self.dead_feeds:
+            r = self.dead_feeds[URL]
             del self.dead_feeds[URL]
+
+        return r
 
     def get_feed(self, URL):
         if URL in self.feeds:
@@ -85,7 +92,8 @@ class CantoFeed(PluginHandler):
         self.plugin_class = DaemonFeedPlugin
         self.update_plugin_lookups()
 
-        allfeeds.add_feed(URL, self)
+        oldfeed = allfeeds.add_feed(URL, self)
+
         self.shelf = shelf
         self.name = name
         self.URL = URL
@@ -102,10 +110,18 @@ class CantoFeed(PluginHandler):
             self.password = kwargs["password"]
 
         self.update_contents = None
-        self.items = []
 
-        # Pull items from disk on instantiation.
-        self.index()
+        if oldfeed != None:
+
+            # This should be ok because update_contents is the only value
+            # written by another thread and we're ignoring that.
+
+            self.items = oldfeed.items
+            oldfeed.items = None
+        else:
+            # Pull items from disk on instantiation.
+            self.items = []
+            self.index()
 
     # Return whether item, if added, would have a unique ID
     def unique_item(self, item):
