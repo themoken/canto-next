@@ -29,11 +29,12 @@ from .tag import alltags
 from .transform import eval_transform
 from .plugins import try_plugins
 
+from threading import Lock
+
 import traceback
 import logging
 import signal
 import getopt
-import queue
 import fcntl
 import errno
 import time
@@ -51,6 +52,8 @@ log = logging.getLogger("CANTO-DAEMON")
 
 FETCH_CHECK_INTERVAL = 60
 TRIM_INTERVAL = 300
+
+massive_lock = Lock()
 
 class CantoBackend(CantoServer):
 
@@ -136,11 +139,11 @@ class CantoBackend(CantoServer):
 
         try:
             if self.port < 0:
-                CantoServer.__init__(self, sp, queue.Queue())
+                CantoServer.__init__(self, sp, self.socket_command)
             else:
                 log.info("Listening on interface %s:%d" %\
                         (self.intf, self.port))
-                CantoServer.__init__(self, sp, queue.Queue(),\
+                CantoServer.__init__(self, sp, self.socket_command,\
                         port = self.port, interface = self.intf)
         except Exception as e:
             err = "Error: %s" % e
@@ -151,14 +154,11 @@ class CantoBackend(CantoServer):
 
         # Signal handlers kickoff after everything else is init'd
 
-        self.alarmed = 0
         self.interrupted = 0
 
-        signal.signal(signal.SIGALRM, self.sig_alrm)
         signal.signal(signal.SIGINT, self.sig_int)
         signal.signal(signal.SIGTERM, self.sig_int)
         signal.signal(signal.SIGUSR1, self.sig_usr)
-        signal.alarm(1)
 
     def check_dead_feeds(self):
         for URL in list(allfeeds.dead_feeds.keys()):
@@ -246,9 +246,6 @@ class CantoBackend(CantoServer):
         protection.unprotect((socket, "auto"))
         self.check_dead_feeds()
 
-    def queue_internal(self, cb, func, args):
-        self.queue.put((cb, func, args))
-
     # We need to be alerted on certain events, ensure
     # we get notified about them.
 
@@ -260,9 +257,9 @@ class CantoBackend(CantoServer):
         on_hook("kill_socket", self.on_kill_socket)
 
         # For plugins
-        on_hook("set_configs", lambda x, y : self.queue_internal(x, self.in_setconfigs, y))
-        on_hook("del_configs", lambda x, y : self.queue_internal(x, self.in_delconfigs, y))
-        on_hook("get_configs", lambda x, y : self.queue_internal(x, self.in_configs, y))
+        on_hook("set_configs", lambda x, y : self.internal_command(x, self.in_setconfigs, y))
+        on_hook("del_configs", lambda x, y : self.internal_command(x, self.in_delconfigs, y))
+        on_hook("get_configs", lambda x, y : self.internal_command(x, self.in_configs, y))
 
     # Return list of item tuples after global transforms have
     # been performed on them.
@@ -560,77 +557,62 @@ class CantoBackend(CantoServer):
         self.do_fetch(True)
 
     # The workhorse that maps all requests to their handlers.
+
+    def socket_command(self, socket, data):
+        cmd, args = data
+
+        if cmd == "DIE":
+            log.info("Received DIE.")
+            self.interrupted = True
+        else:
+            cmdf = "cmd_" + cmd.lower()
+            if hasattr(self, cmdf):
+                func = getattr(self, cmdf)
+
+                massive_lock.acquire()
+
+                try:
+                    func(socket, args)
+                except Exception as e:
+                    tb = "".join(traceback.format_exc())
+                    self.write(socket, "EXCEPT", tb)
+                    log.error("Protocol exception:")
+                    log.error("\n" + tb)
+
+                call_hook("work_done", [])
+
+                massive_lock.release()
+
+            else:
+                log.info("Got unknown command: %s" % (cmd))
+
+
+    def internal_command(self, cb, func, args):
+        massive_lock.acquire()
+
+        r = func(args)
+        if cb:
+            cb(r)
+
+        call_hook("work_done", [])
+
+        massive_lock.release()
+
     def run(self):
         log.debug("Beginning to serve...")
         call_hook("serving", [])
         while 1:
-            try:
-                if self.interrupted:
-                    log.info("Interrupted. Exiting.")
-                    return
-
-                # If we've received a SIGALARM, we switch to a shorter timeout
-                # until we've cleared the queue and get an exception, which
-                # will let us handle the alarm.
-
-                # It really sucks that we don't get signals will in a Queue.get
-                # =(
-
-                if self.alarmed:
-                    r = self.queue.get(True, 0.1)
-                else:
-                    r = self.queue.get(True, 1)
-
-                log.debug("!!! %s" % (r,))
-
-                # 3-tuple = internal command
-                if len(r) == 3:
-                    cb, func, args = r
-                    r = func(args)
-                    if cb:
-                        cb(r)
-                    continue
-
-                # 2-tuple = external command
-                else:
-                    socket, (cmd, args) = r
-
-            except queue.Empty:
-                pass
-            else:
-                if cmd == "DIE":
-                    log.info("Received DIE.")
-                    return
-
-                if cmd == "NEWCONN":
-                    self.accept_conn(socket)
-                    continue
-
-                cmdf = "cmd_" + cmd.lower()
-                if hasattr(self, cmdf):
-                    func = getattr(self, cmdf)
-                    try:
-                        func(socket, args)
-                    except Exception as e:
-                        tb = "".join(traceback.format_exc())
-                        self.write(socket, "EXCEPT", tb)
-                        log.error("Protocol exception:")
-                        log.error("\n" + tb)
-                else:
-                    log.info("Got unknown command: %s" % (cmd))
-
-                # Give priority to waiting requests, try for
-                # another one instead of doing feed processing in between.
-                continue
-
-            self.alarmed = 0
-            call_hook("work_done", [])
+            if self.interrupted:
+                log.info("Interrupted. Exiting.")
+                return
 
             # Clean up any dead connection threads.
 
             self.no_dead_conns()
 
             # Process any possible feed updates.
+
+            massive_lock.acquire()
 
             self.fetch.process()
 
@@ -650,6 +632,10 @@ class CantoBackend(CantoServer):
             if self.trim_timer <= 0:
                 self.shelf.trim()
                 self.trim_timer = TRIM_INTERVAL
+
+            massive_lock.release()
+
+            time.sleep(1)
 
     # This function parses and validates all of the command line arguments.
     def args(self):
@@ -695,10 +681,6 @@ class CantoBackend(CantoServer):
                 return 1
 
         return 0
-
-    def sig_alrm(self, a, b):
-        self.alarmed = 1
-        signal.alarm(1)
 
     def sig_int(self, a, b):
         self.interrupted = 1

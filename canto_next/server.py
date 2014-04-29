@@ -11,7 +11,7 @@ from .protocol import CantoSocket
 from .hooks import call_hook
 
 from socket import SHUT_RDWR
-from threading import Thread
+from threading import Thread, Lock
 import traceback
 import logging
 import select
@@ -19,11 +19,13 @@ import select
 log = logging.getLogger("SERVER")
 
 class CantoServer(CantoSocket):
-    def __init__(self, socket_name, queue, **kwargs):
+    def __init__(self, socket_name, dispatch, **kwargs):
         kwargs["server"] = True
         CantoSocket.__init__(self, socket_name, **kwargs)
-        self.queue = queue
+        self.dispatch = dispatch
         self.conn_thread = None
+
+        self.connections_lock = Lock()
         self.connections = [] # (socket, thread) tuples
         self.alive = True
 
@@ -32,7 +34,7 @@ class CantoServer(CantoSocket):
     # Endlessly consume data from the connection. If there's enough data
     # for a complete command, toss it on the shared Queue.Queue
 
-    def queue_loop(self, conn):
+    def read_loop(self, conn):
         try:
             while self.alive:
                 d = self.do_read(conn)
@@ -40,7 +42,7 @@ class CantoServer(CantoSocket):
                     if d == select.POLLHUP:
                         log.info("Connection ended.")
                         return
-                    self.queue.put((conn, d))
+                    self.dispatch(conn, d)
         except Exception as e:
             tb = traceback.format_exc()
             log.error("Response thread dead on exception:")
@@ -52,13 +54,14 @@ class CantoServer(CantoSocket):
     def conn_loop(self, sockets):
         while self.alive:
             try:
-                r, w, x = select.select(sockets, [], sockets)
+                # select with a timeout so we can check we're still alive
+                r, w, x = select.select(sockets, [], sockets, 1)
                 for s in sockets:
                     # If socket is readable, it's got a pending connection.
                     if s in r:
                         conn = s.accept()
                         log.info("conn %s from sock %s" % (conn, s))
-                        self.queue.put((conn[0], ("NEWCONN","")))
+                        self.accept_conn(conn[0])
             except Exception as e:
                 tb = traceback.format_exc()
                 log.error("Connection monitor exception:")
@@ -75,28 +78,31 @@ class CantoServer(CantoSocket):
     # Remove dead connection threads.
 
     def no_dead_conns(self):
-        live_conns = []
-        for c, t in self.connections:
-            if t.isAlive():
-                live_conns.append((c,t))
-            else:
-                # Notify watchers about dead socket.
+        self.connections_lock.acquire()
+        for c, t in self.connections[:]:
+            if not t.isAlive():
                 call_hook("kill_socket", [c])
                 t.join()
-        self.connections = live_conns
+                self.connections.remove((c, t))
+        self.connections_lock.release()
 
     def accept_conn(self, conn):
 
         # Notify watchers about new socket.
         call_hook("new_socket", [conn])
 
+        self.connections_lock.acquire()
+
         self.connections.append((conn,\
-                Thread(target = self.queue_loop,\
+                Thread(target = self.read_loop,\
                        args = (conn,))
                 ))
 
         self.connections[-1][1].daemon = True
         self.connections[-1][1].start()
+
+        self.connections_lock.release()
+
         log.debug("Spawned new thread.")
 
     # Write a (cmd, args) to a single connection.
@@ -108,11 +114,18 @@ class CantoServer(CantoSocket):
     # Write a (cmd, args) to every connection.
     def write_all(self, cmd, args):
         self.no_dead_conns()
+
+        self.connections_lock.acquire()
         for conn, t in self.connections:
             self.do_write(conn, cmd, args)
+        self.connections_lock.release()
 
     def exit(self):
         self.alive = False
+        self.conn_thread.join()
+
+        # No locking, as we should already be single-threaded
+
         for conn, t in self.connections:
             conn.shutdown(SHUT_RDWR)
             conn.close()
