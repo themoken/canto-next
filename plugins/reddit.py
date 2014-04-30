@@ -6,12 +6,6 @@
 # reddit_score_sort, and will add "score [subreddit]" to the beginning of
 # every relevant feed item.
 
-# ALWAYS REFRESH, if true, each update will re-fetch Reddit JSON to give
-# updated scores, comment counts etc. Makes each update take a lot longer,
-# and will use a lot more bandwidth.
-
-ALWAYS_REFRESH = True
-
 # PREPEND_SCORE, if true will add the score to the entry title. Note, this
 # doesn't effect the sort.
 
@@ -56,69 +50,32 @@ class RedditFetchJSON(DaemonFetchThreadPlugin):
         if "reddit.com" not in kwargs["feed"].URL:
             return
 
-        last_fetch = 0
-
-        new_ids = [ json.dumps({ "URL" : kwargs["feed"].URL, "ID" : i["id"] }) for i in kwargs["newcontent"]["entries"] ]
-
-        attrs = {}
-        for id in new_ids:
-            attrs[id] = ["reddit-json"]
-
-        old_attrs = kwargs["feed"].get_attributes(new_ids, attrs)
-
-        if EXTRA_LOG_OUTPUT:
-            debug("old_attrs: %s" % old_attrs)
+        # Get the feed's JSON
+        try:
+            json_url = kwargs["feed"].URL.replace(".rss?",".json?")
+            req = urllib.request.Request(json_url, headers = { "User-Agent" : "Canto-Reddit-Plugin"})
+            response = urllib.request.urlopen(req, None, 10)
+            reddit_json = json.loads(response.read().decode())
+        except Exception as e:
+            log.error("Error fetching Reddit JSON: %s" % e)
+            return
 
         for entry in kwargs["newcontent"]["entries"]:
-            if "reddit-json" in entry and not ALWAYS_REFRESH:
+            m = self.comment_id_regex.match(entry["link"])
+            if not m:
+                m = self.tb_id_regex.match(entry["link"])
+            if not m:
+                debug("Couldn't find ID in %s ?!" % entry["link"])
                 continue
+            m = "t3_" + m.groups()[0]
 
-            entry_id = json.dumps({"URL" : kwargs["feed"].URL, "ID" : entry["id"]})
-
-            # If not always refresh, and the JSON is not empty or errored, move it over
-            if not ALWAYS_REFRESH and entry_id in old_attrs and\
-                    "reddit-json" in old_attrs[entry_id] and\
-                    old_attrs[entry_id]["reddit-json"] and\
-                    "error" not in old_attrs[entry_id]["reddit-json"]:
-                entry["reddit-json"] = old_attrs[entry_id]["reddit-json"]
-                if EXTRA_LOG_OUTPUT:
-                    debug("Using old JSON: %s" % entry["reddit-json"])
+            for rj in reddit_json["data"]["children"]:
+                if rj["data"]["name"] == m:
+                    debug("Found m=%s" % m)
+                    entry["reddit-json"] = rj
+                    break
             else:
-                # Reddit now enforces a maximum of 1 request every 2 seconds.
-                # We can afford to play by the rules because this runs in a
-                # separate thread.
-
-                period = 2
-
-                cur_time = time.time()
-                delta = cur_time - last_fetch
-                if delta < period:
-                    debug("Waiting %s seconds" % (period - delta))
-                    time.sleep(period - delta)
-                last_fetch = cur_time
-
-                # Grab the story summary. Alternatively, we could grab
-                # entry["link"] + "/.json" but that includes comments and
-                # can be fairly large for popular threads.
-
-                try:
-                    m = self.comment_id_regex.match(entry["link"])
-                    if not m:
-                        m = self.tb_id_regex.match(entry["link"])
-
-                    reddit_id = m.groups()[0]
-
-                    req = urllib.request.Request(\
-                            "http://reddit.com/by_id/t3_" + reddit_id + ".json",
-                            headers = { "User-Agent" : "Canto-Reddit-Plugin"})
-                    response = urllib.request.urlopen(req, None, 10)
-
-                    entry["reddit-id"] = reddit_id
-
-                    r = json.loads(response.read().decode())
-                    entry["reddit-json"] = r
-                except Exception as e:
-                    log.error("Error fetching Reddit JSON: %s" % e)
+                debug("Couldn't find m= %s" % m)
 
 class RedditScoreSort(CantoTransform):
     def __init__(self):
@@ -170,29 +127,24 @@ class RedditAnnotate(DaemonFeedPlugin):
                 debug("NO JSON, bailing")
                 continue
 
-            json = entry["reddit-json"]
-            if not json or "error" in json:
-                debug("JSON EMPTY, bailing")
+            rj = entry["reddit-json"]
+            if not rj:
+                debug("JSON empty, bailing")
                 continue
 
             if "subreddit" not in entry:
-                debug("no subreddit")
-                entry["subreddit"] =\
-                        json["data"]["children"][0]['data']["subreddit"]
+                entry["subreddit"] = rj["data"]["subreddit"]
                 if PREPEND_SUBREDDIT:
                     entry["title"] =\
                             "[" + entry["subreddit"] + "] " + entry["title"]
-            else:
-                debug("subreddit already set")
 
-            if "reddit-score" not in entry:
-                debug("no score")
-                entry["reddit-score"] =\
-                        json["data"]["children"][0]['data']["score"]
-                if PREPEND_SCORE:
-                    entry["title"] =\
-                            ("%d " % entry["reddit-score"]) + entry["title"]
-            else:
-                debug("score already set")
+            if PREPEND_SCORE:
+                score = rj["data"]["score"]
+                if "reddit-score" in entry:
+                    entry["title"] = re.sub("^\d+ ", "", entry["title"])
+
+                entry["reddit-score"] = score
+                entry["title"] =\
+                        ("%d " % entry["reddit-score"]) + entry["title"]
 
 transform_locals["reddit_score_sort"] = RedditScoreSort()
