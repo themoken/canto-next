@@ -38,7 +38,7 @@ class CantoFetchThread(PluginHandler, Thread):
 
     def run(self):
         extra_headers = { 'User-Agent' :\
-                'Canto/0.8.0 + http://codezen.org/canto' }
+                'Canto/0.8.0 + http://codezen.org/canto'}
 
         try:
             result = None
@@ -65,37 +65,34 @@ class CantoFetchThread(PluginHandler, Thread):
                 result = feedparser.parse(self.feed.URL,
                         request_headers = extra_headers)
 
-            self.feed.update_contents = result
+            update_contents = result
         except Exception as e:
             log.error("ERROR: try to parse %s, got %s" % (self.feed.URL, e))
-            self.feed.update_contents = None
             return
 
         # Interpret feedparser's bozo_exception, if there was an
         # error that resulted in no content, it's the same as
         # any other broken feed.
 
-        if "bozo_exception" in self.feed.update_contents:
-            if self.feed.update_contents["bozo_exception"] == urllib.error.URLError:
+        if "bozo_exception" in update_contents:
+            if update_contents["bozo_exception"] == urllib.error.URLError:
                 log.error("ERROR: couldn't grab %s : %s" %\
                         (self.feed.URL,\
-                        self.feed.update_contents["bozo_exception"].reason))
-                self.feed.update_contents = None
+                        update_contents["bozo_exception"].reason))
                 return
-            elif len(self.feed.update_contents["entries"]) == 0:
+            elif len(update_contents["entries"]) == 0:
                 log.error("No content in %s: %s" %\
                         (self.feed.URL,\
-                        self.feed.update_contents["bozo_exception"]))
-                self.feed.update_contents = None
+                        update_contents["bozo_exception"]))
                 return
 
             # Replace it if we ignore it, since exceptions
             # are not pickle-able.
 
-            self.feed.update_contents["bozo_exception"] = None
+            update_contents["bozo_exception"] = None
 
         # Update timestamp
-        self.feed.update_contents["canto_update"] = time.time()
+        update_contents["canto_update"] = time.time()
 
         log.debug("Parsed %s" % self.feed.URL)
 
@@ -108,12 +105,15 @@ class CantoFetchThread(PluginHandler, Thread):
 
             try:
                 a = getattr(self, attr)
-                a(feed = self.feed, newcontent = self.feed.update_contents)
+                a(feed = self.feed, newcontent = update_contents)
             except:
                 log.error("Error running fetch thread plugin")
                 log.error(traceback.format_exc())
 
         log.debug("Plugins complete.")
+
+        # This handles it's own locking
+        self.feed.index(update_contents)
 
 class CantoFetch():
     def __init__(self, shelf):
@@ -160,7 +160,7 @@ class CantoFetch():
             log.debug("Started thread for feed %s" % feed.URL)
             self.threads.append((thread, feed.URL))
 
-    def process(self):
+    def reap(self):
         newthreads = []
 
         for thread, URL in self.threads:
@@ -168,12 +168,5 @@ class CantoFetch():
                 newthreads.append((thread, URL))
                 continue
             thread.join()
-
-            # Feed could've disappeared between
-            # fetch() and process()
-
-            feed = allfeeds.get_feed(URL)
-            if feed:
-                feed.index()
 
         self.threads = newthreads

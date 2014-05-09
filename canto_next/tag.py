@@ -6,6 +6,7 @@
 #   published by the Free Software Foundation.
 
 from .hooks import on_hook, call_hook
+from .locks import tag_lock
 
 import logging
 
@@ -44,42 +45,6 @@ class CantoTags():
         if tag not in self.changed_tags:
             self.changed_tags.append(tag)
 
-    def add_tag(self, id, name, category=""):
-
-        # Tags are actually stored as category:name, this is so that you can
-        # tell the difference between, say, a plugin that has marked an item as
-        # cool (pluginname:cool) and something the user has marked as cool
-        # (user:cool). It also allows primary tags for feeds to be easily
-        # identified (maintag:Reddit), vs. tags added at the tag config level
-        # (tag:Reddit), etc.
-
-        name = category + ":" + name
-
-        if name in self.extra_tags:
-            extras = [ "tag:" + x for x in self.extra_tags[name] ]
-        else:
-            extras = []
-
-        alladded = [ name ] + extras
-
-        for name in alladded:
-            # Create tag if no tag exists
-            if name not in self.tags:
-                self.tags[name] = []
-                if name not in self.oldtags:
-                    call_hook("new_tag", [[ name ]])
-
-            # Add to tag.
-            if id not in self.tags[name]:
-                self.tags[name].append(id)
-                self.tag_changed(name)
-
-    def remove_id(self, id):
-        for tag in self.tags:
-            if id in self.tags[tag]:
-                self.tags[tag].remove(id)
-                self.tag_changed(tag)
-
     def get_tag(self, tag):
         if tag in list(self.tags.keys()):
             return self.tags[tag]
@@ -115,5 +80,58 @@ class CantoTags():
 
         for tag in self.oldtags:
             self.tag_changed(tag)
+
+    #
+    # This is called from Feed() __init__, in which case, we should already
+    # have tag_lock write because we're reparsing / instantiating the config.
+    #
+
+    def _add_tag(self, id, name, category=""):
+
+        # Tags are actually stored as category:name, this is so that you can
+        # tell the difference between, say, a plugin that has marked an item as
+        # cool (pluginname:cool) and something the user has marked as cool
+        # (user:cool). It also allows primary tags for feeds to be easily
+        # identified (maintag:Reddit), vs. tags added at the tag config level
+        # (tag:Reddit), etc.
+
+        name = category + ":" + name
+
+        if name in self.extra_tags:
+            extras = [ "tag:" + x for x in self.extra_tags[name] ]
+        else:
+            extras = []
+
+        alladded = [ name ] + extras
+
+        for name in alladded:
+            # Create tag if no tag exists
+            if name not in self.tags:
+                self.tags[name] = []
+                if name not in self.oldtags:
+                    call_hook("new_tag", [[ name ]])
+
+            # Add to tag.
+            if id not in self.tags[name]:
+                self.tags[name].append(id)
+                self.tag_changed(name)
+
+    #
+    # The following functions are called from Feed(), not CantoBackend()
+    # and thus have to make sure they hold the tag_lock.
+    #
+
+    def add_tag(self, id, name, category=""):
+        tag_lock.acquire_write()
+        self._add_tag(id, name, category)
+        tag_lock.release_write()
+
+    def remove_id(self, id):
+        tag_lock.acquire_write()
+        for tag in self.tags:
+            if id in self.tags[tag]:
+                self.tags[tag].remove(id)
+                self.tag_changed(tag)
+        tag_lock.release_write()
 
 alltags = CantoTags()

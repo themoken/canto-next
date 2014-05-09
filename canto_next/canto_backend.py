@@ -28,8 +28,7 @@ from .hooks import on_hook, call_hook
 from .tag import alltags
 from .transform import eval_transform
 from .plugins import try_plugins
-
-from threading import Lock
+from .locks import *
 
 import traceback
 import logging
@@ -52,8 +51,6 @@ log = logging.getLogger("CANTO-DAEMON")
 
 FETCH_CHECK_INTERVAL = 60
 TRIM_INTERVAL = 300
-
-massive_lock = Lock()
 
 class CantoBackend(CantoServer):
 
@@ -129,7 +126,9 @@ class CantoBackend(CantoServer):
 
         # Actual start.
         self.get_storage()
+
         self.get_config()
+
         self.get_fetch()
 
         self.setup_hooks()
@@ -160,7 +159,7 @@ class CantoBackend(CantoServer):
         signal.signal(signal.SIGTERM, self.sig_int)
         signal.signal(signal.SIGUSR1, self.sig_usr)
 
-    def check_dead_feeds(self):
+    def _check_dead_feeds(self):
         for URL in list(allfeeds.dead_feeds.keys()):
             feed = allfeeds.dead_feeds[URL]
             for item in feed.items:
@@ -169,6 +168,11 @@ class CantoBackend(CantoServer):
                     break
             else:
                 allfeeds.really_dead(feed)
+
+    @write_lock(feed_lock)
+    @read_lock(protect_lock)
+    def check_dead_feeds(self):
+        self._check_dead_feeds()
 
     def _reparse_config(self, originating_socket):
         self.conf.parse(False)
@@ -179,14 +183,23 @@ class CantoBackend(CantoServer):
         else:
             self.conf.write()
 
-        self.check_dead_feeds()
+        # We already hold write feed/tag/config, grab read protect too.
+
+        protect_lock.acquire_read()
+        self._check_dead_feeds()
+        protect_lock.release_read()
+
         alltags.del_old_tags()
 
     # Propagate config changes to watching sockets.
 
-    # On_config_change must be prepared to have originating_socket = None for internal requests that
-    # nonetheless must be propagated.
+    # On_config_change must be prepared to have originating_socket = None for
+    # internal requests that nonetheless must be propagated.
 
+    # This is invoked by set or del configs, which holds write locks on config,
+    # tags, and feeds already.
+
+    @read_lock(watch_lock)
     def on_config_change(self, change, originating_socket):
 
         self._reparse_config(originating_socket)
@@ -202,16 +215,18 @@ class CantoBackend(CantoServer):
         for socket in self.watches["config"]:
             # Don't echo changes back to socket that made them.
             if socket != originating_socket:
-                self.cmd_configs(socket, list(change.keys()))
+                self.in_configs(list(change.keys()), socket)
 
     # Notify clients of new tags.
 
+    @read_lock(watch_lock)
     def on_new_tag(self, tags):
         for socket in self.watches["new_tags"]:
             self.write(socket, "NEWTAGS", tags)
 
     # Propagate tag changes to watching sockets.
 
+    @read_lock(watch_lock)
     def on_tag_change(self, tag):
         if tag in self.watches["tags"]:
             for socket in self.watches["tags"][tag]:
@@ -219,6 +234,7 @@ class CantoBackend(CantoServer):
 
     # Notify clients of dead tags:
 
+    @read_lock(watch_lock)
     def on_del_tag(self, tags):
         for socket in self.watches["del_tags"]:
             self.write(socket, "DELTAGS", tags)
@@ -226,6 +242,10 @@ class CantoBackend(CantoServer):
     # If a socket dies, it's not longer watching any events and
     # revoke any protection associated with it
 
+    @write_lock(watch_lock)
+    @write_lock(socktran_lock)
+    @write_lock(protect_lock)
+    @write_lock(feed_lock)
     def on_kill_socket(self, socket):
         while socket in self.watches["config"]:
             self.watches["config"].remove(socket)
@@ -244,7 +264,7 @@ class CantoBackend(CantoServer):
             del self.socket_transforms[socket]
 
         protection.unprotect((socket, "auto"))
-        self.check_dead_feeds()
+        self._check_dead_feeds()
 
     # We need to be alerted on certain events, ensure
     # we get notified about them.
@@ -294,6 +314,8 @@ class CantoBackend(CantoServer):
 
     # Fetch any feeds that need fetching.
 
+    @read_lock(feed_lock)
+    @write_lock(fetch_lock)
     def do_fetch(self, force = False):
         self.fetch.fetch(force)
         self.fetch_timer = FETCH_CHECK_INTERVAL
@@ -313,6 +335,8 @@ class CantoBackend(CantoServer):
     # maintag tags will be first, and in feed order. Following tags
     # are in whatever order the dict gives them in.
 
+    @read_lock(feed_lock)
+    @read_lock(tag_lock)
     def cmd_listtags(self, socket, args):
         r = []
         for feed in allfeeds.get_feeds():
@@ -325,6 +349,7 @@ class CantoBackend(CantoServer):
 
     # LISTTRANSFORMS -> [ { "name" : " " } for all defined filters ]
 
+    @read_lock(config_lock)
     def cmd_listtransforms(self, socket, args):
         transforms = []
         for transform in self.conf.transforms:
@@ -335,6 +360,7 @@ class CantoBackend(CantoServer):
     # TRANSFORM "" -> "current socket transform"
     # TRANSFORM "string" -> set current socket transform.
 
+    @write_lock(socktran_lock)
     def cmd_transform(self, socket, args):
         # Clear with !args
         if not args:
@@ -363,11 +389,17 @@ class CantoBackend(CantoServer):
     # clients to become informative quickly by making the individual
     # story IDs unnecessary to request information about them.
 
+    @write_lock(attr_lock)
     def cmd_autoattr(self, socket, args):
         self.autoattr[socket] = args
 
     # ITEMS [tags] -> { tag : [ ids ], tag2 : ... }
 
+    @read_lock(protect_lock)
+    @read_lock(tag_lock)
+    @read_lock(config_lock)
+    @read_lock(socktran_lock)
+    @read_lock(attr_lock)
     def cmd_items(self, socket, args):
         ids = []
         response = {}
@@ -406,6 +438,7 @@ class CantoBackend(CantoServer):
     # FEEDATTRIBUTES { 'url' : [ attribs .. ] .. } ->
     # { url : { attribute : value } ... }
 
+    @read_lock(feed_lock)
     def cmd_feedattributes(self, socket, args):
         r = {}
         for url in list(args.keys()):
@@ -418,21 +451,28 @@ class CantoBackend(CantoServer):
     # ATTRIBUTES { id : [ attribs .. ] .. } ->
     # { id : { attribute : value } ... }
 
+    @read_lock(feed_lock)
     def cmd_attributes(self, socket, args):
         ret = {}
         feeds = allfeeds.items_to_feeds(list(args.keys()))
         for f in feeds:
+            f.lock.acquire_read()
             ret.update(f.get_attributes(feeds[f], args))
+            f.lock.release_read()
 
         self.write(socket, "ATTRIBUTES", ret)
 
     # SETATTRIBUTES { id : { attribute : value } ... } -> None
 
+    @read_lock(feed_lock)
+    @read_lock(tag_lock)
     def cmd_setattributes(self, socket, args):
 
         feeds = allfeeds.items_to_feeds(list(args.keys()))
         for f in feeds:
+            f.lock.acquire_write()
             f.set_attributes(feeds[f], args)
+            f.lock.release_write()
 
         tags = alltags.items_to_tags(list(args.keys()))
         for t in tags:
@@ -440,9 +480,10 @@ class CantoBackend(CantoServer):
 
     # CONFIGS [ "top_sec", ... ] -> { "top_sec" : full_value }
 
-    # Internal
+    # Internally, called only by functions that hold read or write on
+    # config_lock
 
-    def in_configs(self, args):
+    def in_configs(self, args, socket=None):
         if args:
             ret = {}
             for topsec in args:
@@ -450,33 +491,16 @@ class CantoBackend(CantoServer):
                     ret[topsec] = self.conf.json[topsec]
         else:
             ret = self.conf.json
+
+        if socket:
+            self.write(socket, "CONFIGS", ret)
         return ret
 
-    # External
+    # External, needs to grab lock.
 
+    @read_lock(config_lock)
     def cmd_configs(self, socket, args):
-        ret = self.in_configs(args)
-        self.write(socket, "CONFIGS", ret)
-
-    # Please NOTE that SET and DEL do no locking, no revision tracking
-    # whatsoever. There's no forcing clients to only make changes to
-    # configurations that they've already acknowledged.
-
-    # What I *have* done is harden the data structures so that with a little
-    # care, clients can do non-destructive changes to the config. For example,
-    # list objects in the config can have items added from multiple clients,
-    # without each client having to know it's complete contents. So two feeds
-    # added by different clients will still race (you can't tell which order
-    # the feeds will be in in relation to each other), but one add won't blow
-    # away the other.
-
-    # The bottom line though is that I don't want to implement any sort of
-    # config rejection capability (i.e. conflict handling) or lock /
-    # synchronization mechanism (on *either* the daemon or client side) just to
-    # allow users to do two diametrically opposed config settings in two
-    # different clients at the exact same time.
-
-    # It's just not worth it.
+        ret = self.in_configs(args, socket)
 
     # SETCONFIGS { "key" : "value", ...}
 
@@ -484,10 +508,14 @@ class CantoBackend(CantoServer):
         self.cmd_setconfigs(None, args)
         return self.conf.json
 
+    @write_lock(config_lock)
+    @write_lock(feed_lock)
+    @write_lock(tag_lock)
     def cmd_setconfigs(self, socket, args):
 
         self.conf.merge(args.copy())
 
+        # config_change handles it's own locking
         call_hook("config_change", [args, socket])
 
     # DELCONFIGS { "key" : "DELETE", ...}
@@ -496,29 +524,37 @@ class CantoBackend(CantoServer):
         cmd_delconfigs(None, args)
         return self.conf.json
 
+    @write_lock(config_lock)
+    @write_lock(feed_lock)
+    @write_lock(tag_lock)
     def cmd_delconfigs(self, socket, args):
 
         self.conf.delete(args.copy())
 
+        # config_change handles it's own locking
         call_hook("config_change", [args, socket])
 
     # WATCHCONFIGS
 
+    @write_lock(watch_lock)
     def cmd_watchconfigs(self, socket, args):
         self.watches["config"].append(socket)
 
     # WATCHNEWTAGS
 
+    @write_lock(watch_lock)
     def cmd_watchnewtags(self, socket, args):
         self.watches["new_tags"].append(socket)
 
     # WATCHDELTAGS
 
+    @write_lock(watch_lock)
     def cmd_watchdeltags(self, socket, args):
         self.watches["del_tags"].append(socket)
 
     # WATCHTAGS [ "tag", ... ]
 
+    @write_lock(watch_lock)
     def cmd_watchtags(self, socket, args):
         for tag in args:
             log.debug("socket %s watching tag %s" % (socket, tag))
@@ -529,12 +565,14 @@ class CantoBackend(CantoServer):
 
     # PROTECT { "reason" : [ id, ... ], ... }
 
+    @write_lock(protect_lock)
     def cmd_protect(self, socket, args):
         for reason in args:
             protection.protect((socket, reason), args[reason])
 
     # UNPROTECT { "reason" : [ id, ... ], ... }
 
+    @write_lock(protect_lock)
     def cmd_unprotect(self, socket, args):
         for reason in args:
             for id in args[reason]:
@@ -569,8 +607,6 @@ class CantoBackend(CantoServer):
             if hasattr(self, cmdf):
                 func = getattr(self, cmdf)
 
-                massive_lock.acquire()
-
                 try:
                     func(socket, args)
                 except Exception as e:
@@ -580,23 +616,15 @@ class CantoBackend(CantoServer):
                     log.error("\n" + tb)
 
                 call_hook("work_done", [])
-
-                massive_lock.release()
-
             else:
                 log.info("Got unknown command: %s" % (cmd))
 
-
     def internal_command(self, cb, func, args):
-        massive_lock.acquire()
-
         r = func(args)
         if cb:
             cb(r)
 
         call_hook("work_done", [])
-
-        massive_lock.release()
 
     def run(self):
         log.debug("Beginning to serve...")
@@ -607,14 +635,12 @@ class CantoBackend(CantoServer):
                 return
 
             # Clean up any dead connection threads.
-
             self.no_dead_conns()
 
-            # Process any possible feed updates.
-
-            massive_lock.acquire()
-
-            self.fetch.process()
+            # Clean up any threads done updating.
+            fetch_lock.acquire_write()
+            self.fetch.reap()
+            fetch_lock.release_write()
 
             # Decrement all timers
 
@@ -632,8 +658,6 @@ class CantoBackend(CantoServer):
             if self.trim_timer <= 0:
                 self.shelf.trim()
                 self.trim_timer = TRIM_INTERVAL
-
-            massive_lock.release()
 
             time.sleep(1)
 

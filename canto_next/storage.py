@@ -20,7 +20,6 @@ import os
 
 log = logging.getLogger("SHELF")
 
-
 class CantoShelf():
     def __init__(self, filename, writeback):
         self.writeback = writeback

@@ -11,6 +11,8 @@ from .plugins import PluginHandler, Plugin
 from .protect import protection
 from .encoding import encoder
 from .tag import alltags
+from .rwlock import RWLock
+from .locks import protect_lock
 
 import traceback
 import logging
@@ -92,7 +94,6 @@ class CantoFeed(PluginHandler):
         self.plugin_class = DaemonFeedPlugin
         self.update_plugin_lookups()
 
-        oldfeed = allfeeds.add_feed(URL, self)
 
         self.shelf = shelf
         self.name = name
@@ -100,6 +101,11 @@ class CantoFeed(PluginHandler):
         self.rate = rate
         self.keep_time = keep_time
         self.keep_unread = keep_unread
+
+        # This is held by the update thread, as well as any get / set attribute
+        # threads
+
+        self.lock = RWLock()
 
         self.username = None
         if "username" in kwargs:
@@ -109,21 +115,17 @@ class CantoFeed(PluginHandler):
         if "password" in kwargs:
             self.password = kwargs["password"]
 
-        self.update_contents = None
+        oldfeed = allfeeds.add_feed(URL, self)
 
         if oldfeed != None:
-
-            # This should be ok because update_contents is the only value
-            # written by another thread and we're ignoring that.
-
             self.items = oldfeed.items
             oldfeed.items = None
             for item in self.items:
-                alltags.add_tag(item["id"], self.name, "maintag")
+                # Will not lock, Feeds() should only be instantiated holding
+                # config, tag, and feed_lock.
+                alltags._add_tag(item["id"], self.name, "maintag")
         else:
-            # Pull items from disk on instantiation.
             self.items = []
-            self.index()
 
     # Return whether item, if added, would have a unique ID
     def unique_item(self, item):
@@ -141,6 +143,7 @@ class CantoFeed(PluginHandler):
                 if item["id"] == olditem["id"]:
                     break
             else:
+                # Will lock
                 alltags.remove_id(olditem["id"])
 
     def lookup_by_id(self, i):
@@ -239,22 +242,23 @@ class CantoFeed(PluginHandler):
                 log.error(traceback.format_exc())
 
     # Re-index contents
-    # If we have self.update_contents, use that
+    # If we have update_contents, use that
     # If not, at least populate self.items from disk.
 
     # MUST GUARANTEE self.items is in same order as entries on disk.
 
-    def index(self):
+    def index(self, update_contents):
 
-        if not self.update_contents:
+
+        if not update_contents:
             if self.URL in self.shelf:
-                self.update_contents = self.shelf[self.URL]
+                update_contents = self.shelf[self.URL]
 
             # If we got nothing, and there's not anything already resident, at
             # least stub it in the shelf.
 
             else:
-                self.update_contents = {"entries" : []}
+                update_contents = {"entries" : []}
 
         if self.URL not in self.shelf:
             # Stub empty feed
@@ -268,12 +272,14 @@ class CantoFeed(PluginHandler):
         # fresh from feedparser or fresh from disk, so it's possible that the
         # old contents and the new contents are identical.
 
+        self.lock.acquire_write()
+
         olditems = self.items
         self.items = []
-        for item in self.update_contents["entries"][:]:
+        for item in update_contents["entries"][:]:
 
             # Update canto_update only for freshly seen items.
-            item["canto_update"] = self.update_contents["canto_update"]
+            item["canto_update"] = update_contents["canto_update"]
 
             # Attempt to isolate a feed unique ID
             if "id" not in item:
@@ -283,14 +289,14 @@ class CantoFeed(PluginHandler):
                     item["id"] = item["title"]
                 else:
                     log.error("Unable to uniquely ID item: %s" % item)
-                    self.update_contents["entries"].remove(item)
+                    update_contents["entries"].remove(item)
                     continue
 
             # Ensure ID truly is feed (and thus globally, since the
             # ID is paired with the unique URL) unique.
 
             if not self.unique_item(item):
-                self.update_contents["entries"].remove(item)
+                update_contents["entries"].remove(item)
                 continue
 
             # At this point, we're sure item's going to be added.
@@ -299,6 +305,7 @@ class CantoFeed(PluginHandler):
             cacheitem["id"] = json.dumps(\
                     { "URL" : self.URL, "ID" : item["id"] } )
 
+            # Will lock
             alltags.add_tag(cacheitem["id"], self.name, "maintag")
 
             # Move over custom content from item.
@@ -329,6 +336,8 @@ class CantoFeed(PluginHandler):
 
         unprotected_old = []
 
+        protect_lock.acquire_read()
+
         for i, olditem in enumerate(olditems):
             for item in self.items:
                 if olditem["id"] == item["id"]:
@@ -338,10 +347,12 @@ class CantoFeed(PluginHandler):
                 if protection.protected(olditem["id"]):
                     log.debug("Saving committed item: %s" % olditem)
                     self.items.append(olditem)
-                    self.update_contents["entries"].append(\
+                    update_contents["entries"].append(\
                             old_contents["entries"][i])
                 else:
                     unprotected_old.append((i, olditem))
+
+        protect_lock.release_read()
 
         # Keep all items that have been seen in the feed in the last day.
 
@@ -367,7 +378,7 @@ class CantoFeed(PluginHandler):
                 log.debug("Discarding: %s", item)
                 continue
 
-            self.update_contents["entries"].append(\
+            update_contents["entries"].append(\
                     old_contents["entries"][idx])
             self.items.append(item)
 
@@ -380,19 +391,18 @@ class CantoFeed(PluginHandler):
 
             try:
                 a = getattr(self, attr)
-                a(feed = self, newcontent = self.update_contents)
+                a(feed = self, newcontent = update_contents)
             except:
                 log.error("Error running feed editing plugin")
                 log.error(traceback.format_exc())
 
         # Commit the updates to disk.
-        self.shelf[self.URL] = self.update_contents
+        self.shelf[self.URL] = update_contents
+
+        self.lock.release_write()
 
         # Remove non-existent IDs from all tags
         self.clear_tags(olditems)
-
-        # No more updates
-        self.update_contents = None
 
     def destroy(self):
         # Check for existence in case of delete quickly
