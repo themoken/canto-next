@@ -117,7 +117,7 @@ class CantoFeed(PluginHandler):
 
         oldfeed = allfeeds.add_feed(URL, self)
 
-        if oldfeed != None:
+        if oldfeed and oldfeed.items:
             self.items = oldfeed.items
             oldfeed.items = None
             for item in self.items:
