@@ -315,15 +315,6 @@ class CantoConfig():
                 feed = CantoFeed(self.shelf, feed["name"],\
                         feed["url"], feed["rate"], feed["keep_time"], feed["keep_unread"], **kws)
 
-        # Now that feeds have instantiated the tags, trim out the tags that
-        # have configuration but are unused.
-
-        if "tags" in self.final:
-            for tag in dict(self.final["tags"]):
-                if tag not in alltags.get_tags():
-                    del self.final["tags"][tag]
-                    del self.json["tags"][tag]
-
         # Set global transform.
 
         self.global_transform = eval_transform(\
