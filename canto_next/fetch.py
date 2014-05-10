@@ -8,6 +8,7 @@
 
 from .plugins import PluginHandler, Plugin
 from .feed import allfeeds
+from .hooks import call_hook
 
 from threading import Thread
 import feedparser
@@ -114,6 +115,8 @@ class CantoFetchThread(PluginHandler, Thread):
 
         # This handles it's own locking
         self.feed.index(update_contents)
+
+        call_hook("work_done", [])
 
 class CantoFetch():
     def __init__(self, shelf):

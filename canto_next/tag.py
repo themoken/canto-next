@@ -61,11 +61,6 @@ class CantoTags():
         if oldtags:
             call_hook("del_tag", [ oldtags ])
 
-    def do_tag_changes(self):
-        for tag in self.changed_tags:
-            call_hook("tag_change", [ tag ])
-        self.changed_tags = []
-
     def tag_transform(self, tag, transform):
         self.tag_transforms[tag] = transform
 
@@ -117,9 +112,16 @@ class CantoTags():
                 self.tag_changed(name)
 
     #
-    # The following functions are called from Feed(), not CantoBackend()
-    # and thus have to make sure they hold the tag_lock.
+    # The following functions are called from Feed(), or work_done not
+    # CantoBackend() and thus have to make sure they hold the tag_lock.
     #
+
+    def do_tag_changes(self):
+        tag_lock.acquire_write()
+        for tag in self.changed_tags:
+            call_hook("tag_change", [ tag ])
+        self.changed_tags = []
+        tag_lock.release_write()
 
     def add_tag(self, id, name, category=""):
         tag_lock.acquire_write()
