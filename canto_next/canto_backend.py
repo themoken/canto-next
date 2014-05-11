@@ -395,7 +395,7 @@ class CantoBackend(CantoServer):
 
     # ITEMS [tags] -> { tag : [ ids ], tag2 : ... }
 
-    @read_lock(protect_lock)
+    @write_lock(protect_lock)
     @read_lock(tag_lock)
     @read_lock(config_lock)
     @read_lock(socktran_lock)
