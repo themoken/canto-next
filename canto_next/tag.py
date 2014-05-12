@@ -31,7 +31,7 @@ class CantoTags():
         # Batch tag_changes to be sent only after
         # a block of requests.
 
-        on_hook("work_done", self.do_tag_changes)
+        on_hook("daemon_work_done", self.do_tag_changes)
 
     def items_to_tags(self, ids):
         tags = []
@@ -59,7 +59,7 @@ class CantoTags():
             if tag not in self.tags:
                 oldtags.append(tag)
         if oldtags:
-            call_hook("del_tag", [ oldtags ])
+            call_hook("daemon_del_tag", [ oldtags ])
 
     def tag_transform(self, tag, transform):
         self.tag_transforms[tag] = transform
@@ -104,7 +104,7 @@ class CantoTags():
             if name not in self.tags:
                 self.tags[name] = []
                 if name not in self.oldtags:
-                    call_hook("new_tag", [[ name ]])
+                    call_hook("daemon_new_tag", [[ name ]])
 
             # Add to tag.
             if id not in self.tags[name]:
@@ -119,7 +119,7 @@ class CantoTags():
     def do_tag_changes(self):
         tag_lock.acquire_write()
         for tag in self.changed_tags:
-            call_hook("tag_change", [ tag ])
+            call_hook("daemon_tag_change", [ tag ])
         self.changed_tags = []
         tag_lock.release_write()
 

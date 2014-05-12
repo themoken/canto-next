@@ -31,8 +31,8 @@ class CantoShelf():
         # Sync after a block of requests has been fulfilled,
         # close the database all together on exit.
 
-        on_hook("work_done", self.sync)
-        on_hook("exit", self.close)
+        on_hook("daemon_work_done", self.sync)
+        on_hook("daemon_exit", self.close)
 
     def _need_lock(fn):
         def lockfn(self, *args, **kwargs):

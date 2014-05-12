@@ -81,7 +81,7 @@ class CantoServer(CantoSocket):
         self.connections_lock.acquire()
         for c, t in self.connections[:]:
             if not t.isAlive():
-                call_hook("kill_socket", [c])
+                call_hook("server_kill_socket", [c])
                 t.join()
                 self.connections.remove((c, t))
         self.connections_lock.release()
@@ -89,7 +89,7 @@ class CantoServer(CantoSocket):
     def accept_conn(self, conn):
 
         # Notify watchers about new socket.
-        call_hook("new_socket", [conn])
+        call_hook("server_new_socket", [conn])
 
         self.connections_lock.acquire()
 

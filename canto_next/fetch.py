@@ -116,7 +116,7 @@ class CantoFetchThread(PluginHandler, Thread):
         # This handles it's own locking
         self.feed.index(update_contents)
 
-        call_hook("work_done", [])
+        call_hook("daemon_work_done", [])
 
 class CantoFetch():
     def __init__(self, shelf):

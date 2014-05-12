@@ -52,8 +52,9 @@ class CantoSocket:
         # Holster for partial reads.
         self.fragments = { }
 
-        on_hook("new_socket", self.prot_new_frag)
-        on_hook("kill_socket", self.prot_kill_frag)
+        on_hook("client_new_socket", self.prot_new_frag)
+        on_hook("server_new_socket", self.prot_new_frag)
+        on_hook("server_kill_socket", self.prot_kill_frag)
 
         self.connect()
 

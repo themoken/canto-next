@@ -148,7 +148,7 @@ class CantoBackend(CantoServer):
             err = "Error: %s" % e
             print(err)
             log.error(err)
-            call_hook("exit", [])
+            call_hook("daemon_exit", [])
             sys.exit(-1)
 
         # Signal handlers kickoff after everything else is init'd
@@ -270,16 +270,16 @@ class CantoBackend(CantoServer):
     # we get notified about them.
 
     def setup_hooks(self):
-        on_hook("new_tag", self.on_new_tag)
-        on_hook("del_tag", self.on_del_tag)
-        on_hook("config_change", self.on_config_change)
-        on_hook("tag_change", self.on_tag_change)
-        on_hook("kill_socket", self.on_kill_socket)
+        on_hook("daemon_new_tag", self.on_new_tag)
+        on_hook("daemon_del_tag", self.on_del_tag)
+        on_hook("daemon_config_change", self.on_config_change)
+        on_hook("daemon_tag_change", self.on_tag_change)
+        on_hook("daemon_kill_socket", self.on_kill_socket)
 
         # For plugins
-        on_hook("set_configs", lambda x, y : self.internal_command(x, self.in_setconfigs, y))
-        on_hook("del_configs", lambda x, y : self.internal_command(x, self.in_delconfigs, y))
-        on_hook("get_configs", lambda x, y : self.internal_command(x, self.in_configs, y))
+        on_hook("daemon_set_configs", lambda x, y : self.internal_command(x, self.in_setconfigs, y))
+        on_hook("daemon_del_configs", lambda x, y : self.internal_command(x, self.in_delconfigs, y))
+        on_hook("daemon_get_configs", lambda x, y : self.internal_command(x, self.in_configs, y))
 
     # Return list of item tuples after global transforms have
     # been performed on them.
@@ -476,7 +476,7 @@ class CantoBackend(CantoServer):
 
         tags = alltags.items_to_tags(list(args.keys()))
         for t in tags:
-            call_hook("tag_change", [ t ])
+            call_hook("daemon_tag_change", [ t ])
 
     # CONFIGS [ "top_sec", ... ] -> { "top_sec" : full_value }
 
@@ -516,7 +516,7 @@ class CantoBackend(CantoServer):
         self.conf.merge(args.copy())
 
         # config_change handles it's own locking
-        call_hook("config_change", [args, socket])
+        call_hook("daemon_config_change", [args, socket])
 
     # DELCONFIGS { "key" : "DELETE", ...}
 
@@ -532,7 +532,7 @@ class CantoBackend(CantoServer):
         self.conf.delete(args.copy())
 
         # config_change handles it's own locking
-        call_hook("config_change", [args, socket])
+        call_hook("daemon_config_change", [args, socket])
 
     # WATCHCONFIGS
 
@@ -615,7 +615,7 @@ class CantoBackend(CantoServer):
                     log.error("Protocol exception:")
                     log.error("\n" + tb)
 
-                call_hook("work_done", [])
+                call_hook("daemon_work_done", [])
             else:
                 log.info("Got unknown command: %s" % (cmd))
 
@@ -624,11 +624,11 @@ class CantoBackend(CantoServer):
         if cb:
             cb(r)
 
-        call_hook("work_done", [])
+        call_hook("daemon_work_done", [])
 
     def run(self):
         log.debug("Beginning to serve...")
-        call_hook("serving", [])
+        call_hook("daemon_serving", [])
         while 1:
             if self.interrupted:
                 log.info("Interrupted. Exiting.")
@@ -830,7 +830,7 @@ class CantoBackend(CantoServer):
             log.error("Exiting on exception:")
             log.error("\n" + "".join(tb))
 
-        call_hook("exit", [])
+        call_hook("daemon_exit", [])
         self.exit()
         self.pid_unlock()
         sys.exit(0)
