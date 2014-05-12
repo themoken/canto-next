@@ -329,6 +329,9 @@ class CantoFeed(PluginHandler):
                             continue
                         elif key.startswith("canto"):
                             item[key] = olditem[key]
+                    break
+            else:
+                call_hook("daemon_new_item", [self, item])
 
             # Other cache-able values should be added here.
 
