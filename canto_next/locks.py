@@ -32,18 +32,18 @@ def write_lock(lock):
 # objects, and their configuration. The Tag() objects have their own locks the
 # protect their content.
 
-feed_lock = RWLock()
-tag_lock = RWLock()
+feed_lock = RWLock('feed_lock')
+tag_lock = RWLock('tag_lock')
 
 # NOTE: if config_lock is held writable, feed_lock and tag_lock must also be
 # held writable.
 
-config_lock = RWLock()
+config_lock = RWLock('config_lock')
 
 # The rest of these are independent.
-protect_lock = RWLock()
-watch_lock = RWLock()
-attr_lock = RWLock()
-socktran_lock = RWLock()
-hook_lock = RWLock()
-fetch_lock = RWLock()
+protect_lock = RWLock('protect_lock')
+watch_lock = RWLock('watch_lock')
+attr_lock = RWLock('attr_lock')
+socktran_lock = RWLock('socktran_lock')
+hook_lock = RWLock('hook_look')
+fetch_lock = RWLock('fetch_lock')
