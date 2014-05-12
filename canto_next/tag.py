@@ -77,11 +77,10 @@ class CantoTags():
             self.tag_changed(tag)
 
     #
-    # This is called from Feed() __init__, in which case, we should already
-    # have tag_lock write because we're reparsing / instantiating the config.
+    # Following must be called with tag_lock held with write
     #
 
-    def _add_tag(self, id, name, category=""):
+    def add_tag(self, id, name, category=""):
 
         # Tags are actually stored as category:name, this is so that you can
         # tell the difference between, say, a plugin that has marked an item as
@@ -111,9 +110,14 @@ class CantoTags():
                 self.tags[name].append(id)
                 self.tag_changed(name)
 
+    def remove_id(self, id):
+        for tag in self.tags:
+            if id in self.tags[tag]:
+                self.tags[tag].remove(id)
+                self.tag_changed(tag)
+
     #
-    # The following functions are called from Feed(), or work_done not
-    # CantoBackend() and thus have to make sure they hold the tag_lock.
+    # This is called from a hook, so it has to get the lock itself
     #
 
     def do_tag_changes(self):
@@ -121,19 +125,6 @@ class CantoTags():
         for tag in self.changed_tags:
             call_hook("daemon_tag_change", [ tag ])
         self.changed_tags = []
-        tag_lock.release_write()
-
-    def add_tag(self, id, name, category=""):
-        tag_lock.acquire_write()
-        self._add_tag(id, name, category)
-        tag_lock.release_write()
-
-    def remove_id(self, id):
-        tag_lock.acquire_write()
-        for tag in self.tags:
-            if id in self.tags[tag]:
-                self.tags[tag].remove(id)
-                self.tag_changed(tag)
         tag_lock.release_write()
 
 alltags = CantoTags()

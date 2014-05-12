@@ -30,6 +30,8 @@ class CantoTransform():
     def __str__(self):
         return self.name
 
+    # This is called with the feeds already read locked.
+
     def __call__(self, tag, immune):
         a = {}
         f = allfeeds.items_to_feeds(tag)

@@ -12,7 +12,8 @@ from .protect import protection
 from .encoding import encoder
 from .tag import alltags
 from .rwlock import RWLock
-from .locks import protect_lock
+from .locks import protect_lock, tag_lock
+from .hooks import call_hook
 
 import traceback
 import logging
@@ -54,6 +55,9 @@ class CantoFeeds():
     def get_feeds(self):
         return [ self.get_feed(URL) for URL in self.order]
 
+    # Interestingly, don't need to get the read lock on feed because the URL is
+    # part of the ID.
+
     def items_to_feeds(self, items):
         f = {}
         for i in items:
@@ -93,7 +97,6 @@ class CantoFeed(PluginHandler):
 
         self.plugin_class = DaemonFeedPlugin
         self.update_plugin_lookups()
-
 
         self.shelf = shelf
         self.name = name
@@ -249,7 +252,6 @@ class CantoFeed(PluginHandler):
 
     def index(self, update_contents):
 
-
         if not update_contents:
             if self.URL in self.shelf:
                 update_contents = self.shelf[self.URL]
@@ -272,6 +274,13 @@ class CantoFeed(PluginHandler):
         # fresh from feedparser or fresh from disk, so it's possible that the
         # old contents and the new contents are identical.
 
+        # We take our top level locks here and in specific order so that we
+        # don't create a deadlock by holding self.lock and waiting on
+        # tag/protect while the command holds tag/protect while trying to get
+        # self.lock.
+
+        protect_lock.acquire_read()
+        tag_lock.acquire_write()
         self.lock.acquire_write()
 
         olditems = self.items
@@ -335,8 +344,6 @@ class CantoFeed(PluginHandler):
         # remembered feed items).
 
         unprotected_old = []
-
-        protect_lock.acquire_read()
 
         for i, olditem in enumerate(olditems):
             for item in self.items:
@@ -403,6 +410,8 @@ class CantoFeed(PluginHandler):
 
         # Remove non-existent IDs from all tags
         self.clear_tags(olditems)
+
+        tag_lock.release_write()
 
     def destroy(self):
         # Check for existence in case of delete quickly

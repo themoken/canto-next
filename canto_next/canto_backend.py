@@ -53,6 +53,23 @@ log = logging.getLogger("CANTO-DAEMON")
 FETCH_CHECK_INTERVAL = 60
 TRIM_INTERVAL = 300
 
+#
+# NOTE: The feed objects take protect -> tag -> local lock before doing their
+# work this means that, to avoid deadlock, if a cmd_ function takes both, they
+# must be in the same order (protect then tag).
+#
+# Every other threaded lock taker is going to come through CantoBackend, so the
+# lock order must be the same. Between all cmd_ functions.
+#
+# Fortunately, this means we can do locks alphabetically.
+#
+# Another caveat is that commands that call each other need to hold all the
+# locks at the outset. For example, cmd_items calls cmd_attributes (to handle
+# automatic attributes), so it needs to hold the feed and protect locks, even
+# if it didn't have to otherwise and then call a lockless version of the next
+# command (in this case _cmd_attributes)
+#
+
 class CantoBackend(CantoServer):
 
     # We want to invoke CantoServer's __init__ manually, and
@@ -184,11 +201,7 @@ class CantoBackend(CantoServer):
         else:
             self.conf.write()
 
-        # We already hold write feed/tag/config, grab read protect too.
-
-        protect_lock.acquire_read()
         self._check_dead_feeds()
-        protect_lock.release_read()
 
         alltags.del_old_tags()
 
@@ -200,6 +213,7 @@ class CantoBackend(CantoServer):
     # This is invoked by set or del configs, which holds write locks on config,
     # tags, and feeds already.
 
+    @read_lock(protect_lock)
     @read_lock(watch_lock)
     def on_config_change(self, change, originating_socket):
 
@@ -243,10 +257,10 @@ class CantoBackend(CantoServer):
     # If a socket dies, it's not longer watching any events and
     # revoke any protection associated with it
 
-    @write_lock(watch_lock)
-    @write_lock(socktran_lock)
-    @write_lock(protect_lock)
     @write_lock(feed_lock)
+    @write_lock(protect_lock)
+    @write_lock(socktran_lock)
+    @write_lock(watch_lock)
     def on_kill_socket(self, socket):
         while socket in self.watches["config"]:
             self.watches["config"].remove(socket)
@@ -295,7 +309,19 @@ class CantoBackend(CantoServer):
         filter_immune = lambda x :\
                 protection.protected_by(x, (socket, "filter-immune"))
 
+        # Lock the feeds so we don't lose any items. We don't want transforms
+        # to have to deal with ids disappearing from feeds.
+
+        # Because we hold tag / protect write, we know that no more feeds can
+        # start indexing, so taking the lock just means we're making sure none
+        # of them are in progress.
+
+        for feed in allfeeds.get_feeds():
+            feed.lock.acquire_read()
+
         tagobj = alltags.get_tag(tag)
+
+        f = allfeeds.items_to_feeds(tagobj)
 
         # Global transform
         if self.conf.global_transform:
@@ -310,6 +336,11 @@ class CantoBackend(CantoServer):
         if socket in self.socket_transforms and\
                 self.socket_transforms[socket]:
             tagobj = self.socket_transforms[socket](tagobj, filter_immune)
+
+        # Allow the feeds to continue to update
+
+        for feed in allfeeds.get_feeds():
+            feed.lock.release_read()
 
         return tagobj
 
@@ -396,11 +427,12 @@ class CantoBackend(CantoServer):
 
     # ITEMS [tags] -> { tag : [ ids ], tag2 : ... }
 
-    @write_lock(protect_lock)
-    @read_lock(tag_lock)
-    @read_lock(config_lock)
-    @read_lock(socktran_lock)
     @read_lock(attr_lock)
+    @read_lock(config_lock)
+    @read_lock(feed_lock) # For _cmd_attributes
+    @write_lock(protect_lock)
+    @read_lock(socktran_lock)
+    @read_lock(tag_lock)
     def cmd_items(self, socket, args):
         ids = []
         response = {}
@@ -434,7 +466,7 @@ class CantoBackend(CantoServer):
             self.write(socket, "ITEMSDONE", {})
 
             for attr_req in attr_list:
-                self.cmd_attributes(socket, attr_req)
+                self._cmd_attributes(socket, attr_req)
 
     # FEEDATTRIBUTES { 'url' : [ attribs .. ] .. } ->
     # { url : { attribute : value } ... }
@@ -452,8 +484,9 @@ class CantoBackend(CantoServer):
     # ATTRIBUTES { id : [ attribs .. ] .. } ->
     # { id : { attribute : value } ... }
 
-    @read_lock(feed_lock)
-    def cmd_attributes(self, socket, args):
+    # This is called with appropriate locks from cmd_items
+
+    def _cmd_attributes(self, socket, args):
         ret = {}
         feeds = allfeeds.items_to_feeds(list(args.keys()))
         for f in feeds:
@@ -462,6 +495,10 @@ class CantoBackend(CantoServer):
             f.lock.release_read()
 
         self.write(socket, "ATTRIBUTES", ret)
+
+    @read_lock(feed_lock)
+    def cmd_attributes(self, socket, args):
+        self._cmd_attributes(socket, args)
 
     # SETATTRIBUTES { id : { attribute : value } ... } -> None
 
