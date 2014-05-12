@@ -28,6 +28,7 @@ from .hooks import on_hook, call_hook
 from .tag import alltags
 from .transform import eval_transform
 from .plugins import try_plugins
+from .rwlock import alllocks
 from .locks import *
 
 import traceback
@@ -718,6 +719,11 @@ class CantoBackend(CantoServer):
                 if line:
                     code.append("  %s" % (line.strip()))
         log.info("\n".join(code))
+        for lock in alllocks:
+            if lock.writer_stack:
+                log.info("Lock %s (%s readers)" % (lock.name, lock.readers))
+                log.info("Lock writer (thread %s):" % (lock.writer_id,))
+                log.info(''.join(lock.writer_stack))
 
     # This function makes sure that the configuration paths are all R/W or
     # creatable.

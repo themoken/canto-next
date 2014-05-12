@@ -8,13 +8,22 @@
 
 # Seriously python? No RWlock?
 
-from threading import Lock
+from threading import Lock, current_thread
+import traceback
 import time
 
+alllocks = []
+
 class RWLock(object):
-    def __init__(self):
+    def __init__(self, name=""):
+        self.name = name
         self.readers = 0
         self.lock = Lock()
+
+        self.writer_stack = []
+        self.writer_id = ""
+
+        alllocks.append(self)
 
     def acquire_read(self):
         self.lock.acquire()
@@ -27,8 +36,13 @@ class RWLock(object):
     def acquire_write(self):
         self.lock.acquire()
 
+        self.writer_stack = traceback.format_stack()
+        self.writer_id = current_thread();
+
         while (self.readers > 0):
             time.sleep(0.1)
 
     def release_write(self):
+        self.writer_stack = []
+        self.writer_id = 0
         self.lock.release()
