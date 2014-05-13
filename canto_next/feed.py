@@ -126,7 +126,7 @@ class CantoFeed(PluginHandler):
             for item in self.items:
                 # Will not lock, Feeds() should only be instantiated holding
                 # config, tag, and feed_lock.
-                alltags._add_tag(item["id"], self.name, "maintag")
+                alltags.add_tag(item["id"], self.name, "maintag")
         else:
             self.items = []
 
@@ -314,7 +314,6 @@ class CantoFeed(PluginHandler):
             cacheitem["id"] = json.dumps(\
                     { "URL" : self.URL, "ID" : item["id"] } )
 
-            # Will lock
             alltags.add_tag(cacheitem["id"], self.name, "maintag")
 
             # Move over custom content from item.
