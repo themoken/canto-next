@@ -16,6 +16,7 @@ import traceback
 import urllib.parse
 import urllib.request, urllib.error, urllib.parse
 import logging
+import socket
 import time
 
 log = logging.getLogger("CANTO-FETCH")
@@ -34,6 +35,11 @@ class CantoFetchThread(PluginHandler, Thread):
 
         self.plugin_class = DaemonFetchThreadPlugin
         self.update_plugin_lookups()
+
+        # feedparser honors this value, want to avoid hung feeds when the
+        # internet connection is flaky
+
+        socket.setdefaulttimeout(30)
 
         self.feed = feed
 
