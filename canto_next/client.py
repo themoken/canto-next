@@ -27,8 +27,9 @@ class CantoClient(CantoSocket):
         CantoSocket.__init__(self, socket_name, **kwargs)
 
     def connect(self):
-        CantoSocket.connect(self)
-        call_hook("client_new_socket", [self.sockets[-1]])
+        conn = CantoSocket.connect(self)
+        call_hook("client_new_socket", [conn])
+        return conn
 
     # Sets self.conf_dir and self.socket_path
 

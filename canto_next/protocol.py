@@ -71,7 +71,6 @@ class CantoSocket:
                 sock.setblocking(0)
                 sock.bind(self.socket_name)
                 sock.listen(5)
-                self.sockets.append(sock)
 
             # Net socket setup.
             if self.port > 0:
@@ -80,7 +79,6 @@ class CantoSocket:
 
                 sock.bind((self.interface, self.port))
                 sock.listen(5)
-                self.sockets.append(sock)
 
         # Client setup, can only do unix or inet, not both.
 
@@ -92,7 +90,6 @@ class CantoSocket:
                 sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
                 addr = self.socket_name
 
-            self.sockets.append(sock)
             tries = 10
 
             while tries > 0:
@@ -104,6 +101,9 @@ class CantoSocket:
                         raise
                 time.sleep(1)
                 tries -= 1
+
+        self.sockets.append(sock)
+        return sock
 
     # Setup poll.poll() object to watch for read status on conn.
     def read_mode(self, poll, conn):
