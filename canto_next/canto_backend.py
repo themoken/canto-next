@@ -694,7 +694,9 @@ class CantoBackend(CantoServer):
             # Trim the database file.
 
             if self.trim_timer <= 0:
+                feed_lock.acquire_write()
                 self.shelf.trim()
+                feed_lock.release_write()
                 self.trim_timer = TRIM_INTERVAL
 
             time.sleep(1)
