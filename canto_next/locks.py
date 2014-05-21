@@ -8,26 +8,6 @@
 
 from .rwlock import RWLock
 
-def read_lock(lock):
-    def _rlock_fn(fn):
-        def _rlock(*args, **kwargs):
-            lock.acquire_read()
-            r = fn(*args, **kwargs)
-            lock.release_read()
-            return r
-        return _rlock
-    return _rlock_fn
-
-def write_lock(lock):
-    def _wlock_fn(fn):
-        def _wlock(*args, **kwargs):
-            lock.acquire_write()
-            r = fn(*args, **kwargs)
-            lock.release_write()
-            return r
-        return _wlock
-    return _wlock_fn
-
 # NOTE: feed_lock and tag_lock only protect the existence of Feed() and Tag()
 # objects, and their configuration. The Tag() objects have their own locks the
 # protect their content.

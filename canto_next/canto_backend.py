@@ -28,7 +28,7 @@ from .hooks import on_hook, call_hook
 from .tag import alltags
 from .transform import eval_transform
 from .plugins import try_plugins
-from .rwlock import alllocks
+from .rwlock import alllocks, write_lock, read_lock
 from .locks import *
 
 import traceback

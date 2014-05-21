@@ -46,3 +46,23 @@ class RWLock(object):
         self.writer_stack = []
         self.writer_id = 0
         self.lock.release()
+
+def read_lock(lock):
+    def _rlock_fn(fn):
+        def _rlock(*args, **kwargs):
+            lock.acquire_read()
+            r = fn(*args, **kwargs)
+            lock.release_read()
+            return r
+        return _rlock
+    return _rlock_fn
+
+def write_lock(lock):
+    def _wlock_fn(fn):
+        def _wlock(*args, **kwargs):
+            lock.acquire_write()
+            r = fn(*args, **kwargs)
+            lock.release_write()
+            return r
+        return _wlock
+    return _wlock_fn
