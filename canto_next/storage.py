@@ -8,6 +8,7 @@
 #   published by the Free Software Foundation.
 
 from .hooks import on_hook
+from .locks import feed_lock
 
 import threading
 import traceback
@@ -57,7 +58,9 @@ class CantoShelf():
         del self.shelf[name]
 
     def sync(self):
+        feed_lock.acquire_write()
         self.shelf.sync()
+        feed_lock.release_write()
 
     def trim(self):
         log.debug("Attempting to trim...")
