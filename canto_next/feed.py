@@ -130,7 +130,9 @@ class CantoFeed(PluginHandler):
         else:
             self.items = []
 
-    # Return whether item, if added, would have a unique ID
+    # Return whether item, if added, would have a unique ID. Called with
+    # self.lock read.
+
     def unique_item(self, item):
         for cur_item in self.items:
             # Just the non-URL part will match
@@ -138,7 +140,8 @@ class CantoFeed(PluginHandler):
                 return False
         return True
 
-    # Remove old items from all tags.
+    # Remove old items from all tags. Called with self.lock read
+
     def clear_tags(self, olditems):
         for olditem in olditems:
             for item in self.items:
@@ -149,6 +152,8 @@ class CantoFeed(PluginHandler):
                 # Will lock
                 alltags.remove_id(olditem["id"])
 
+    # Called with self.lock read
+
     def lookup_by_id(self, i):
         for idx, ci in enumerate(self.items):
             if ci["id"] == i:
@@ -157,7 +162,11 @@ class CantoFeed(PluginHandler):
             raise Exception("%s not found in self.items" % (i,))
 
     # Return { attribute : value ... }
+
     def get_feedattributes(self, attributes):
+
+        self.lock.acquire_read()
+
         d = self.shelf[self.URL]
 
         r = {}
@@ -166,11 +175,17 @@ class CantoFeed(PluginHandler):
                 r[attr] = d[attr]
             else:
                 r[attr] = ""
+
+        self.lock.release_read()
+
         return r
 
     # Return { id : { attribute : value .. } .. }
+
     def get_attributes(self, items, attributes):
         r = {}
+
+        self.lock.acquire_read()
 
         for i in items:
             attrs = {}
@@ -208,10 +223,15 @@ class CantoFeed(PluginHandler):
                     else:
                         attrs[a] = ""
             r[i] = attrs
+
+        self.lock.release_read()
+
         return r
 
     # Given an ID and a dict of attributes, update the disk.
     def set_attributes(self, items, attributes):
+
+        self.lock.acquire_write()
 
         d = self.shelf[self.URL]
 
@@ -243,6 +263,8 @@ class CantoFeed(PluginHandler):
             except:
                 log.error("Error running feed set_attr plugin")
                 log.error(traceback.format_exc())
+
+        self.lock.release_write()
 
     # Re-index contents
     # If we have update_contents, use that
@@ -408,11 +430,10 @@ class CantoFeed(PluginHandler):
         # Commit the updates to disk.
         self.shelf[self.URL] = update_contents
 
-        self.lock.release_write()
-
         # Remove non-existent IDs from all tags
         self.clear_tags(olditems)
 
+        self.lock.release_write()
         tag_lock.release_write()
 
     def destroy(self):

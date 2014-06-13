@@ -508,9 +508,7 @@ class CantoBackend(CantoServer):
 
         feeds = allfeeds.items_to_feeds(list(args.keys()))
         for f in feeds:
-            f.lock.acquire_write()
             f.set_attributes(feeds[f], args)
-            f.lock.release_write()
 
         tags = alltags.items_to_tags(list(args.keys()))
         for t in tags:
