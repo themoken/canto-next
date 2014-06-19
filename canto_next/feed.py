@@ -11,8 +11,8 @@ from .plugins import PluginHandler, Plugin
 from .protect import protection
 from .encoding import encoder
 from .tag import alltags
-from .rwlock import RWLock
-from .locks import protect_lock, tag_lock
+from .rwlock import RWLock, read_lock, write_lock
+from .locks import feed_lock, protect_lock, tag_lock
 from .hooks import call_hook
 
 import traceback
@@ -33,6 +33,7 @@ class CantoFeeds():
         self.feeds = {}
         self.dead_feeds = {}
 
+    @write_lock(feed_lock)
     def add_feed(self, URL, feed):
         r = None
 
@@ -46,12 +47,14 @@ class CantoFeeds():
 
         return r
 
+    @read_lock(feed_lock)
     def get_feed(self, URL):
         if URL in self.feeds:
             return self.feeds[URL]
         if URL in self.dead_feeds:
             return self.dead_feeds[URL]
 
+    @read_lock(feed_lock)
     def get_feeds(self):
         return [ self.get_feed(URL) for URL in self.order]
 
@@ -87,6 +90,44 @@ class CantoFeeds():
         self.order = []
 
 allfeeds = CantoFeeds()
+
+# Lock helpers
+
+def wlock_all():
+    feed_lock.acquire_read()
+    for feed in sorted(allfeeds.feeds.keys()):
+        allfeeds.feeds[feed].lock.acquire_write()
+
+def wunlock_all():
+    for feed in sorted(allfeeds.feeds.keys()):
+        allfeeds.feeds[feed].lock.release_write()
+    feed_lock.release_read()
+
+def wlock_feeds(fn):
+    def _fl(*args):
+        wlock_all()
+        r = fn(*args)
+        wunlock_all()
+        return r
+    return _fl
+
+def rlock_all():
+    feed_lock.acquire_read()
+    for feed in sorted(allfeeds.feeds.keys()):
+        allfeeds.feeds[feed].lock.acquire_read()
+
+def runlock_all():
+    for feed in sorted(allfeeds.feeds.keys()):
+        allfeeds.feeds[feed].lock.release_read()
+    feed_lock.release_read()
+
+def rlock_feeds(fn):
+    def _fl(*args):
+        rlock_all()
+        r = fn(*args)
+        runlock_all()
+        return r
+    return _fl
 
 class DaemonFeedPlugin(Plugin):
     pass
@@ -165,8 +206,6 @@ class CantoFeed(PluginHandler):
 
     def get_feedattributes(self, attributes):
 
-        self.lock.acquire_read()
-
         d = self.shelf[self.URL]
 
         r = {}
@@ -176,16 +215,12 @@ class CantoFeed(PluginHandler):
             else:
                 r[attr] = ""
 
-        self.lock.release_read()
-
         return r
 
     # Return { id : { attribute : value .. } .. }
 
     def get_attributes(self, items, attributes):
         r = {}
-
-        self.lock.acquire_read()
 
         for i in items:
             attrs = {}
@@ -224,14 +259,10 @@ class CantoFeed(PluginHandler):
                         attrs[a] = ""
             r[i] = attrs
 
-        self.lock.release_read()
-
         return r
 
     # Given an ID and a dict of attributes, update the disk.
     def set_attributes(self, items, attributes):
-
-        self.lock.acquire_write()
 
         d = self.shelf[self.URL]
 
@@ -264,8 +295,6 @@ class CantoFeed(PluginHandler):
                 log.error("Error running feed set_attr plugin")
                 log.error(traceback.format_exc())
 
-        self.lock.release_write()
-
     # Re-index contents
     # If we have update_contents, use that
     # If not, at least populate self.items from disk.
@@ -273,6 +302,9 @@ class CantoFeed(PluginHandler):
     # MUST GUARANTEE self.items is in same order as entries on disk.
 
     def index(self, update_contents):
+        self.lock.acquire_write()
+        protect_lock.acquire_read()
+        tag_lock.acquire_write()
 
         if not update_contents:
             if self.URL in self.shelf:
@@ -300,10 +332,6 @@ class CantoFeed(PluginHandler):
         # don't create a deadlock by holding self.lock and waiting on
         # tag/protect while the command holds tag/protect while trying to get
         # self.lock.
-
-        protect_lock.acquire_read()
-        tag_lock.acquire_write()
-        self.lock.acquire_write()
 
         olditems = self.items
         self.items = []
@@ -433,8 +461,8 @@ class CantoFeed(PluginHandler):
         # Remove non-existent IDs from all tags
         self.clear_tags(olditems)
 
-        self.lock.release_write()
         tag_lock.release_write()
+        self.lock.release_write()
 
     def destroy(self):
         # Check for existence in case of delete quickly

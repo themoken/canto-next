@@ -17,7 +17,7 @@ version = REPLACE_WITH_VERSION
 
 CANTO_PROTOCOL_VERSION = 0.4
 
-from .feed import allfeeds
+from .feed import allfeeds, wlock_feeds, rlock_feeds, wlock_all, wunlock_all, rlock_all, runlock_all
 from .encoding import encoder
 from .protect import protection
 from .server import CantoServer
@@ -187,7 +187,7 @@ class CantoBackend(CantoServer):
             else:
                 allfeeds.really_dead(feed)
 
-    @write_lock(feed_lock)
+    @wlock_feeds
     @read_lock(protect_lock)
     def check_dead_feeds(self):
         self._check_dead_feeds()
@@ -257,7 +257,7 @@ class CantoBackend(CantoServer):
     # If a socket dies, it's not longer watching any events and
     # revoke any protection associated with it
 
-    @write_lock(feed_lock)
+    @wlock_feeds
     @write_lock(protect_lock)
     @write_lock(socktran_lock)
     @write_lock(watch_lock)
@@ -316,9 +316,6 @@ class CantoBackend(CantoServer):
         # start indexing, so taking the lock just means we're making sure none
         # of them are in progress.
 
-        for feed in allfeeds.get_feeds():
-            feed.lock.acquire_read()
-
         tagobj = alltags.get_tag(tag)
 
         f = allfeeds.items_to_feeds(tagobj)
@@ -337,16 +334,10 @@ class CantoBackend(CantoServer):
                 self.socket_transforms[socket]:
             tagobj = self.socket_transforms[socket](tagobj, filter_immune)
 
-        # Allow the feeds to continue to update
-
-        for feed in allfeeds.get_feeds():
-            feed.lock.release_read()
-
         return tagobj
 
     # Fetch any feeds that need fetching.
 
-    @read_lock(feed_lock)
     @write_lock(fetch_lock)
     def do_fetch(self, force = False):
         self.fetch.fetch(force)
@@ -367,7 +358,7 @@ class CantoBackend(CantoServer):
     # maintag tags will be first, and in feed order. Following tags
     # are in whatever order the dict gives them in.
 
-    @read_lock(feed_lock)
+    @rlock_feeds
     @read_lock(tag_lock)
     def cmd_listtags(self, socket, args):
         r = []
@@ -429,7 +420,7 @@ class CantoBackend(CantoServer):
 
     @read_lock(attr_lock)
     @read_lock(config_lock)
-    @read_lock(feed_lock) # For _cmd_attributes
+    @rlock_feeds # For _cmd_attributes
     @write_lock(protect_lock)
     @read_lock(socktran_lock)
     @read_lock(tag_lock)
@@ -471,7 +462,7 @@ class CantoBackend(CantoServer):
     # FEEDATTRIBUTES { 'url' : [ attribs .. ] .. } ->
     # { url : { attribute : value } ... }
 
-    @read_lock(feed_lock)
+    @rlock_feeds
     def cmd_feedattributes(self, socket, args):
         r = {}
         for url in list(args.keys()):
@@ -490,19 +481,17 @@ class CantoBackend(CantoServer):
         ret = {}
         feeds = allfeeds.items_to_feeds(list(args.keys()))
         for f in feeds:
-            f.lock.acquire_read()
             ret.update(f.get_attributes(feeds[f], args))
-            f.lock.release_read()
 
         self.write(socket, "ATTRIBUTES", ret)
 
-    @read_lock(feed_lock)
+    @rlock_feeds
     def cmd_attributes(self, socket, args):
         self._cmd_attributes(socket, args)
 
     # SETATTRIBUTES { id : { attribute : value } ... } -> None
 
-    @read_lock(feed_lock)
+    @wlock_feeds
     @read_lock(tag_lock)
     def cmd_setattributes(self, socket, args):
 
@@ -692,9 +681,9 @@ class CantoBackend(CantoServer):
             # Trim the database file.
 
             if self.trim_timer <= 0:
-                feed_lock.acquire_write()
+                wlock_all()
                 self.shelf.trim()
-                feed_lock.release_write()
+                wunlock_all()
                 self.trim_timer = TRIM_INTERVAL
 
             time.sleep(1)

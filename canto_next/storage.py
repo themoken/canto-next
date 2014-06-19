@@ -7,8 +7,8 @@
 #   it under the terms of the GNU General Public License version 2 as 
 #   published by the Free Software Foundation.
 
+from .feed import wlock_feeds
 from .hooks import on_hook
-from .locks import feed_lock
 
 import threading
 import traceback
@@ -57,10 +57,9 @@ class CantoShelf():
     def __delitem__(self, name):
         del self.shelf[name]
 
+    @wlock_feeds
     def sync(self):
-        feed_lock.acquire_write()
         self.shelf.sync()
-        feed_lock.release_write()
 
     def trim(self):
         log.debug("Attempting to trim...")
