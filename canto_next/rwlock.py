@@ -18,6 +18,7 @@ class RWLock(object):
     def __init__(self, name=""):
         self.name = name
         self.readers = 0
+        self.reader_stacks = []
         self.lock = Lock()
 
         self.writer_stack = []
@@ -28,10 +29,12 @@ class RWLock(object):
     def acquire_read(self):
         self.lock.acquire()
         self.readers += 1
+        self.reader_stacks.append((current_thread(), traceback.format_stack()))
         self.lock.release()
 
     def release_read(self):
         self.readers -= 1
+        self.reader_stacks.remove(self.reader_stacks[-1])
 
     def acquire_write(self):
         self.lock.acquire()

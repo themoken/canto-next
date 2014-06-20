@@ -746,6 +746,11 @@ class CantoBackend(CantoServer):
                     code.append("  %s" % (line.strip()))
         log.info("\n".join(code))
         for lock in alllocks:
+            for (reader_id, reader_stack) in lock.reader_stacks:
+                log.info("Lock %s (%s readers)" % (lock.name, lock.readers))
+                log.info("Lock reader (thread %s):" % (reader_id,))
+                log.info(''.join(reader_stack))
+
             if lock.writer_stack:
                 log.info("Lock %s (%s readers)" % (lock.name, lock.readers))
                 log.info("Lock writer (thread %s):" % (lock.writer_id,))
