@@ -302,6 +302,12 @@ class CantoFeed(PluginHandler):
     # MUST GUARANTEE self.items is in same order as entries on disk.
 
     def index(self, update_contents):
+
+        # We take our top level locks here and in specific order so that we
+        # don't create a deadlock by holding self.lock and waiting on
+        # tag/protect while the command holds tag/protect while trying to get
+        # self.lock.
+
         self.lock.acquire_write()
         protect_lock.acquire_read()
         tag_lock.acquire_write()
@@ -327,11 +333,6 @@ class CantoFeed(PluginHandler):
         # BEWARE: At this point, update_contents could either be
         # fresh from feedparser or fresh from disk, so it's possible that the
         # old contents and the new contents are identical.
-
-        # We take our top level locks here and in specific order so that we
-        # don't create a deadlock by holding self.lock and waiting on
-        # tag/protect while the command holds tag/protect while trying to get
-        # self.lock.
 
         olditems = self.items
         self.items = []

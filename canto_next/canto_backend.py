@@ -418,9 +418,9 @@ class CantoBackend(CantoServer):
 
     # ITEMS [tags] -> { tag : [ ids ], tag2 : ... }
 
+    @rlock_feeds # For _cmd_attributes
     @read_lock(attr_lock)
     @read_lock(config_lock)
-    @rlock_feeds # For _cmd_attributes
     @write_lock(protect_lock)
     @read_lock(socktran_lock)
     @read_lock(tag_lock)

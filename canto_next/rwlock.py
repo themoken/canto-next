@@ -34,7 +34,7 @@ class RWLock(object):
 
     def release_read(self):
         self.readers -= 1
-        self.reader_stacks.remove(self.reader_stacks[-1])
+        self.reader_stacks = [ x for x in self.reader_stacks if x[0] != current_thread() ]
 
     def acquire_write(self):
         self.lock.acquire()
