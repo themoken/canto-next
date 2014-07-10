@@ -58,17 +58,6 @@ def try_plugins(topdir):
                 log.error("Exception importing file %s" % fname)
                 log.error("\n" + "".join(tb))
 
-arg_transforms = {}
-def add_arg_transform(fn, trans):
-
-    # If we get passed a method, get its
-    # func implementation.
-
-    if hasattr(fn, "__func__"):
-        fn = fn.__func__
-
-    arg_transforms[repr(fn)] = trans
-
 class PluginHandler(object):
     def __init__(self):
         self.plugin_attrs = {}
@@ -97,45 +86,6 @@ class PluginHandler(object):
                 # Malformed plugins removed from instances
                 self.plugin_class_instances.remove(iclass)
                 continue
-
-        # Complete the dict by preparing arg transformed functions
-
-        for trans_obj in [ self ] + self.plugin_class_instances:
-            for attr in dir(trans_obj):
-                a = getattr(trans_obj, attr)
-
-                # Skip non-functions, which make no sense
-                # to have argument transforms.
-
-                if "__func__" not in dir(a):
-                    continue
-
-                f = repr(getattr(a, "__func__"))
-
-                # Skip functions without transforms defined
-
-                if f not in arg_transforms:
-                    continue
-
-                # Wrap the target function with the transform.
-
-                argt = arg_transforms[f]
-
-                self.plugin_attrs[attr] = self.__wrap_argt(trans_obj, argt, a)
-
-    # This has to be done in a new scope so that the newfunc doesn't bind to
-    # the reference in the above loop and get majorly confused.
-
-    def __wrap_argt(self, origin_obj, argt, realfunc):
-        def newfunc(*args, **kwargs):
-            r = argt(args[0], origin_obj, *args[1:], **kwargs)
-            if not r:
-                return False
-
-            args, kwargs = r
-            r = realfunc(*args, **kwargs)
-            return r
-        return newfunc
 
     def __getattribute__(self, name):
         if name == "plugin_attrs" or name not in self.plugin_attrs:
