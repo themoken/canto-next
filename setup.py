@@ -1,8 +1,7 @@
 from distutils.command.install_data import install_data
 from distutils.core import setup
 
-numeric_version = [ 0, 8, 2 ]
-string_version = ".".join([ str(i) for i in numeric_version])
+string_version = "0.9.0-rc1"
 
 class canto_next_install_data(install_data):
     def run(self):
