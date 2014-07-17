@@ -688,6 +688,30 @@ class CantoBackend(CantoServer):
 
             time.sleep(1)
 
+    # Shutdown cleanly
+
+    def cleanup(self):
+
+        # Force all connection threads to end.
+
+        self.exit()
+
+        # Wait for all fetches to end.
+
+        self.fetch.reap(True)
+
+        # Now that we can be sure no commands or fetches are occuring, call
+        # daemon_exit, which will cause the db to sync/trim/close.
+
+        call_hook("daemon_exit", [])
+
+        # Unlock the pidfile so another daemon could take over. Probably don't
+        # have to do this since we're about to sys.exit anyway, but why not.
+
+        self.pid_unlock()
+
+        log.info("Exiting cleanly.")
+
     # This function parses and validates all of the command line arguments.
     def args(self):
         try:
@@ -855,7 +879,6 @@ class CantoBackend(CantoServer):
         try:
             self.init()
             self.run()
-            log.info("Exiting cleanly.")
 
         # Cleanly shutdown on ^C.
         except KeyboardInterrupt:
@@ -867,7 +890,6 @@ class CantoBackend(CantoServer):
             log.error("Exiting on exception:")
             log.error("\n" + "".join(tb))
 
-        call_hook("daemon_exit", [])
-        self.exit()
-        self.pid_unlock()
+        self.cleanup()
+
         sys.exit(0)

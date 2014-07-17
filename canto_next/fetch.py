@@ -168,11 +168,11 @@ class CantoFetch():
             log.debug("Started thread for feed %s" % feed.URL)
             self.threads.append((thread, feed.URL))
 
-    def reap(self):
+    def reap(self, force=False):
         newthreads = []
 
         for thread, URL in self.threads:
-            if thread.isAlive():
+            if not force and thread.isAlive():
                 newthreads.append((thread, URL))
                 continue
             thread.join()
