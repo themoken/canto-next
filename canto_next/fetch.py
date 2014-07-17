@@ -45,7 +45,7 @@ class CantoFetchThread(PluginHandler, Thread):
 
     def run(self):
         extra_headers = { 'User-Agent' :\
-                'Canto/0.8.0 + http://codezen.org/canto'}
+                'Canto/0.9.0 + http://codezen.org/canto-ng'}
 
         try:
             result = None
