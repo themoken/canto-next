@@ -11,7 +11,7 @@ from .plugins import PluginHandler, Plugin
 from .protect import protection
 from .encoding import encoder
 from .tag import alltags
-from .rwlock import RWLock, read_lock, write_lock
+from .rwlock import RWLock, read_lock, write_lock, assert_wlocked
 from .locks import feed_lock, protect_lock, tag_lock
 from .hooks import call_hook
 
@@ -33,7 +33,7 @@ class CantoFeeds():
         self.feeds = {}
         self.dead_feeds = {}
 
-    @write_lock(feed_lock)
+    @assert_wlocked(feed_lock)
     def add_feed(self, URL, feed):
         r = None
 

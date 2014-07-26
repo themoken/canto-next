@@ -860,6 +860,7 @@ class CantoBackend(CantoServer):
     # Bring up config, the only errors possible at this point will
     # be fatal and handled lower in CantoConfig.
 
+    @write_lock(feed_lock) # Hold this to make config add_feed happy
     def get_config(self):
         self.conf = CantoConfig(self.conf_path, self.shelf)
         self.conf.parse()
