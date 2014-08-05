@@ -761,14 +761,36 @@ class CantoBackend(CantoServer):
         self.interrupted = 1
 
     def sig_usr(self, a, b):
-        code = []
+        import threading
+        held_locks = {}
+        code = {}
+        curthreads = threading.enumerate()
+
         for threadId, stack in sys._current_frames().items():
-            code.append("\n# ThreadID: %s" % threadId)
-            for filename, lineno, name, line in traceback.extract_stack(stack):
-                code.append('File: "%s", line %d, in %s' % (filename, lineno, name))
+            name = str(threadId)
+            for ct in curthreads:
+                if ct.ident == threadId:
+                    name = ct.name
+
+            code[name] = ["NAME: %s" % name]
+            for filename, lineno, fname, line in traceback.extract_stack(stack):
+                code[name].append('FILE: "%s", line %d, in %s' % (filename, lineno, fname))
                 if line:
-                    code.append("  %s" % (line.strip()))
-        log.info("\n".join(code))
+                    code[name].append("  %s" % (line.strip()))
+
+            held_locks[name] = ""
+            for lock in alllocks:
+                if lock.writer_stack and lock.writer_id == threadId:
+                    held_locks[name] += ("%s(w)" % lock.name)
+                    continue
+                for reader_id, reader_stack in lock.reader_stacks:
+                    if reader_id == threadId:
+                        held_locks[name] += ("%s(r)" % lock.name)
+
+        for k in code:
+            log.info('\n\nLOCKS: %s \n%s' % (held_locks[k], '\n'.join(code[k])))
+
+        log.info("\n\nSTACKS:")
         for lock in alllocks:
             for (reader_id, reader_stack) in lock.reader_stacks:
                 log.info("Lock %s (%s readers)" % (lock.name, lock.readers))

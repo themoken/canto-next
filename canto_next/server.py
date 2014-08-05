@@ -70,7 +70,7 @@ class CantoServer(CantoSocket):
 
     def start_conn_loop(self):
         self.conn_thread = Thread(target = self.conn_loop,
-                args = (self.sockets,))
+                args = (self.sockets,), name = "Connection Monitor")
         self.conn_thread.daemon = True
         self.conn_thread.start()
         log.debug("Spawned connection monitor thread.")
@@ -95,7 +95,8 @@ class CantoServer(CantoSocket):
 
         self.connections.append((conn,\
                 Thread(target = self.read_loop,\
-                       args = (conn,))
+                       args = (conn,), name="Connection #%s" %\
+                       (len(self.connections)))
                 ))
 
         self.connections[-1][1].daemon = True

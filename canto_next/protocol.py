@@ -9,7 +9,6 @@
 
 from .hooks import on_hook
 
-from threading import Thread
 import logging
 import socket
 import select

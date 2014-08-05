@@ -30,7 +30,7 @@ class DaemonFetchThreadPlugin(Plugin):
 class CantoFetchThread(PluginHandler, Thread):
     def __init__(self, feed):
         PluginHandler.__init__(self)
-        Thread.__init__(self)
+        Thread.__init__(self, name="Fetch: %s" % feed.URL)
         self.daemon = True
 
         self.plugin_class = DaemonFetchThreadPlugin
