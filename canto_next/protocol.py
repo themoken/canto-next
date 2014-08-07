@@ -107,12 +107,14 @@ class CantoSocket:
     # Setup poll.poll() object to watch for read status on conn.
     def read_mode(self, poll, conn):
         poll.register(conn.fileno(),\
-                select.POLLIN | select.POLLHUP | select.POLLERR)
+                select.POLLIN | select.POLLHUP | select.POLLERR |\
+                select.POLLPRI)
 
     # Setup poll.poll() object to watch for write status on conn.
     def write_mode(self, poll, conn):
         poll.register(conn.fileno(),\
-                select.POLLOUT | select.POLLHUP | select.POLLERR)
+                select.POLLOUT | select.POLLHUP | select.POLLERR |\
+                select.POLLNVAL)
 
     def prot_new_frag(self, newconn):
         if newconn not in self.fragments:
@@ -181,7 +183,7 @@ class CantoSocket:
         if e & select.POLLERR:
             log.debug("Read ERR")
             return select.POLLHUP
-        if e & select.POLLIN:
+        if e & (select.POLLIN | select.POLLPRI):
             try:
                 fragment = conn.recv(1024).decode()
             except Exception as e:
@@ -261,6 +263,9 @@ class CantoSocket:
 
             if e & select.POLLHUP:
                 log.debug("Write HUP")
+                return select.POLLHUP
+            if e & select.POLLNVAL:
+                log.debug("Write NVAL")
                 return select.POLLHUP
             if e & select.POLLERR:
                 log.debug("Write ERR")
