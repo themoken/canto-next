@@ -22,7 +22,7 @@ class RWLock(object):
         self.lock = Lock()
 
         self.writer_stack = []
-        self.writer_id = ""
+        self.writer_id = 0
 
         alllocks.append(self)
 
@@ -40,7 +40,7 @@ class RWLock(object):
         self.lock.acquire()
 
         self.writer_stack = traceback.format_stack()
-        self.writer_id = current_thread();
+        self.writer_id = current_thread().ident;
 
         while (self.readers > 0):
             time.sleep(0.1)
@@ -73,7 +73,7 @@ def write_lock(lock):
 def assert_wlocked(lock):
     def _alock_fn(fn):
         def _alock(*args, **kwargs):
-            if lock.writer_id != current_thread():
+            if lock.writer_id != current_thread().ident:
                 raise Exception("BUG: Function %s caller must hold lock %s (write)" % (fn, lock))
             return fn(*args, **kwargs)
         return _alock
@@ -82,7 +82,7 @@ def assert_wlocked(lock):
 def assert_rlocked(lock):
     def _alock_fn(fn):
         def _alock(*args, **kwargs):
-            if lock.readers <= 0 and lock.writer_id != current_thread():
+            if lock.readers <= 0 and lock.writer_id != current_thread().ident:
                 raise Exception("BUG: Function %s caller must hold lock %s (read)" % (fn, lock))
             return fn(*args, **kwargs)
         return _alock

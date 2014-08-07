@@ -780,7 +780,7 @@ class CantoBackend(CantoServer):
 
             held_locks[name] = ""
             for lock in alllocks:
-                if lock.writer_stack and lock.writer_id == threadId:
+                if lock.writer_id == threadId:
                     held_locks[name] += ("%s(w)" % lock.name)
                     continue
                 for reader_id, reader_stack in lock.reader_stacks:
