@@ -80,17 +80,7 @@ class CantoTags():
     # Following must be called with tag_lock held with write
     #
 
-    def add_tag(self, id, name, category=""):
-
-        # Tags are actually stored as category:name, this is so that you can
-        # tell the difference between, say, a plugin that has marked an item as
-        # cool (pluginname:cool) and something the user has marked as cool
-        # (user:cool). It also allows primary tags for feeds to be easily
-        # identified (maintag:Reddit), vs. tags added at the tag config level
-        # (tag:Reddit), etc.
-
-        name = category + ":" + name
-
+    def add_tag(self, id, name):
         if name in self.extra_tags:
             extras = [ "tag:" + x for x in self.extra_tags[name] ]
         else:
@@ -109,6 +99,11 @@ class CantoTags():
             if id not in self.tags[name]:
                 self.tags[name].append(id)
                 self.tag_changed(name)
+
+    def remove_tag(self, id, name):
+        if name in self.tags and id in self.tags[name]:
+            self.tags[name].remove(id)
+            self.tag_changed(name)
 
     def remove_id(self, id):
         for tag in self.tags:

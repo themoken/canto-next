@@ -167,7 +167,7 @@ class CantoFeed(PluginHandler):
             for item in self.items:
                 # Will not lock, Feeds() should only be instantiated holding
                 # config, tag, and feed_lock.
-                alltags.add_tag(item["id"], self.name, "maintag")
+                alltags.add_tag(item["id"], "maintag:" + self.name)
         else:
             self.items = []
 
@@ -277,7 +277,22 @@ class CantoFeed(PluginHandler):
             # Must be enforced by self.index()
 
             for a in attributes[i]:
+                if a == "canto-tags":
+                    # Sub in empty tags
+                    if a not in d["entries"][item_idx]:
+                        d["entries"][item_idx][a] = []
+
+                    for user_tag in d["entries"][item_idx][a]:
+                        if user_tag not in attributes[i][a]:
+                            log.debug("set removing tag: %s - %s" % (user_tag, i))
+                            alltags.remove_tag(i, user_tag)
+                    for user_tag in attributes[i][a]:
+                        if user_tag not in d["entries"][item_idx][a]:
+                            log.debug("set adding tag: %s - %s" % (user_tag, i))
+                            alltags.add_tag(i, user_tag)
+
                 d["entries"][item_idx][a] = attributes[i][a]
+
 
         self.shelf[self.URL] = d
 
@@ -365,7 +380,7 @@ class CantoFeed(PluginHandler):
             cacheitem["id"] = json.dumps(\
                     { "URL" : self.URL, "ID" : item["id"] } )
 
-            alltags.add_tag(cacheitem["id"], self.name, "maintag")
+            alltags.add_tag(cacheitem["id"], "maintag:" + self.name)
 
             # Move over custom content from item.
             # Custom content is denoted with a key that
@@ -377,6 +392,11 @@ class CantoFeed(PluginHandler):
                     for key in olditem:
                         if key == "canto_update":
                             continue
+                        if key == "canto-tags":
+                            for user_tag in olditem[key]:
+                                log.debug("index adding user tag: %s - %s" % (user_tag,item["id"]))
+                                alltags.add_tag(item["id"], user_tag)
+                            item[key] = olditem[key]
                         elif key.startswith("canto"):
                             item[key] = olditem[key]
                     break
