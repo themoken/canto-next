@@ -163,7 +163,7 @@ class CantoFeed(PluginHandler):
 
         if oldfeed and oldfeed.items:
             self.items = oldfeed.items
-            oldfeed.items = None
+            oldfeed.items = []
             for item in self.items:
                 # Will not lock, Feeds() should only be instantiated holding
                 # config, tag, and feed_lock.
