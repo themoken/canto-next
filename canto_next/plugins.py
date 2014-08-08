@@ -68,7 +68,7 @@ class PluginHandler(object):
         self.plugin_attrs = {}
 
         self.plugin_class_instances =\
-                [ c() for c in self.plugin_class.__subclasses__() ]
+                [ c(self) for c in self.plugin_class.__subclasses__() ]
 
         for iclass in self.plugin_class_instances[:]:
             try:

@@ -38,7 +38,7 @@ def debug(message):
         log.debug(message)
 
 class RedditFetchJSON(DaemonFetchThreadPlugin):
-    def __init__(self):
+    def __init__(self, fetch_thread):
         self.plugin_attrs = {
                 "fetch_redditJSON" : self.fetch_redditJSON,
         }
@@ -115,7 +115,7 @@ class RedditScoreSort(CantoTransform):
         return scored + unscored
 
 class RedditAnnotate(DaemonFeedPlugin):
-    def __init__(self):
+    def __init__(self, daemon_feed):
 
         self.plugin_attrs = {
                 "edit_reddit" : self.edit_reddit,
