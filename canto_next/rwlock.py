@@ -68,21 +68,3 @@ def write_lock(lock):
             return r
         return _wlock
     return _wlock_fn
-
-def assert_wlocked(lock):
-    def _alock_fn(fn):
-        def _alock(*args, **kwargs):
-            if lock.writer_id != current_thread().ident:
-                raise Exception("BUG: Function %s caller must hold lock %s (write)" % (fn, lock))
-            return fn(*args, **kwargs)
-        return _alock
-    return _alock_fn
-
-def assert_rlocked(lock):
-    def _alock_fn(fn):
-        def _alock(*args, **kwargs):
-            if lock.readers <= 0 and lock.writer_id != current_thread().ident:
-                raise Exception("BUG: Function %s caller must hold lock %s (read)" % (fn, lock))
-            return fn(*args, **kwargs)
-        return _alock
-    return _alock_fn
