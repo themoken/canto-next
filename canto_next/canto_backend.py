@@ -797,10 +797,10 @@ class CantoBackend(CantoServer):
                 log.info("Lock reader (thread %s):" % (reader_id,))
                 log.info(''.join(reader_stack))
 
-            if lock.writer_stack:
+            for writer_stack in lock.writer_stacks:
                 log.info("Lock %s (%s readers)" % (lock.name, lock.readers))
                 log.info("Lock writer (thread %s):" % (lock.writer_id,))
-                log.info(''.join(lock.writer_stack))
+                log.info(''.join(writer_stack))
 
     # This function makes sure that the configuration paths are all R/W or
     # creatable.
