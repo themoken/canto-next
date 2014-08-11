@@ -329,10 +329,10 @@ class CantoBackend(CantoServer):
                 alltags.tag_transforms[tag]:
             tagobj = alltags.tag_transforms[tag](tagobj, filter_immune)
 
-        # Temporary socket transform
-        if socket in self.socket_transforms and\
-                self.socket_transforms[socket]:
-            tagobj = self.socket_transforms[socket](tagobj, filter_immune)
+        # Socket transforms ANDed together.
+        if socket in self.socket_transforms:
+            for filt in self.socket_transforms[socket]:
+                tagobj = self.socket_transforms[socket][filt](tagobj, filter_immune)
 
         return tagobj
 
@@ -380,30 +380,51 @@ class CantoBackend(CantoServer):
         self.write(socket, "LISTTRANSFORMS", transforms)
 
 
-    # TRANSFORM "" -> "current socket transform"
-    # TRANSFORM "string" -> set current socket transform.
+    # TRANSFORM {} -> return current socket transform, with names instead of
+    # actual filt objects.
+    # TRANSFORM {"string":"transform"} -> set a socket transform
+    # TRANSFORM {"string": None } -> un set a socket transform
 
     @write_lock(socktran_lock)
     def cmd_transform(self, socket, args):
-        # Clear with !args
         if not args:
             if socket in self.socket_transforms:
-                del self.socket_transforms[socket]
-            self.write(socket, "TRANSFORM", "")
+                str_dict = {}
+                for filt in self.socket_transforms[socket]:
+                    str_dict[filt] = str(self.socket_transforms[socket][filt])
+                self.write(socket, "TRANSFORM", str_dict)
+            else:
+                self.write(socket, "TRANSFORM", {})
             return
 
-        filt = None
-        try:
-            filt = eval_transform(args)
-        except:
-            self.write(socket, "EXCEPT",\
-                    "Couldn't parse transform: %s" % args)
-            return
+        if socket not in self.socket_transforms:
+            self.socket_transforms[socket] = {}
 
-        self.socket_transforms[socket] = filt
+        for key in args:
+            # Unset beforehand means query.
+            if not args[key]:
+                if key in self.socket_transforms[socket]:
+                    self.write(socket, "TRANSFORM", { key : str(self.socket_transforms[socket][key])})
+                else:
+                    self.write(socket, "TRANSFORM", { key : "None" })
+                continue
 
-        # Echo back on successful compilation.
-        self.write(socket, "TRANSFORM", args)
+            filt = None
+            try:
+                filt = eval_transform(args[key])
+            except Exception as e:
+                self.write(socket, "EXCEPT",\
+                        "Couldn't parse transform: %s\n%s" % (args[key], e))
+                continue
+
+            if filt == None:
+                if key in self.socket_transforms[socket]:
+                    log.debug("Unsetting socket transform %s:%s" % (socket, key))
+                    del self.socket_transforms[socket][key]
+                continue
+
+            log.debug("Setting socket transform: %s:%s = %s" % (socket, key, filt))
+            self.socket_transforms[socket][key] = filt
 
     # AUTOATTR [ attrs ... ] -> Follow up each items request with
     # an attributes request for attrs.
