@@ -82,6 +82,8 @@ class CantoClient(CantoSocket):
             try:
                 pf = open(pidfile, "a+")
                 fcntl.flock(pf.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+                if os.path.exists(self.socket_path):
+                    os.unlink(self.socket_path)
                 fcntl.flock(pf.fileno(), fcntl.LOCK_UN)
                 pf.close()
             except IOError as e:
