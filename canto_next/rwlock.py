@@ -41,7 +41,7 @@ class RWLock(object):
         self.writer_stacks.append(traceback.format_stack())
         self.writer_id = current_thread().ident;
 
-        while (self.readers > 0):
+        while (len([ x for x in self.reader_stacks if x[0] != current_thread()]) > 0):
             time.sleep(0.1)
 
     def release_write(self):
