@@ -149,16 +149,16 @@ class CantoBackend(CantoServer):
 
         self.setup_hooks()
 
-        sp = self.conf_dir + "/.canto_socket"
-        log.info("Listening on unix socket: %s" % sp)
+        self.sfile = self.conf_dir + "/.canto_socket"
+        log.info("Listening on unix socket: %s" % self.sfile)
 
         try:
             if self.port < 0:
-                CantoServer.__init__(self, sp, self.socket_command)
+                CantoServer.__init__(self, self.sfile, self.socket_command)
             else:
                 log.info("Listening on interface %s:%d" %\
                         (self.intf, self.port))
-                CantoServer.__init__(self, sp, self.socket_command,\
+                CantoServer.__init__(self, self.sfile, self.socket_command,\
                         port = self.port, interface = self.intf)
         except Exception as e:
             err = "Error: %s" % e
@@ -735,6 +735,11 @@ class CantoBackend(CantoServer):
 
         self.fetch.reap(True)
 
+        # Delete the socket file, so it can only be used when we're actually
+        # listening.
+
+        self.remove_socketfile()
+
         # Unlock the pidfile so another daemon could take over. Probably don't
         # have to do this since we're about to sys.exit anyway, but why not.
 
@@ -937,6 +942,9 @@ class CantoBackend(CantoServer):
 
     def get_fetch(self):
         self.fetch = CantoFetch(self.shelf)
+
+    def remove_socketfile(self):
+        os.unlink(self.sfile)
 
     def start(self):
         try:
