@@ -17,7 +17,7 @@ version = REPLACE_WITH_VERSION
 
 CANTO_PROTOCOL_VERSION = 0.4
 
-from .feed import allfeeds, wlock_feeds, rlock_feeds, wlock_all, wunlock_all, rlock_all, runlock_all
+from .feed import allfeeds, wlock_feeds, rlock_feeds, wlock_all, wunlock_all, rlock_all, runlock_all, stop_feeds
 from .encoding import encoder
 from .protect import protection
 from .server import CantoServer
@@ -174,7 +174,7 @@ class CantoBackend(CantoServer):
         self.interrupted = 0
 
         signal.signal(signal.SIGINT, self.sig_int)
-        signal.signal(signal.SIGTERM, self.sig_int)
+        signal.signal(signal.SIGTERM, self.sig_term)
         signal.signal(signal.SIGUSR1, self.sig_usr)
 
     def _check_dead_feeds(self):
@@ -712,6 +712,22 @@ class CantoBackend(CantoServer):
     # Shutdown cleanly
 
     def cleanup(self):
+        # Stop feeds, will cause feed.index() threads to bail without
+        # Messing with the disk.
+
+        stop_feeds()
+
+        # Grab locks to keep any other write usage from happening.
+
+        wlock_all()
+
+        # Now that we can be sure no commands or fetches are occuring, call
+        # daemon_exit, which will cause the db to sync/trim/close.
+
+        call_hook("daemon_exit", [])
+
+        # The rest of this is bonus, the important part is to protect the disk.
+        log.debug("DB shutdown.")
 
         # Force all connection threads to end.
 
@@ -720,11 +736,6 @@ class CantoBackend(CantoServer):
         # Wait for all fetches to end.
 
         self.fetch.reap(True)
-
-        # Now that we can be sure no commands or fetches are occuring, call
-        # daemon_exit, which will cause the db to sync/trim/close.
-
-        call_hook("daemon_exit", [])
 
         # Unlock the pidfile so another daemon could take over. Probably don't
         # have to do this since we're about to sys.exit anyway, but why not.
@@ -778,8 +789,18 @@ class CantoBackend(CantoServer):
 
         return 0
 
+    # SIGINT, take our time, exit cleanly
+
     def sig_int(self, a, b):
+        log.info("Received INT")
         self.interrupted = 1
+
+    # SIGTERM, get the fuck out quick
+
+    def sig_term(self, a, b):
+        log.info("Received TERM")
+        self.cleanup()
+        sys.exit(0)
 
     def sig_usr(self, a, b):
         import threading
@@ -935,5 +956,4 @@ class CantoBackend(CantoServer):
             log.error("\n" + "".join(tb))
 
         self.cleanup()
-
         sys.exit(0)

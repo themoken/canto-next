@@ -129,6 +129,10 @@ def rlock_feeds(fn):
         return r
     return _fl
 
+def stop_feeds():
+    for feed in allfeeds.feeds:
+        allfeeds.feeds[feed].stopped = True
+
 class DaemonFeedPlugin(Plugin):
     pass
 
@@ -145,6 +149,7 @@ class CantoFeed(PluginHandler):
         self.rate = rate
         self.keep_time = keep_time
         self.keep_unread = keep_unread
+        self.stopped = False
 
         # This is held by the update thread, as well as any get / set attribute
         # threads
@@ -318,6 +323,11 @@ class CantoFeed(PluginHandler):
 
     def index(self, update_contents):
 
+        # If the daemon is shutting down, discard this update.
+
+        if self.stopped:
+            return
+
         # We take our top level locks here and in specific order so that we
         # don't create a deadlock by holding self.lock and waiting on
         # tag/protect while the command holds tag/protect while trying to get
@@ -476,11 +486,14 @@ class CantoFeed(PluginHandler):
                 log.error("Error running feed editing plugin")
                 log.error(traceback.format_exc())
 
-        # Commit the updates to disk.
-        self.shelf[self.URL] = update_contents
+        # If we're not shutting down, go ahead and write to disk.
 
-        # Remove non-existent IDs from all tags
-        self.clear_tags(olditems)
+        if not self.stopped:
+            # Commit the updates to disk.
+            self.shelf[self.URL] = update_contents
+
+            # Remove non-existent IDs from all tags
+            self.clear_tags(olditems)
 
         tag_lock.release_write()
         self.lock.release_write()
