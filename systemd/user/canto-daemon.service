@@ -1,0 +1,10 @@
+[Unit]
+Description=Canto RSS Daemon
+After=network.target
+
+[Service]
+ExecStart=/usr/bin/canto-daemon
+TimeoutStopSec=10
+
+[Install]
+WantedBy=default.target

@@ -27,6 +27,7 @@ setup(name='Canto',
       download_url='http://codezen.org/static/canto-daemon-' + string_version + '.tar.gz',
       packages=['canto_next'],
       scripts=['bin/canto-daemon','bin/canto-remote'],
-      data_files = [("share/man/man1/", ["man/canto-daemon.1", "man/canto-remote.1"])],
+      data_files = [("share/man/man1/", ["man/canto-daemon.1", "man/canto-remote.1"]),
+                    ("lib/systemd/user", ["systemd/user/canto-daemon.service"])],
       cmdclass = { 'install_data' : canto_next_install_data },
 )
