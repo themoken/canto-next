@@ -66,9 +66,7 @@ TRIM_INTERVAL = 300
 # Another caveat is that commands that call each other need to hold all the
 # locks at the outset. For example, cmd_items calls cmd_attributes (to handle
 # automatic attributes), so it needs to hold the feed and protect locks, even
-# if it didn't have to otherwise and then call a lockless version of the next
-# command (in this case _cmd_attributes)
-#
+# if it didn't have to otherwise.
 
 class CantoBackend(CantoServer):
 
