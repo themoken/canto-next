@@ -12,6 +12,9 @@ from threading import RLock, current_thread
 import traceback
 import time
 
+import logging
+log = logging.getLogger("RWLOCK")
+
 alllocks = []
 
 class RWLock(object):
@@ -20,6 +23,7 @@ class RWLock(object):
         self.readers = 0
         self.reader_stacks = []
         self.lock = RLock()
+        self.reader_lock = RLock()
 
         self.writer_stacks = []
         self.writer_id = 0
@@ -27,26 +31,76 @@ class RWLock(object):
         alllocks.append(self)
 
     def acquire_read(self):
+
+        # Hold reader_lock to see if we've already actually got this lock.
+
+        self.reader_lock.acquire()
+
+        cti = current_thread().ident
+        if cti == self.writer_id or cti in [ x[0] for x in self.reader_stacks ]:
+            self.readers += 1
+            self.reader_stacks.append((current_thread().ident, traceback.format_stack()))
+            self.reader_lock.release()
+            return
+
+        # Release the lock so that if we block on getting the main lock, other
+        # threads can still perform the above check and release_read().
+
+        self.reader_lock.release()
+
+        # Get full lock so writers can keep us from getting a lock we don't
+        # already hold.
+
         self.lock.acquire()
+
+        # Re-acquire reader_lock so we can manipulate the vars.
+
+        self.reader_lock.acquire()
+
         self.readers += 1
-        self.reader_stacks.append((current_thread(), traceback.format_stack()))
+        self.reader_stacks.append((current_thread().ident, traceback.format_stack()))
+
+        # Release everything.
+
+        self.reader_lock.release()
         self.lock.release()
 
     def release_read(self):
+        self.reader_lock.acquire()
         self.readers -= 1
-        self.reader_stacks = [ x for x in self.reader_stacks if x[0] != current_thread() ]
+
+        for tup in reversed(self.reader_stacks[:]):
+            if tup[0] == current_thread().ident:
+                self.reader_stacks.remove(tup)
+                break
+
+        self.reader_lock.release()
+
     def acquire_write(self):
         self.lock.acquire()
 
         self.writer_stacks.append(traceback.format_stack())
         self.writer_id = current_thread().ident;
 
-        while (len([ x for x in self.reader_stacks if x[0] != current_thread()]) > 0):
+        warned = False
+
+        while self.readers > 0:
+            if current_thread().ident in [ x[0] for x in self.reader_stacks ]:
+                if not warned:
+                    log.debug("WARN: %s holds read, trying to get write on %s" %
+                            (current_thread().ident, self.name))
+                    warned = True
+
+                # Break the deadlock if we're the last reader
+                if len(self.reader_stacks) == 1:
+                    break
+
             time.sleep(0.1)
 
     def release_write(self):
         self.writer_stacks = self.writer_stacks[0:-1]
-        self.writer_id = 0
+        if self.writer_stacks == []:
+            self.writer_id = 0
         self.lock.release()
 
 def read_lock(lock):
