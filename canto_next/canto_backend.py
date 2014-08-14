@@ -511,6 +511,7 @@ class CantoBackend(CantoServer):
     # SETATTRIBUTES { id : { attribute : value } ... } -> None
 
     @wlock_feeds
+    @write_lock(attr_lock)
     @read_lock(tag_lock)
     def cmd_setattributes(self, socket, args):
 
