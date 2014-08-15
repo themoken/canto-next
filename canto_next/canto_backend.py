@@ -432,6 +432,7 @@ class CantoBackend(CantoServer):
     # clients to become informative quickly by making the individual
     # story IDs unnecessary to request information about them.
 
+    # Hold attr_lock just to keep cmd_item from trying to use autoattr
     @write_lock(attr_lock)
     def cmd_autoattr(self, socket, args):
         self.autoattr[socket] = args
