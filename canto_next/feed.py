@@ -334,14 +334,7 @@ class CantoFeed(PluginHandler):
         if self.stopped:
             return
 
-        # We take our top level locks here and in specific order so that we
-        # don't create a deadlock by holding self.lock and waiting on
-        # tag/protect while the command holds tag/protect while trying to get
-        # self.lock.
-
         self.lock.acquire_write()
-        protect_lock.acquire_read()
-        tag_lock.acquire_write()
 
         if self.URL not in self.shelf:
             # Stub empty feed
@@ -359,6 +352,8 @@ class CantoFeed(PluginHandler):
         # over any associated state from old_contents
 
         self.items = []
+        tags_to_add = []
+
         for item in update_contents["entries"][:]:
 
             # Update canto_update only for freshly seen items.
@@ -385,7 +380,7 @@ class CantoFeed(PluginHandler):
             # At this point, we're sure item's going to be added.
             cacheitem = self._cacheitem(item)
 
-            alltags.add_tag(cacheitem["id"], "maintag:" + self.name)
+            tags_to_add.append((cacheitem["id"], "maintag:" + self.name))
 
             # Move over custom content from item.
             # Custom content is denoted with a key that
@@ -400,7 +395,7 @@ class CantoFeed(PluginHandler):
                         if key == "canto-tags":
                             for user_tag in olditem[key]:
                                 log.debug("index adding user tag: %s - %s" % (user_tag,item["id"]))
-                                alltags.add_tag(item["id"], user_tag)
+                                tags_to_add.append((item["id"], user_tag))
                             item[key] = olditem[key]
                         elif key.startswith("canto"):
                             item[key] = olditem[key]
@@ -421,6 +416,8 @@ class CantoFeed(PluginHandler):
         # remembered feed items).
 
         unprotected_old = []
+
+        protect_lock.acquire_read()
 
         for olditem in old_contents["entries"]:
             for item in self.items:
@@ -481,12 +478,16 @@ class CantoFeed(PluginHandler):
             # Commit the updates to disk.
             self.shelf[self.URL] = update_contents
 
+            tag_lock.acquire_write()
+            for item, tag in tags_to_add:
+                alltags.add_tag(item, tag)
+
             # Go through and take items in old_contents that didn't make it
             # into update_contents / self.items and remove them from all tags.
 
             self.sweep_tags(old_contents["entries"])
+            tag_lock.release_write()
 
-        tag_lock.release_write()
         self.lock.release_write()
 
     def destroy(self):
