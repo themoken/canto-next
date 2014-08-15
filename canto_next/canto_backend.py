@@ -343,7 +343,7 @@ class CantoBackend(CantoServer):
     @read_lock(feed_lock)
     @write_lock(fetch_lock)
     def do_fetch(self, force = False):
-        self.fetch.fetch(force)
+        self.fetch.fetch(force, False)
         self.fetch_timer = FETCH_CHECK_INTERVAL
 
     # VERSION -> X.Y
@@ -682,6 +682,11 @@ class CantoBackend(CantoServer):
         call_hook("daemon_work_done", [])
 
     def run(self):
+
+        # Start fetch threads to load from disk. No need for locking as we
+        # haven't started any threads yet
+        self.fetch.fetch(True, True)
+
         log.debug("Beginning to serve...")
         call_hook("daemon_serving", [])
         while 1:

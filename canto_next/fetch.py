@@ -28,7 +28,7 @@ class DaemonFetchThreadPlugin(Plugin):
 # I'm not sure if that's a good thing or not =)
 
 class CantoFetchThread(PluginHandler, Thread):
-    def __init__(self, feed):
+    def __init__(self, feed, fromdisk):
         PluginHandler.__init__(self)
         Thread.__init__(self, name="Fetch: %s" % feed.URL)
         self.daemon = True
@@ -42,8 +42,18 @@ class CantoFetchThread(PluginHandler, Thread):
         socket.setdefaulttimeout(30)
 
         self.feed = feed
+        self.fromdisk = fromdisk
 
     def run(self):
+
+        # Initial load, just feed.index grab from disk.
+
+        if self.fromdisk:
+            self.feed.index({"entries" : []})
+            return
+
+        # Otherwise, actually try to get an update.
+
         extra_headers = { 'User-Agent' :\
                 'Canto/0.9.0 + http://codezen.org/canto-ng'}
 
@@ -155,7 +165,7 @@ class CantoFetch():
                 return True
         return False
 
-    def fetch(self, force):
+    def fetch(self, force, fromdisk):
         for feed in allfeeds.get_feeds():
             if not force and not self.needs_update(feed):
                 continue
@@ -163,7 +173,7 @@ class CantoFetch():
             if self.still_working(feed.URL):
                 continue
 
-            thread = CantoFetchThread(feed)
+            thread = CantoFetchThread(feed, fromdisk)
             thread.start()
             log.debug("Started thread for feed %s" % feed.URL)
             self.threads.append((thread, feed.URL))
