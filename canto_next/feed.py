@@ -420,7 +420,7 @@ class CantoFeed(PluginHandler):
         protect_lock.acquire_read()
 
         for olditem in old_contents["entries"]:
-            for item in self.items:
+            for item in update_contents["entries"]:
                 if olditem["id"] == item["id"]:
                     log.debug("still in self.items")
                     break
