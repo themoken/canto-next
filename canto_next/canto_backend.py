@@ -214,11 +214,9 @@ class CantoBackend(CantoServer):
     # On_config_change must be prepared to have originating_socket = None for
     # internal requests that nonetheless must be propagated.
 
-    # This is invoked by set or del configs, which holds write locks on config,
-    # tags, and feeds already.
+    # This is invoked by set or del configs, which holds write locks on
+    # everything needed, config (for reparse/in_configs), and watch.
 
-    @read_lock(protect_lock)
-    @read_lock(watch_lock)
     def on_config_change(self, change, originating_socket):
 
         self._reparse_config(originating_socket)
@@ -563,7 +561,9 @@ class CantoBackend(CantoServer):
 
     @write_lock(feed_lock)
     @write_lock(config_lock)
+    @read_lock(protect_lock)
     @write_lock(tag_lock)
+    @read_lock(watch_lock)
     def cmd_setconfigs(self, socket, args):
 
         self.conf.merge(args.copy())
@@ -579,7 +579,9 @@ class CantoBackend(CantoServer):
 
     @write_lock(feed_lock)
     @write_lock(config_lock)
+    @read_lock(protect_lock)
     @write_lock(tag_lock)
+    @read_lock(watch_lock)
     def cmd_delconfigs(self, socket, args):
 
         self.conf.delete(args.copy())
