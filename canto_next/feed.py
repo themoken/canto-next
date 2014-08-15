@@ -429,7 +429,7 @@ class CantoFeed(PluginHandler):
                     break
             else:
                 if protection.protected(olditem["id"]):
-                    log.debug("Saving committed item: %s" % olditem)
+                    log.debug("Saving committed item: %s" % olditem["id"])
                     self.items.append(self._cacheitem(olditem))
                     update_contents["entries"].append(olditem)
                 else:
@@ -453,11 +453,11 @@ class CantoFeed(PluginHandler):
 
             if (ref_time - item_time) < self.keep_time:
                 log.debug("Item not over keep_time (%d): %s" %
-                        (self.keep_time, olditem))
+                        (self.keep_time, olditem["id"]))
             elif self.keep_unread and "read" not in item_state:
-                log.debug("Keeping unread item: %s\n" % olditem)
+                log.debug("Keeping unread item: %s\n" % olditem["id"])
             else:
-                log.debug("Discarding: %s", olditem)
+                log.debug("Discarding: %s", olditem["id"])
                 continue
 
             update_contents["entries"].append(olditem)
