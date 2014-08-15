@@ -430,7 +430,7 @@ class CantoFeed(PluginHandler):
             else:
                 if protection.protected(olditem["id"]):
                     log.debug("Saving committed item: %s" % olditem)
-                    self.items.append(olditem)
+                    self.items.append(self._cacheitem(olditem))
                     update_contents["entries"].append(olditem)
                 else:
                     unprotected_old.append(olditem)
