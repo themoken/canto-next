@@ -53,10 +53,16 @@ log = logging.getLogger("CANTO-DAEMON")
 FETCH_CHECK_INTERVAL = 60
 TRIM_INTERVAL = 300
 
+# x.lock is a specific feed's lock
+# x.locks are all feed's locks
 #
-# NOTE: The feed objects take protect -> tag -> local lock before doing their
-# work this means that, to avoid deadlock, if a cmd_ function takes both, they
-# must be in the same order (protect then tag).
+# Index threads take
+#   x.lock (w) -> protect_lock (r)
+#              \> tag_lock (w)
+#
+# (meaning that it holds x.lock, but takes protect and tag locks serially)
+#
+# So, if any command (in this file) needs to take feed_lock and x.locks first
 #
 # Every other threaded lock taker is going to come through CantoBackend, so the
 # lock order must be the same. Between all cmd_ functions.
