@@ -351,9 +351,6 @@ class CantoFeed(PluginHandler):
             old_contents = self.shelf[self.URL]
             log.debug("Fetched previous content for %s." % self.URL)
 
-        log.debug("%s update_contents: %s" % (self.URL, update_contents))
-        log.debug("%s old_contents: %s" % (self.URL, old_contents))
-
         # BEWARE: At this point, update_contents could either be
         # fresh from feedparser or fresh from disk, so it's possible that the
         # old contents and the new contents are identical.
@@ -479,9 +476,6 @@ class CantoFeed(PluginHandler):
             except:
                 log.error("Error running feed editing plugin")
                 log.error(traceback.format_exc())
-
-        # If we're not shutting down, go ahead and write to disk.
-        log.debug("%s new contents: %s" % (self.URL, update_contents))
 
         if not self.stopped:
             # Commit the updates to disk.
