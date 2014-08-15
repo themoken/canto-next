@@ -336,6 +336,7 @@ class CantoBackend(CantoServer):
 
     # Fetch any feeds that need fetching.
 
+    @read_lock(feed_lock)
     @write_lock(fetch_lock)
     def do_fetch(self, force = False):
         self.fetch.fetch(force)
@@ -553,8 +554,8 @@ class CantoBackend(CantoServer):
         self.cmd_setconfigs(None, args)
         return self.conf.json
 
-    @write_lock(config_lock)
     @write_lock(feed_lock)
+    @write_lock(config_lock)
     @write_lock(tag_lock)
     def cmd_setconfigs(self, socket, args):
 
@@ -569,8 +570,8 @@ class CantoBackend(CantoServer):
         cmd_delconfigs(None, args)
         return self.conf.json
 
-    @write_lock(config_lock)
     @write_lock(feed_lock)
+    @write_lock(config_lock)
     @write_lock(tag_lock)
     def cmd_delconfigs(self, socket, args):
 
