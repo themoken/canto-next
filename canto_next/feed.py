@@ -190,13 +190,19 @@ class CantoFeed(PluginHandler):
 
     def sweep_tags(self, olditems):
         for olditem in olditems:
+
+            # olditem is a disk item, so create a full id
+            # to compare to self.items or current tags
+
+            cache_id = self._cacheitem(olditem)["id"]
+
             for item in self.items:
                 # Same ID exists in new items
-                if item["id"] == olditem["id"]:
+                if item["id"] == cache_id:
                     break
             else:
                 # Will lock
-                alltags.remove_id(olditem["id"])
+                alltags.remove_id(cache_id)
 
     # Called with self.lock read
 
