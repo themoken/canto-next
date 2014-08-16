@@ -52,7 +52,7 @@ class RedditFetchJSON(DaemonFetchThreadPlugin):
 
         # Get the feed's JSON
         try:
-            json_url = kwargs["feed"].URL.replace(".rss?",".json?")
+            json_url = kwargs["feed"].URL.replace("/.rss","/.json")
             req = urllib.request.Request(json_url, headers = { "User-Agent" : "Canto-Reddit-Plugin"})
             response = urllib.request.urlopen(req, None, 10)
             reddit_json = json.loads(response.read().decode())
