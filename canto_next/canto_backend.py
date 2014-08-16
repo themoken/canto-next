@@ -291,7 +291,7 @@ class CantoBackend(CantoServer):
         on_hook("daemon_del_tag", self.on_del_tag)
         on_hook("daemon_config_change", self.on_config_change)
         on_hook("daemon_tag_change", self.on_tag_change)
-        on_hook("daemon_kill_socket", self.on_kill_socket)
+        on_hook("server_kill_socket", self.on_kill_socket)
 
         # For plugins
         on_hook("daemon_set_configs", lambda x, y : self.internal_command(x, self.in_setconfigs, y))
