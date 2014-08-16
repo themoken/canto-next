@@ -518,7 +518,7 @@ class CantoBackend(CantoServer):
 
     @wlock_feeds
     @write_lock(attr_lock)
-    @read_lock(tag_lock)
+    @write_lock(tag_lock)
     def cmd_setattributes(self, socket, args):
 
         feeds = allfeeds.items_to_feeds(list(args.keys()))
