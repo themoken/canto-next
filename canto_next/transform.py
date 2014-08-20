@@ -42,6 +42,12 @@ class CantoTransform():
             for i in f[feed]:
                 attrs[i] = needed
             a.update(feed.get_attributes(f[feed], attrs))
+
+        for item in tag[:]:
+            if item not in a.keys():
+                log.warn("Missing attributes for %s" % item)
+                tag.remove(item)
+
         return self.transform(tag, a, immune)
 
     def needed_attributes(self, tag):
