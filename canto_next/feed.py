@@ -94,14 +94,14 @@ allfeeds = CantoFeeds()
 # Lock helpers
 
 def wlock_all():
-    feed_lock.acquire_read()
+    feed_lock.acquire_write()
     for feed in sorted(allfeeds.feeds.keys()):
         allfeeds.feeds[feed].lock.acquire_write()
 
 def wunlock_all():
     for feed in sorted(allfeeds.feeds.keys()):
         allfeeds.feeds[feed].lock.release_write()
-    feed_lock.release_read()
+    feed_lock.release_write()
 
 def wlock_feeds(fn):
     def _fl(*args):
