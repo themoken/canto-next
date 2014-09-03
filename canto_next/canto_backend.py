@@ -827,6 +827,8 @@ class CantoBackend(CantoServer):
 
     def sig_usr(self, a, b):
         import threading
+        import gc
+
         held_locks = {}
         code = {}
         curthreads = threading.enumerate()
@@ -866,6 +868,17 @@ class CantoBackend(CantoServer):
                 log.info("Lock %s (%s readers)" % (lock.name, lock.readers))
                 log.info("Lock writer (thread %s):" % (lock.writer_id,))
                 log.info(''.join(writer_stack))
+
+        gc.collect()
+
+        # If we've got pympler installed, output a summary of memory usage.
+
+        try:
+            from pympler import summary, muppy
+            from pympler.asizeof import asizeof
+            summary.print_(summary.summarize(muppy.get_objects()))
+        except:
+            pass
 
     # This function makes sure that the configuration paths are all R/W or
     # creatable.
