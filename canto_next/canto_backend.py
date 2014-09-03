@@ -662,6 +662,8 @@ class CantoBackend(CantoServer):
             if hasattr(self, cmdf):
                 func = getattr(self, cmdf)
 
+                call_hook("daemon_pre_" + cmd.lower(), [socket, args])
+
                 try:
                     func(socket, args)
                 except Exception as e:
@@ -669,6 +671,8 @@ class CantoBackend(CantoServer):
                     self.write(socket, "EXCEPT", tb)
                     log.error("Protocol exception:")
                     log.error("\n" + tb)
+
+                call_hook("daemon_post_" + cmd.lower(), [socket, args])
 
                 call_hook("daemon_work_done", [])
             else:

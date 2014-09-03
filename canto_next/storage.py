@@ -8,7 +8,7 @@
 #   published by the Free Software Foundation.
 
 from .feed import wlock_feeds
-from .hooks import on_hook
+from .hooks import on_hook, call_hook
 
 import threading
 import traceback
@@ -35,6 +35,8 @@ class CantoShelf():
         on_hook("daemon_exit", self.close)
 
     def open(self):
+        call_hook("daemon_db_open", [self.filename])
+
         mode = 'c'
         if dbm.whichdb(self.filename) == 'dbm.gnu':
             mode += 'u'
@@ -90,3 +92,4 @@ class CantoShelf():
         if dbm.whichdb(self.filename) == 'dbm.gnu':
             self._reorganize()
         self.shelf = None
+        call_hook("daemon_db_close", [self.filename])
