@@ -321,6 +321,8 @@ class CantoFeed(PluginHandler):
                 log.error("Error running feed set_attr plugin")
                 log.error(traceback.format_exc())
 
+        self.shelf.update_umod()
+
     def _cacheitem(self, item):
         cacheitem = {}
         cacheitem["id"] = json.dumps(\
