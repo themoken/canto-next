@@ -8,6 +8,7 @@
 
 version = REPLACE_WITH_VERSION
 
+from .plugins import PluginHandler, Plugin
 from .client import CantoClient
 from .encoding import encoder
 from .format import escsplit
@@ -50,8 +51,16 @@ def access_dict(d, var):
         return (False, False)
     return (True, cur[terms[-1]])
 
-class CantoRemote(CantoClient):
+class DaemonRemotePlugin(Plugin):
+    pass
+
+class CantoRemote(PluginHandler, CantoClient):
     def __init__(self):
+        PluginHandler.__init__(self)
+
+        self.plugin_class = DaemonRemotePlugin
+        self.update_plugin_lookups()
+
         if "-V" in sys.argv:
             print("canto-remote " + version)
             sys.exit(-1)

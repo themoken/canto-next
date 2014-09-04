@@ -27,7 +27,7 @@ from .fetch import CantoFetch
 from .hooks import on_hook, call_hook
 from .tag import alltags
 from .transform import eval_transform
-from .plugins import try_plugins
+from .plugins import PluginHandler, Plugin, try_plugins
 from .rwlock import alllocks, write_lock, read_lock
 from .locks import *
 
@@ -74,15 +74,22 @@ TRIM_INTERVAL = 300
 # automatic attributes), so it needs to hold the feed and protect locks, even
 # if it didn't have to otherwise.
 
-class CantoBackend(CantoServer):
+class DaemonBackendPlugin(Plugin):
+    pass
+
+class CantoBackend(PluginHandler, CantoServer):
 
     # We want to invoke CantoServer's __init__ manually, and
     # not on instantiation.
 
     def __init__(self):
-        pass
+        PluginHandler.__init__(self)
+
+        self.plugin_class = DaemonBackendPlugin
+        self.update_plugin_lookups()
 
     def init(self):
+
         # Log verbosity
         self.verbosity = 0
 
@@ -724,6 +731,8 @@ class CantoBackend(CantoServer):
                 self.shelf.trim()
                 wunlock_all()
                 self.trim_timer = TRIM_INTERVAL
+
+            call_hook("daemon_end_loop", [])
 
             time.sleep(1)
 

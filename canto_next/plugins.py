@@ -47,7 +47,7 @@ def try_plugins(topdir):
     sys.path.insert(0, topdir)
 
     # Go ahead and import all .py
-    for fname in os.listdir(p):
+    for fname in sorted(os.listdir(p)):
         if fname.endswith(".py") and fname != "__init__.py":
             try:
                 proper = fname[:-3]
