@@ -78,17 +78,12 @@ class DaemonBackendPlugin(Plugin):
     pass
 
 class CantoBackend(PluginHandler, CantoServer):
-
-    # We want to invoke CantoServer's __init__ manually, and
-    # not on instantiation.
-
     def __init__(self):
-        PluginHandler.__init__(self)
 
-        self.plugin_class = DaemonBackendPlugin
-        self.update_plugin_lookups()
+        # Nothing referenced before try_plugins should be
+        # pluggable.
 
-    def init(self):
+        self.plugin_attrs = {}
 
         # Log verbosity
         self.verbosity = 0
@@ -150,6 +145,11 @@ class CantoBackend(PluginHandler, CantoServer):
         # Evaluate any plugins
         try_plugins(self.conf_dir)
 
+        PluginHandler.__init__(self)
+
+        self.plugin_class = DaemonBackendPlugin
+        self.update_plugin_lookups()
+
         if self.no_fetch:
             log.info("NOFETCH, will not be automatically updating.")
 
@@ -187,6 +187,8 @@ class CantoBackend(PluginHandler, CantoServer):
         signal.signal(signal.SIGINT, self.sig_int)
         signal.signal(signal.SIGTERM, self.sig_term)
         signal.signal(signal.SIGUSR1, self.sig_usr)
+
+        self.start()
 
     def _check_dead_feeds(self):
         for URL in list(allfeeds.dead_feeds.keys()):
@@ -990,7 +992,6 @@ class CantoBackend(PluginHandler, CantoServer):
 
     def start(self):
         try:
-            self.init()
             self.run()
 
         # Cleanly shutdown on ^C.
