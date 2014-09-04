@@ -103,7 +103,8 @@ class CantoConfig():
         self.read_config(fromfile)
         if self.validate():
             self.instantiate()
-            self.write()
+            if not fromfile:
+                self.write()
 
     def read_config(self, fromfile):
         if fromfile:
