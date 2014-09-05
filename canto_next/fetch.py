@@ -179,12 +179,17 @@ class CantoFetch():
             self.threads.append((thread, feed.URL))
 
     def reap(self, force=False):
+        work_done = False
         newthreads = []
 
         for thread, URL in self.threads:
             if not force and thread.isAlive():
                 newthreads.append((thread, URL))
                 continue
+            work_done = True
             thread.join()
 
         self.threads = newthreads
+
+        if work_done:
+            call_hook("daemon_work_done", [])

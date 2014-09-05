@@ -498,8 +498,6 @@ class CantoFeed(PluginHandler):
 
         self.lock.release_write()
 
-        call_hook("daemon_work_done", [])
-
     def destroy(self):
         # Check for existence in case of delete quickly
         # after add.
