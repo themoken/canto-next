@@ -66,7 +66,12 @@ class CantoShelf():
 
     @wlock_feeds
     def sync(self):
-        self.shelf.sync()
+
+        # Check here in case we're called after close by plugins that
+        # don't know better.
+
+        if self.shelf:
+            self.shelf.sync()
 
     def trim(self):
         log.debug("Attempting to trim...")

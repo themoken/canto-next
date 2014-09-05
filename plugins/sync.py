@@ -131,6 +131,7 @@ class CantoFileSync(DaemonBackendPlugin):
             wlock_all()
 
             # Sync the shelf so it's all on disk
+
             self.backend.shelf.sync()
 
             shutil.copyfile(self.backend.feed_path, fname)
