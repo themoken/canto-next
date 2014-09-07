@@ -90,6 +90,8 @@ class CantoBackend(PluginHandler, CantoServer):
         # Shelf for feeds:
         self.fetch = None
         self.fetch_timer = 0
+        self.fetch_manual = False
+        self.fetch_force = False
 
         # Whether fetching is inhibited.
         self.no_fetch = False
@@ -338,14 +340,6 @@ class CantoBackend(PluginHandler, CantoServer):
                 tagobj = self.socket_transforms[socket][filt](tagobj, filter_immune)
 
         return tagobj
-
-    # Fetch any feeds that need fetching.
-
-    @read_lock(feed_lock)
-    @write_lock(fetch_lock)
-    def do_fetch(self, force = False):
-        self.fetch.fetch(force, False)
-        self.fetch_timer = FETCH_CHECK_INTERVAL
 
     # VERSION -> X.Y
 
@@ -641,14 +635,18 @@ class CantoBackend(PluginHandler, CantoServer):
     # override rates or any other factors in updating.
 
     def cmd_update(self, socket, args):
-        self.do_fetch()
+        self.fetch_timer = 0
+        self.fetch_manual = True
+        self.fetch_force = False
 
     # FORCEUPDATE {}
 
     # This command, on the other hand, *will* force the timers.
 
     def cmd_forceupdate(self, socket, args):
-        self.do_fetch(True)
+        self.fetch_timer = 0
+        self.fetch_manual = True
+        self.fetch_force = True
 
     # The workhorse that maps all requests to their handlers.
 
@@ -703,9 +701,7 @@ class CantoBackend(PluginHandler, CantoServer):
             self.no_dead_conns()
 
             # Clean up any threads done updating.
-            fetch_lock.acquire_write()
             self.fetch.reap()
-            fetch_lock.release_write()
 
             # Decrement all timers
 
@@ -714,11 +710,16 @@ class CantoBackend(PluginHandler, CantoServer):
             # Check whether feeds need to be updated and fetch
             # them if necessary.
 
-            if self.fetch_timer <= 0 and not self.no_fetch:
-                self.do_fetch()
+            if self.fetch_timer <= 0 and (not self.no_fetch or self.fetch_manual):
+                feed_lock.acquire_read()
 
-            # Trim the database file.
+                self.fetch.fetch(self.fetch_force, False)
 
+                self.fetch_manual = False
+                self.fetch_force = False
+                self.fetch_timer = FETCH_CHECK_INTERVAL
+
+                feed_lock.release_read()
 
             call_hook("daemon_end_loop", [])
 
