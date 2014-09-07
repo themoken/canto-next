@@ -22,17 +22,12 @@ import os
 log = logging.getLogger("SHELF")
 
 class CantoShelf():
-    def __init__(self, filename, writeback):
-        self.writeback = writeback
+    def __init__(self, filename):
         self.filename = filename
 
+        self.cache = {}
+
         self.open()
-
-        # Sync after a block of requests has been fulfilled,
-        # close the database all together on exit.
-
-        on_hook("daemon_work_done", self.sync)
-        on_hook("daemon_exit", self.close)
 
     def open(self):
         call_hook("daemon_db_open", [self.filename])
@@ -41,22 +36,29 @@ class CantoShelf():
         if dbm.whichdb(self.filename) == 'dbm.gnu':
             mode += 'u'
 
-        if self.writeback:
-            self.shelf = shelve.open(self.filename, mode, None, True)
-        else:
-            self.shelf = shelve.open(self.filename, mode)
+        self.shelf = shelve.open(self.filename, mode)
+        log.debug("Shelf opened: %s" % self.shelf)
 
     def __setitem__(self, name, value):
-        self.shelf[name] = value
+        self.cache[name] = value
 
     def __getitem__(self, name):
-        r = self.shelf[name]
-        return r
+        if name in self.cache:
+            return self.cache[name]
+        return self.shelf[name]
 
     def __contains__(self, name):
+        if name in self.cache:
+            return True
         return name in self.shelf
 
     def __delitem__(self, name):
+        if name in self.cache:
+            del self.cache[name]
+            try:
+                del self.shelf[name]
+            except:
+                pass
         del self.shelf[name]
 
     def update_umod(self):
@@ -69,14 +71,22 @@ class CantoShelf():
 
         # Check here in case we're called after close by plugins that
         # don't know better.
+        if self.shelf == None:
+            log.debug("No shelf.")
+            return
 
-        if self.shelf:
-            self.shelf.sync()
+        for key in self.cache:
+            self.shelf[key] = self.cache[key]
+        self.cache = {}
 
-    def trim(self):
-        log.debug("Attempting to trim...")
-        self.close()
-        self.open()
+        self.shelf.sync()
+        log.debug("Synced.")
+
+        if dbm.whichdb(self.filename) == 'dbm.gnu':
+            self.shelf.close()
+            self._reorganize()
+            self.open()
+            log.debug("Trimmed.")
 
     def _reorganize(self):
         # This is a workaround for shelves implemented with database types
@@ -97,9 +107,8 @@ class CantoShelf():
             log.debug("Successfully trimmed db")
 
     def close(self):
-        self.shelf.sync()
+        log.debug("Closing.")
+        self.sync()
         self.shelf.close()
-        if dbm.whichdb(self.filename) == 'dbm.gnu':
-            self._reorganize()
         self.shelf = None
         call_hook("daemon_db_close", [self.filename])

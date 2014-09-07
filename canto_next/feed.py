@@ -164,54 +164,20 @@ class CantoFeed(PluginHandler):
         if "password" in kwargs:
             self.password = kwargs["password"]
 
-        oldfeed = allfeeds.add_feed(URL, self)
-
-        if oldfeed and oldfeed.items:
-            self.items = oldfeed.items
-            oldfeed.items = []
-            for item in self.items:
-                # Will not lock, Feeds() should only be instantiated holding
-                # config, tag, and feed_lock.
-                alltags.add_tag(item["id"], "maintag:" + self.name)
-        else:
-            self.items = []
-
-    # Return whether item, if added, would have a unique ID. Called with
-    # self.lock read.
-
-    def unique_item(self, item):
-        for cur_item in self.items:
-            # Just the non-URL part will match
-            if dict_id(cur_item["id"])["ID"] == item["id"]:
-                return False
-        return True
+        allfeeds.add_feed(URL, self)
 
     # Remove old items from all tags. Called with self.lock read
 
     def sweep_tags(self, olditems):
         for olditem in olditems:
-
-            # olditem is a disk item, so create a full id
-            # to compare to self.items or current tags
-
-            cache_id = self._cacheitem(olditem)["id"]
-
-            for item in self.items:
+            for item in self.shelf[self.URL]["entries"]:
                 # Same ID exists in new items
-                if item["id"] == cache_id:
+                if item["id"] == olditem["id"]:
                     break
             else:
                 # Will lock
+                cache_id = self._cacheitem(olditem)["id"]
                 alltags.remove_id(cache_id)
-
-    # Called with self.lock read
-
-    def lookup_by_id(self, i):
-        for idx, ci in enumerate(self.items):
-            if ci["id"] == i:
-                return (ci, idx)
-        else:
-            raise Exception("%s not found in self.items" % (i,))
 
     # Return { attribute : value ... }
 
@@ -233,43 +199,22 @@ class CantoFeed(PluginHandler):
     def get_attributes(self, items, attributes):
         r = {}
 
-        for i in items:
+        d = self.shelf[self.URL]
+
+        for item in items:
+            d_id = dict_id(item)["ID"]
             attrs = {}
 
-            # Grab cached item
-            try:
-                item_cache, item_idx = self.lookup_by_id(i)
-            except:
-                continue
+            for d_item in d["entries"]:
+                if d_id != d_item["id"]:
+                    continue
 
-            # Potential fetched disk data.
-            d = None
-
-            # Get attributes
-            for a in attributes[i]:
-
-                # Cached attribute
-                if a in item_cache:
-                    attrs[a] = ci[a]
-
-                # Disk attribute
-                else:
-
-                    # If we haven't already grabbed the disk content, do so.
-                    if not d:
-                        d = self.shelf[self.URL]
-
-                    # NOTE: This relies on self.items maintaining
-                    # the identical order to the entries on disk.
-                    # Must be enforced by self.index()
-
-                    disk_item = d["entries"][item_idx]
-                    if a in disk_item:
-                        attrs[a] = disk_item[a]
+                for a in attributes[item]:
+                    if a in d_item:
+                        attrs[a] = d_item[a]
                     else:
                         attrs[a] = ""
-            r[i] = attrs
-
+            r[item] = attrs
         return r
 
     # Given an ID and a dict of attributes, update the disk.
@@ -277,33 +222,29 @@ class CantoFeed(PluginHandler):
 
         d = self.shelf[self.URL]
 
-        for i in items:
-            try:
-                item_cache, item_idx = self.lookup_by_id(i)
-            except:
-                continue
+        for item in items:
+            d_id = dict_id(item)["ID"]
 
-            # NOTE: This relies on self.items maintaining
-            # the identical order to the entries on disk.
-            # Must be enforced by self.index()
+            for d_item in d["entries"]:
+                if d_id != d_item["id"]:
+                    continue
 
-            for a in attributes[i]:
-                if a == "canto-tags":
-                    # Sub in empty tags
-                    if a not in d["entries"][item_idx]:
-                        d["entries"][item_idx][a] = []
+                for a in attributes[item]:
+                    if a == "canto-tags":
+                        # Sub in empty tags
+                        if a not in d_item:
+                            d_item[a] = []
 
-                    for user_tag in d["entries"][item_idx][a]:
-                        if user_tag not in attributes[i][a]:
-                            log.debug("set removing tag: %s - %s" % (user_tag, i))
-                            alltags.remove_tag(i, user_tag)
-                    for user_tag in attributes[i][a]:
-                        if user_tag not in d["entries"][item_idx][a]:
-                            log.debug("set adding tag: %s - %s" % (user_tag, i))
-                            alltags.add_tag(i, user_tag)
+                        for user_tag in d_item[a]:
+                            if user_tag not in attributes[item][a]:
+                                log.debug("set removing tag: %s - %s" % (user_tag, item))
+                                alltags.remove_tag(item, user_tag)
+                        for user_tag in attributes[item][a]:
+                            if user_tag not in d_item[a]:
+                                log.debug("set adding tag: %s - %s" % (user_tag, item))
+                                alltags.add_tag(item, user_tag)
 
-                d["entries"][item_idx][a] = attributes[i][a]
-
+                    d_item[a] = attributes[item][a]
 
         self.shelf[self.URL] = d
 
@@ -359,10 +300,10 @@ class CantoFeed(PluginHandler):
         # STEP 1: Identify all of the items in update_contents, and move
         # over any associated state from old_contents
 
-        self.items = []
         tags_to_add = []
+        to_add = []
 
-        for item in update_contents["entries"][:]:
+        for item in update_contents["entries"]:
 
             # Update canto_update only for freshly seen items.
             item["canto_update"] = update_contents["canto_update"]
@@ -375,19 +316,13 @@ class CantoFeed(PluginHandler):
                     item["id"] = item["title"]
                 else:
                     log.error("Unable to uniquely ID item: %s" % item)
-                    update_contents["entries"].remove(item)
                     continue
 
-            # Ensure ID truly is feed (and thus globally, since the
-            # ID is paired with the unique URL) unique.
-
-            if not self.unique_item(item):
-                update_contents["entries"].remove(item)
+            if item in to_add:
                 continue
+            to_add.append(item)
 
-            # At this point, we're sure item's going to be added.
             cacheitem = self._cacheitem(item)
-
             tags_to_add.append((cacheitem["id"], "maintag:" + self.name))
 
             # Move over custom content from item.
@@ -411,9 +346,7 @@ class CantoFeed(PluginHandler):
             else:
                 call_hook("daemon_new_item", [self, item])
 
-            # Other cache-able values should be added here.
-
-            self.items.append(cacheitem)
+        update_contents["entries"] = to_add
 
         # STEP 2: Keep items that have been given to clients from disappearing
         # from the disk. This ensures that even if an item has been sitting in
@@ -435,7 +368,6 @@ class CantoFeed(PluginHandler):
             else:
                 if protection.protected(olditem["id"]):
                     log.debug("Saving committed item: %s" % olditem["id"])
-                    self.items.append(self._cacheitem(olditem))
                     update_contents["entries"].append(olditem)
                 else:
                     unprotected_old.append(olditem)
@@ -466,7 +398,6 @@ class CantoFeed(PluginHandler):
                 continue
 
             update_contents["entries"].append(olditem)
-            self.items.append(self._cacheitem(olditem))
 
         # Allow plugins DaemonFeedPlugins defining edit_* functions to have a
         # crack at the contents before we commit to disk.

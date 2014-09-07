@@ -51,7 +51,6 @@ logging.basicConfig(
 log = logging.getLogger("CANTO-DAEMON")
 
 FETCH_CHECK_INTERVAL = 60
-TRIM_INTERVAL = 300
 
 # x.lock is a specific feed's lock
 # x.locks are all feed's locks
@@ -92,15 +91,8 @@ class CantoBackend(PluginHandler, CantoServer):
         self.fetch = None
         self.fetch_timer = 0
 
-        # Timer to flush the database changes
-        # and trim the file down to size.
-        self.trim_timer = TRIM_INTERVAL
-
         # Whether fetching is inhibited.
         self.no_fetch = False
-
-        # Whether we should use the shelf writeback.
-        self.writeback = True
 
         self.watches = { "new_tags" : [],
                          "del_tags" : [],
@@ -718,7 +710,6 @@ class CantoBackend(PluginHandler, CantoServer):
             # Decrement all timers
 
             self.fetch_timer -= 1
-            self.trim_timer -= 1
 
             # Check whether feeds need to be updated and fetch
             # them if necessary.
@@ -728,11 +719,6 @@ class CantoBackend(PluginHandler, CantoServer):
 
             # Trim the database file.
 
-            if self.trim_timer <= 0:
-                wlock_all()
-                self.shelf.trim()
-                wunlock_all()
-                self.trim_timer = TRIM_INTERVAL
 
             call_hook("daemon_end_loop", [])
 
@@ -750,8 +736,7 @@ class CantoBackend(PluginHandler, CantoServer):
 
         wlock_all()
 
-        # Now that we can be sure no commands or fetches are occuring, call
-        # daemon_exit, which will cause the db to sync/trim/close.
+        self.shelf.close()
 
         call_hook("daemon_exit", [])
 
@@ -782,7 +767,7 @@ class CantoBackend(PluginHandler, CantoServer):
     def args(self):
         try:
             optlist = getopt.getopt(sys.argv[1:], 'D:vp:a:nV',\
-                    ["dir=", "port=", "address=", "nofetch", "nowb"])[0]
+                    ["dir=", "port=", "address=", "nofetch"])[0]
         except getopt.GetoptError as e:
             log.error("Error: %s" % e.msg)
             return -1
@@ -813,9 +798,6 @@ class CantoBackend(PluginHandler, CantoServer):
 
             elif opt in ["-n", "--nofetch"]:
                 self.no_fetch = True
-
-            elif opt in ["--nowb"]:
-                self.writeback = False
 
             elif opt in ['-V']:
                 print("canto-daemon " + version)
@@ -880,6 +862,7 @@ class CantoBackend(PluginHandler, CantoServer):
                 log.info("Lock writer (thread %s):" % (lock.writer_id,))
                 log.info(''.join(writer_stack))
 
+        self.shelf.sync()
         gc.collect()
 
         # If we've got pympler installed, output a summary of memory usage.
@@ -966,7 +949,7 @@ class CantoBackend(PluginHandler, CantoServer):
     # fatal and handled lower in CantoShelf.
 
     def get_storage(self):
-        self.shelf = CantoShelf(self.feed_path, self.writeback)
+        self.shelf = CantoShelf(self.feed_path)
 
     # Bring up config, the only errors possible at this point will
     # be fatal and handled lower in CantoConfig.

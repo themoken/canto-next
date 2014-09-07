@@ -17,6 +17,7 @@ import urllib.parse
 import urllib.request, urllib.error, urllib.parse
 import logging
 import socket
+import json
 import time
 
 log = logging.getLogger("CANTO-FETCH")
@@ -111,6 +112,8 @@ class CantoFetchThread(PluginHandler, Thread):
         # Update timestamp
         update_contents["canto_update"] = time.time()
 
+        update_contents = json.loads(json.dumps(update_contents))
+
         log.debug("Parsed %s" % self.feed.URL)
 
         # Allow DaemonFetchThreadPlugins to do any sort of fetch stuff
@@ -139,23 +142,22 @@ class CantoFetch():
         self.threads = []
 
     def needs_update(self, feed):
-        if not feed.items:
+        if feed.URL not in self.shelf:
             log.info("Empty feed, attempt to update.")
             return True
 
         needs_update = True
-        if feed.URL in self.shelf:
-            f = self.shelf[feed.URL]
 
-            if "canto_update" not in f:
-                log.warn("No canto_update in feed w/ URL: %s" % feed.URL)
-                return True
+        f = self.shelf[feed.URL]
+        if "canto_update" not in f:
+            log.warn("No canto_update in feed w/ URL: %s" % feed.URL)
+            return True
 
-            passed = time.time() - f["canto_update"]
-            if passed < feed.rate * 60:
-                log.debug("Not enough time passed on %s (only %sm)" %
-                        (feed.URL, passed / 60))
-                needs_update = False
+        passed = time.time() - f["canto_update"]
+        if passed < feed.rate * 60:
+            log.debug("Not enough time passed on %s (only %sm)" %
+                    (feed.URL, passed / 60))
+            needs_update = False
 
         return needs_update
 
@@ -192,4 +194,6 @@ class CantoFetch():
         self.threads = newthreads
 
         if work_done:
+            if self.threads == []:
+                self.shelf.sync()
             call_hook("daemon_work_done", [])
