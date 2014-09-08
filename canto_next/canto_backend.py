@@ -770,12 +770,27 @@ class CantoBackend(PluginHandler, CantoServer):
 
         log.info("Exiting cleanly.")
 
+    def print_help(self):
+        print("canto-daemon [options]")
+        print("\t-h/--help\tThis help")
+        print("\t-v\t\tVerbose logging (for debug)")
+        print("\t-D/--dir <dir>\tSet configuration directory.")
+        print("\t-n/--nofetch\tJust serve content, don't fetch new content.")
+        print("\nPlugin control\n")
+        print("\t--noplugins\t\t\t\tDisable plugins")
+        print("\t--enableplugins 'plugin1 plugin2...'\tEnable single plugins (overrides --noplugins)")
+        print("\t--disableplugins 'plugin1 plugin2...'\tDisable single plugins")
+        print("\nNetwork control\n")
+        print("NOTE: These should be used in conjunction with SSH port forwarding to be secure\n")
+        print("\t-a/--address <IP>\tBind to interface with this address")
+        print("\t-p/--port <port>\tBind to this port")
+
     # This function parses and validates all of the command line arguments.
     def args(self):
         try:
-            optlist = getopt.getopt(sys.argv[1:], 'D:vp:a:nV',["dir=",\
+            optlist = getopt.getopt(sys.argv[1:], 'D:vp:a:nVh',["dir=",\
                 "port=", "address=", "nofetch","noplugins","disableplugins=",\
-                "enableplugins="])[0]
+                "enableplugins=", "help"])[0]
         except getopt.GetoptError as e:
             log.error("Error: %s" % e.msg)
             return -1
@@ -815,6 +830,10 @@ class CantoBackend(PluginHandler, CantoServer):
 
             elif opt in ['--enableplugins']:
                 self.enabled_plugins = shlex.split(arg)
+
+            elif opt in ['-h', '--help']:
+                self.print_help()
+                sys.exit(0)
 
             elif opt in ['-V']:
                 print("canto-daemon " + version)
