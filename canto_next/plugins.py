@@ -15,7 +15,7 @@ import os
 
 log = logging.getLogger("PLUGINS")
 
-def try_plugins(topdir):
+def try_plugins(topdir, plugin_default=True, disabled_plugins=[], enabled_plugins=[]):
     p = topdir + "/plugins"
     pinit = p + "/__init__.py"
 
@@ -51,8 +51,19 @@ def try_plugins(topdir):
         if fname.endswith(".py") and fname != "__init__.py":
             try:
                 proper = fname[:-3]
-                log.info("[plugin] %s" % proper)
-                __import__("plugins." + proper)
+
+                if plugin_default:
+                    if proper in disabled_plugins:
+                        log.info("[plugin] %s - DISABLED" % proper)
+                    else:
+                        log.info("[plugin] %s" % proper)
+                        __import__("plugins." + proper)
+                else:
+                    if proper in enabled_plugins:
+                        log.info("[plugin] %s - ENABLED" % proper)
+                        __import__("plugins." + proper)
+                    else:
+                        log.info("[plugin] %s - DISABLED" % proper)
             except Exception as e:
                 tb = traceback.format_exc()
                 log.error("Exception importing file %s" % fname)

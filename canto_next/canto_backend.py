@@ -37,6 +37,7 @@ import signal
 import getopt
 import fcntl
 import errno
+import shlex
 import time
 import sys
 import os
@@ -96,6 +97,10 @@ class CantoBackend(PluginHandler, CantoServer):
         # Whether fetching is inhibited.
         self.no_fetch = False
 
+        self.disabled_plugins = []
+        self.enabled_plugins = []
+        self.plugin_default = True
+
         self.watches = { "new_tags" : [],
                          "del_tags" : [],
                          "config" : [],
@@ -137,7 +142,8 @@ class CantoBackend(PluginHandler, CantoServer):
         log.info("conf_dir = %s" % self.conf_dir)
 
         # Evaluate any plugins
-        try_plugins(self.conf_dir)
+        try_plugins(self.conf_dir, self.plugin_default, self.disabled_plugins,
+                self.enabled_plugins)
 
         PluginHandler.__init__(self)
 
@@ -767,8 +773,9 @@ class CantoBackend(PluginHandler, CantoServer):
     # This function parses and validates all of the command line arguments.
     def args(self):
         try:
-            optlist = getopt.getopt(sys.argv[1:], 'D:vp:a:nV',\
-                    ["dir=", "port=", "address=", "nofetch"])[0]
+            optlist = getopt.getopt(sys.argv[1:], 'D:vp:a:nV',["dir=",\
+                "port=", "address=", "nofetch","noplugins","disableplugins=",\
+                "enableplugins="])[0]
         except getopt.GetoptError as e:
             log.error("Error: %s" % e.msg)
             return -1
@@ -799,6 +806,15 @@ class CantoBackend(PluginHandler, CantoServer):
 
             elif opt in ["-n", "--nofetch"]:
                 self.no_fetch = True
+
+            elif opt in ['--noplugins']:
+                self.plugin_default = False
+
+            elif opt in ['--disableplugins']:
+                self.disabled_plugins = shlex.split(arg)
+
+            elif opt in ['--enableplugins']:
+                self.enabled_plugins = shlex.split(arg)
 
             elif opt in ['-V']:
                 print("canto-daemon " + version)
