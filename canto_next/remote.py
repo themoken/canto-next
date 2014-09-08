@@ -8,10 +8,11 @@
 
 version = REPLACE_WITH_VERSION
 
-from .plugins import PluginHandler, Plugin
+from .plugins import PluginHandler, Plugin, try_plugins
 from .client import CantoClient
 from .encoding import encoder
 from .format import escsplit
+from .hooks import call_hook
 
 from xml.sax.saxutils import escape as xml_escape
 import xml.parsers.expat
@@ -21,6 +22,15 @@ import urllib.request, urllib.error, urllib.parse
 import pprint
 import time
 import sys
+
+import logging
+
+# By default this will log to stderr.
+logging.basicConfig(
+        format = "%(asctime)s : %(name)s -> %(message)s",
+        datefmt = "%H:%M:%S",
+        level = logging.ERROR
+)
 
 def assign_to_dict(d, var, val):
     terms = escsplit(var, '.', 0, 0, True)
@@ -56,10 +66,7 @@ class DaemonRemotePlugin(Plugin):
 
 class CantoRemote(PluginHandler, CantoClient):
     def __init__(self):
-        PluginHandler.__init__(self)
-
-        self.plugin_class = DaemonRemotePlugin
-        self.update_plugin_lookups()
+        self.plugin_attrs = {}
 
         if "-V" in sys.argv:
             print("canto-remote " + version)
@@ -67,6 +74,12 @@ class CantoRemote(PluginHandler, CantoClient):
 
         if self.common_args() == -1:
             sys.exit(-1)
+
+        try_plugins(self.conf_dir)
+
+        PluginHandler.__init__(self)
+        self.plugin_class = DaemonRemotePlugin
+        self.update_plugin_lookups()
 
         try:
             if self.port < 0:
@@ -99,6 +112,7 @@ class CantoRemote(PluginHandler, CantoClient):
         print("\timport - import feed list from OPML")
         print("\tkill - cleanly kill the daemon")
         print("\tscript - run script")
+        call_hook("remote_print_commands", [])
 
     def _wait_response(self, cmd):
         r = None
@@ -462,7 +476,7 @@ class CantoRemote(PluginHandler, CantoClient):
 
         command = "cmd_" + sys.argv[1].replace("-","_")
 
-        if command in dir(self):
+        if hasattr(self, command):
             print(getattr(self, command).__doc__)
         else:
             print(self.cmd_help.__doc__)
@@ -475,7 +489,7 @@ class CantoRemote(PluginHandler, CantoClient):
 
         command = "cmd_" + sys.argv[0].replace("-","_")
 
-        if command in dir(self):
+        if hasattr(self, command):
             func = getattr(self, command)
             r = func()
             if r == False:
