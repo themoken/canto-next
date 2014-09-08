@@ -113,7 +113,9 @@ class CantoConfig():
                 self.json = default_config.copy()
                 self.write()
 
-            self.json = json.load(codecs.open(self.filename, "rb", locale_enc))
+            c = codecs.open(self.filename, "rb", locale_enc)
+            self.json = json.load(c)
+            c.close()
             log.info("Read %s" % self.filename)
 
         log.debug("Parsed into: %s" % self.json)
