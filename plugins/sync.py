@@ -15,7 +15,6 @@ INTERVAL = 5 * 60
 # TODO
 #   - Need to handle protected items (ugh)
 #   - Need to propagate change information to connected clients
-#   - canto-remote sync
 
 from canto_next.hooks import on_hook, call_hook
 from canto_next.canto_backend import DaemonBackendPlugin
@@ -34,7 +33,10 @@ log = logging.getLogger("SYNC")
 
 class CantoFileSync(DaemonBackendPlugin):
     def __init__(self, backend):
-        self.plugin_attrs = {}
+        self.plugin_attrs = {
+                "cmd_sync" : self.cmd_sync,
+                "cmd_syncto" : self.cmd_syncto
+        }
 
         self.backend = backend
 
@@ -60,11 +62,11 @@ class CantoFileSync(DaemonBackendPlugin):
 
         # Do the initial sync
 
-        # syncfrom will grab it, check the timediff on the file if the file is
+        # sync will grab files, check the timediff on the file if the file is
         # actually newer (like we failed to sync last time) then it will set
         # fresh_config and do a syncto.
 
-        self.cmd_syncfrom()
+        self.cmd_sync()
 
     def reset(self):
         self.fresh_config = False
@@ -162,7 +164,7 @@ class CantoFileSync(DaemonBackendPlugin):
             self.fresh_config = False
             self.sent_config = True
 
-    def cmd_syncfrom(self, socket = None, args = None):
+    def cmd_sync(self, socket = None, args = None):
         needs_syncto = False
 
         if not self.sent_config:
@@ -251,6 +253,22 @@ class CantoFileSync(DaemonBackendPlugin):
         self.sync_interval -= 1
         if self.sync_interval <= 0:
             self.cmd_syncto()
-            self.cmd_syncfrom()
+            self.cmd_sync()
 
             self.sync_interval = INTERVAL
+
+class RemoteSync(DaemonRemotePlugin):
+    def __init__(self, remote):
+        self.plugin_attrs = { "cmd_sync" : self.cmd_sync }
+        self.remote = remote
+
+        on_hook("remote_print_commands", self.print_sync_commands)
+
+    def print_sync_commands(self):
+        print("\nSync Plugin")
+        print("\tsync - sync the daemon")
+
+    def cmd_sync(self):
+        """USAGE: canto-remote sync
+    Synchronize this daemon with a remote daemon"""
+        self.remote.write("SYNC", {})
