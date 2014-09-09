@@ -105,6 +105,11 @@ class CantoSocket:
                 except:
                     log.error("Error: Port must be >0 integer.")
                     return -1
+
+                # Assume loopback if address hasn't been set yet.
+                if self.addr == None:
+                    self.addr = "127.0.0.1"
+
                 self.location_args += [ opt, arg ]
 
             elif opt in [ "-a", "--address"]:
