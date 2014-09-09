@@ -14,7 +14,6 @@ log = logging.getLogger("TAG")
 
 class CantoTags():
     def __init__(self):
-        self.oldtags = {}
         self.tags = {}
         self.changed_tags = []
 
@@ -53,14 +52,6 @@ class CantoTags():
     def get_tags(self):
         return list(self.tags.keys())
 
-    def del_old_tags(self):
-        oldtags = []
-        for tag in self.oldtags:
-            if tag not in self.tags:
-                oldtags.append(tag)
-        if oldtags:
-            call_hook("daemon_del_tag", [ oldtags ])
-
     def tag_transform(self, tag, transform):
         self.tag_transforms[tag] = transform
 
@@ -68,13 +59,12 @@ class CantoTags():
         self.extra_tags[tag] = extra_tags
 
     def reset(self):
-        self.oldtags = self.tags
-        self.tags = {}
         self.tag_transforms = {}
         self.extra_tags = {}
 
-        for tag in self.oldtags:
+        for tag in self.tags:
             self.tag_changed(tag)
+        self.tags = {}
 
     #
     # Following must be called with tag_lock held with write
@@ -92,8 +82,7 @@ class CantoTags():
             # Create tag if no tag exists
             if name not in self.tags:
                 self.tags[name] = []
-                if name not in self.oldtags:
-                    call_hook("daemon_new_tag", [[ name ]])
+                call_hook("daemon_new_tag", [[ name ]])
 
             # Add to tag.
             if id not in self.tags[name]:

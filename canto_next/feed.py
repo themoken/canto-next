@@ -35,17 +35,12 @@ class CantoFeeds():
 
     @write_lock(feed_lock)
     def add_feed(self, URL, feed):
-        r = None
-
         self.order.append(URL)
         self.feeds[URL] = feed
 
         # Return old feed object
         if URL in self.dead_feeds:
-            r = self.dead_feeds[URL]
             del self.dead_feeds[URL]
-
-        return r
 
     @read_lock(feed_lock)
     def get_feed(self, URL):
@@ -79,10 +74,12 @@ class CantoFeeds():
                 f[feed] = [i]
         return f
 
-    def really_dead(self, feed):
-        if feed.URL in self.dead_feeds:
-            del self.dead_feeds[feed.URL]
-        feed.destroy()
+    def all_parsed(self):
+        for URL in self.dead_feeds:
+            feed = self.dead_feeds[URL]
+            call_hook("daemon_del_tag", [[ "maintag:" + feed.name ]])
+            feed.destroy()
+        self.dead_feeds = {}
 
     def reset(self):
         self.dead_feeds = self.feeds

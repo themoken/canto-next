@@ -183,21 +183,6 @@ class CantoBackend(PluginHandler, CantoServer):
 
         self.start()
 
-    def _check_dead_feeds(self):
-        for URL in list(allfeeds.dead_feeds.keys()):
-            feed = allfeeds.dead_feeds[URL]
-            for item in feed.items:
-                if protection.protected(item["id"]):
-                    log.debug("Dead feed %s still committed." % feed.URL)
-                    break
-            else:
-                allfeeds.really_dead(feed)
-
-    @wlock_feeds
-    @read_lock(protect_lock)
-    def check_dead_feeds(self):
-        self._check_dead_feeds()
-
     def _reparse_config(self, originating_socket):
         self.conf.parse(False)
 
@@ -207,9 +192,8 @@ class CantoBackend(PluginHandler, CantoServer):
         else:
             self.conf.write()
 
-        self._check_dead_feeds()
-
-        alltags.del_old_tags()
+        # Kill feeds that haven't been re-instantiated.
+        allfeeds.all_parsed()
 
     # Propagate config changes to watching sockets.
 
@@ -226,6 +210,7 @@ class CantoBackend(PluginHandler, CantoServer):
         # Force check of fetching. This automatically starts the fetch. For new
         # feeds, but also takes any new settings (like rates) into account.
 
+        self.fetch_force = True
         self.fetch_timer = 0
 
         # Pretend that the sockets *other* than the ones that made the change
@@ -283,7 +268,6 @@ class CantoBackend(PluginHandler, CantoServer):
             del self.socket_transforms[socket]
 
         protection.unprotect((socket, "auto"))
-        self._check_dead_feeds()
 
     # We need to be alerted on certain events, ensure
     # we get notified about them.
