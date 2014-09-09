@@ -773,6 +773,7 @@ class CantoBackend(PluginHandler, CantoServer):
     def print_help(self):
         print("canto-daemon [options]")
         print("\t-h/--help\tThis help")
+        print("\t-V\t\tPrint version")
         print("\t-v\t\tVerbose logging (for debug)")
         print("\t-D/--dir <dir>\tSet configuration directory.")
         print("\t-n/--nofetch\tJust serve content, don't fetch new content.")
