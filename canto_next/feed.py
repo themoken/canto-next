@@ -8,11 +8,10 @@
 #   published by the Free Software Foundation.
 
 from .plugins import PluginHandler, Plugin
-from .protect import protection
 from .encoding import encoder
 from .tag import alltags
 from .rwlock import RWLock, read_lock, write_lock
-from .locks import feed_lock, protect_lock, tag_lock
+from .locks import feed_lock, tag_lock
 from .hooks import call_hook
 
 import traceback
@@ -53,9 +52,7 @@ class CantoFeeds():
     def get_feeds(self):
         return [ self.get_feed(URL) for URL in self.order]
 
-    # Interestingly, don't need to get the read lock on feed because the URL is
-    # part of the ID.
-
+    @read_lock(feed_lock)
     def items_to_feeds(self, items):
         f = {}
         for i in items:
@@ -63,8 +60,6 @@ class CantoFeeds():
 
             if d_i["URL"] in self.feeds:
                 feed = self.feeds[d_i["URL"]]
-            elif d_i["URL"] in self.dead_feeds:
-                feed = self.dead_feeds[d_i["URL"]]
             else:
                 raise Exception("Can't find feed: %s" % d_i["URL"])
 
@@ -81,6 +76,7 @@ class CantoFeeds():
             feed.destroy()
         self.dead_feeds = {}
 
+    @write_lock(feed_lock)
     def reset(self):
         self.dead_feeds = self.feeds
         self.feeds = {}
@@ -163,32 +159,17 @@ class CantoFeed(PluginHandler):
 
         allfeeds.add_feed(URL, self)
 
-    # Remove old items from all tags. Called with self.lock read
+    # Identify items that are no longer being recorded.
 
-    def sweep_tags(self, olditems):
+    def old_ids(self, olditems):
+        r = []
         for olditem in olditems:
             for item in self.shelf[self.URL]["entries"]:
-                # Same ID exists in new items
                 if item["id"] == olditem["id"]:
                     break
             else:
-                # Will lock
                 cache_id = self._cacheitem(olditem)["id"]
-                alltags.remove_id(cache_id)
-
-    # Return { attribute : value ... }
-
-    def get_feedattributes(self, attributes):
-
-        d = self.shelf[self.URL]
-
-        r = {}
-        for attr in attributes:
-            if attr in d:
-                r[attr] = d[attr]
-            else:
-                r[attr] = ""
-
+                r.append(cache_id)
         return r
 
     # Return { id : { attribute : value .. } .. }
@@ -222,6 +203,8 @@ class CantoFeed(PluginHandler):
     # Given an ID and a dict of attributes, update the disk.
     def set_attributes(self, items, attributes):
 
+        self.lock.acquire_write()
+
         d = self.shelf[self.URL]
 
         for item in items:
@@ -249,22 +232,9 @@ class CantoFeed(PluginHandler):
                     d_item[a] = attributes[item][a]
 
         self.shelf[self.URL] = d
-
-        # Allow DaemonFeed plugins to define set_attribute_* functions
-        # to receive notifications of changed attributes
-
-        for attr in list(self.plugin_attrs.keys()):
-            if not attr.startswith("set_attributes_"):
-                continue
-
-            try:
-                a = getattr(self, attr)
-                a(feed = self, items = items, attributes = attributes, content = d)
-            except:
-                log.error("Error running feed set_attr plugin")
-                log.error(traceback.format_exc())
-
         self.shelf.update_umod()
+
+        self.lock.release_write()
 
     def _cacheitem(self, item):
         cacheitem = {}
@@ -320,16 +290,23 @@ class CantoFeed(PluginHandler):
                     log.error("Unable to uniquely ID item: %s" % item)
                     continue
 
-            if item in to_add:
+            # Make sure that this item can be uniquely IDed.
+            found = False
+            for seen_item in to_add:
+                if seen_item["id"] == item["id"]:
+                    found = True
+                    break
+
+            if found:
                 continue
+
             to_add.append(item)
 
             cacheitem = self._cacheitem(item)
             tags_to_add.append((cacheitem["id"], "maintag:" + self.name))
 
-            # Move over custom content from item.
-            # Custom content is denoted with a key that
-            # starts with "canto", but not "canto_update",
+            # Move over custom content from item.  Custom content is denoted
+            # with a key that starts with "canto", but not "canto_update",
             # which changes invariably.
 
             for olditem in old_contents["entries"]:
@@ -350,36 +327,15 @@ class CantoFeed(PluginHandler):
 
         update_contents["entries"] = to_add
 
-        # STEP 2: Keep items that have been given to clients from disappearing
-        # from the disk. This ensures that even if an item has been sitting in
-        # an active client for days requests for more information won't fail.
-
-        # While we're looping through the olditems, we also make a list of
-        # unprotected items for the next step (increasing the number of
-        # remembered feed items).
-
-        unprotected_old = []
-
-        protect_lock.acquire_read()
-
-        for olditem in old_contents["entries"]:
-            for item in update_contents["entries"]:
-                if olditem["id"] == item["id"]:
-                    log.debug("still in self.items")
-                    break
-            else:
-                if protection.protected(olditem["id"]):
-                    log.debug("Saving committed item: %s" % olditem["id"])
-                    update_contents["entries"].append(olditem)
-                else:
-                    unprotected_old.append(olditem)
-
-        protect_lock.release_read()
-
-        # Keep all items that have been seen in the feed in the last day.
+        # STEP 2: Keep all items that have been seen in the feed in the last
+        # day (keep_time default).
 
         ref_time = time.time()
-        for olditem in unprotected_old:
+        for olditem in old_contents["entries"]:
+            for item in to_add:
+                if olditem["id"] == item["id"]:
+                    continue
+
             if "canto_update" not in olditem:
                 olditem["canto_update"] = ref_time
 
@@ -417,19 +373,28 @@ class CantoFeed(PluginHandler):
 
         if not self.stopped:
             # Commit the updates to disk.
+
             self.shelf[self.URL] = update_contents
 
+            to_remove = self.old_ids(old_contents["entries"])
+
+            self.lock.release_write()
+
             tag_lock.acquire_write()
+
+            for item in to_remove:
+                alltags.remove_id(item)
+
             for item, tag in tags_to_add:
                 alltags.add_tag(item, tag)
 
             # Go through and take items in old_contents that didn't make it
             # into update_contents / self.items and remove them from all tags.
 
-            self.sweep_tags(old_contents["entries"])
-            tag_lock.release_write()
 
-        self.lock.release_write()
+            tag_lock.release_write()
+        else:
+            self.lock.release_write()
 
     def destroy(self):
         # Check for existence in case of delete quickly

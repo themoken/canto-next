@@ -84,7 +84,7 @@ class RedditScoreSort(CantoTransform):
     def needed_attributes(self, tag):
         return [ "reddit-score" ]
 
-    def transform(self, items, attrs, immune):
+    def transform(self, items, attrs):
         scored = []
         unscored = []
 

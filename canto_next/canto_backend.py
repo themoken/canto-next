@@ -8,16 +8,10 @@
 
 # This Backend class is the core of the daemon's specific protocol.
 
-# PROTOCOL_VERSION History:
-# 0.1 - Initial versioned commit.
-# 0.2 - Modified tags to escape the : separator such that tags handed out are
-#       immediaely read to be used as [ Tag -whatever- ] config headers.
-
-CANTO_PROTOCOL_VERSION = 0.4
+CANTO_PROTOCOL_VERSION = 0.9
 
 from .feed import allfeeds, wlock_feeds, rlock_feeds, wlock_all, wunlock_all, rlock_all, runlock_all, stop_feeds
 from .encoding import encoder
-from .protect import protection
 from .server import CantoServer
 from .config import CantoConfig
 from .storage import CantoShelf
@@ -51,29 +45,13 @@ log = logging.getLogger("CANTO-DAEMON")
 
 FETCH_CHECK_INTERVAL = 60
 
-# x.lock is a specific feed's lock
-# x.locks are all feed's locks
-#
-# Index threads take
-#   x.lock (w) -> protect_lock (r)
-#              \> tag_lock (w)
-#
-# (meaning that it holds x.lock, but takes protect and tag locks serially)
-#
-# So, if any command (in this file) needs to take feed_lock and x.locks first
-#
-# Every other threaded lock taker is going to come through CantoBackend, so the
-# lock order must be the same. Between all cmd_ functions.
-#
-# Fortunately, this means we can do locks alphabetically.
-#
-# Another caveat is that commands that call each other need to hold all the
-# locks at the outset. For example, cmd_items calls cmd_attributes (to handle
-# automatic attributes), so it needs to hold the feed and protect locks, even
-# if it didn't have to otherwise.
-
 class DaemonBackendPlugin(Plugin):
     pass
+
+# Index threads and the main thread no longer take multiple locks at once. The
+# cmd_* functions in CantoBackend only need to worry about deadlocking with
+# each other. By convention, they take locks in alphabetical order and all on
+# start of command, **except feed_lock which is always first**.
 
 class CantoBackend(PluginHandler, CantoServer):
     def __init__(self):
@@ -243,11 +221,8 @@ class CantoBackend(PluginHandler, CantoServer):
         for socket in self.watches["del_tags"]:
             self.write(socket, "DELTAGS", tags)
 
-    # If a socket dies, it's not longer watching any events and
-    # revoke any protection associated with it
+    # If a socket dies, it's no longer watching any events.
 
-    @wlock_feeds
-    @write_lock(protect_lock)
     @write_lock(socktran_lock)
     @write_lock(watch_lock)
     def on_kill_socket(self, socket):
@@ -267,8 +242,6 @@ class CantoBackend(PluginHandler, CantoServer):
         if socket in list(self.socket_transforms.keys()):
             del self.socket_transforms[socket]
 
-        protection.unprotect((socket, "auto"))
-
     # We need to be alerted on certain events, ensure
     # we get notified about them.
 
@@ -284,43 +257,27 @@ class CantoBackend(PluginHandler, CantoServer):
         on_hook("daemon_del_configs", lambda x, y : self.internal_command(x, self.in_delconfigs, y))
         on_hook("daemon_get_configs", lambda x, y : self.internal_command(x, self.in_configs, y))
 
-    # Return list of item tuples after global transforms have
-    # been performed on them.
+    # Return list of item tuples after global transforms have been performed on
+    # them.
 
     def apply_transforms(self, socket, tag):
-
-        # Lambda up a function that, given an id, can tell a filter if it's
-        # protected in this circumstance without allowing filters access to the
-        # socket, or requiring them to know anything about the protection
-        # scheme.
-
-        filter_immune = lambda x :\
-                protection.protected_by(x, (socket, "filter-immune"))
-
-        # Lock the feeds so we don't lose any items. We don't want transforms
-        # to have to deal with ids disappearing from feeds.
-
-        # Because we hold tag / protect write, we know that no more feeds can
-        # start indexing, so taking the lock just means we're making sure none
-        # of them are in progress.
-
         tagobj = alltags.get_tag(tag)
 
         f = allfeeds.items_to_feeds(tagobj)
 
         # Global transform
         if self.conf.global_transform:
-            tagobj = self.conf.global_transform(tagobj, filter_immune)
+            tagobj = self.conf.global_transform(tagobj)
 
         # Tag level transform
         if tag in alltags.tag_transforms and\
                 alltags.tag_transforms[tag]:
-            tagobj = alltags.tag_transforms[tag](tagobj, filter_immune)
+            tagobj = alltags.tag_transforms[tag](tagobj)
 
         # Socket transforms ANDed together.
         if socket in self.socket_transforms:
             for filt in self.socket_transforms[socket]:
-                tagobj = self.socket_transforms[socket][filt](tagobj, filter_immune)
+                tagobj = self.socket_transforms[socket][filt](tagobj)
 
         return tagobj
 
@@ -359,7 +316,6 @@ class CantoBackend(PluginHandler, CantoServer):
         for transform in self.conf.transforms:
             transforms.append({"name" : transform["name"]})
         self.write(socket, "LISTTRANSFORMS", transforms)
-
 
     # TRANSFORM {} -> return current socket transform, with names instead of
     # actual filt objects.
@@ -421,10 +377,9 @@ class CantoBackend(PluginHandler, CantoServer):
 
     # ITEMS [tags] -> { tag : [ ids ], tag2 : ... }
 
-    @rlock_feeds # For _cmd_attributes
+    @read_lock(feed_lock)
     @read_lock(attr_lock)
     @read_lock(config_lock)
-    @write_lock(protect_lock)
     @read_lock(socktran_lock)
     @read_lock(tag_lock)
     def cmd_items(self, socket, args):
@@ -434,12 +389,6 @@ class CantoBackend(PluginHandler, CantoServer):
         for tag in args:
             # get_tag returns a list invariably, but may be empty.
             items = self.apply_transforms(socket, tag)
-
-            # ITEMS must protect all given items automatically to
-            # avoid instances where an item disappears before a PROTECT
-            # call can be made by the client.
-
-            protection.protect((socket, "auto"), items)
 
             # Divide each response into 100 items or less and dispatch them
 
@@ -460,27 +409,14 @@ class CantoBackend(PluginHandler, CantoServer):
             self.write(socket, "ITEMSDONE", {})
 
             for attr_req in attr_list:
-                self._cmd_attributes(socket, attr_req)
-
-    # FEEDATTRIBUTES { 'url' : [ attribs .. ] .. } ->
-    # { url : { attribute : value } ... }
-
-    @rlock_feeds
-    def cmd_feedattributes(self, socket, args):
-        r = {}
-        for url in list(args.keys()):
-            feed = allfeeds.get_feed(url)
-            if not feed:
-                continue
-            r.update({ url : feed.get_feedattributes(args[url])})
-        self.write(socket, "FEEDATTRIBUTES", r)
+                self.cmd_attributes(socket, attr_req)
 
     # ATTRIBUTES { id : [ attribs .. ] .. } ->
     # { id : { attribute : value } ... }
 
     # This is called with appropriate locks from cmd_items
 
-    def _cmd_attributes(self, socket, args):
+    def cmd_attributes(self, socket, args):
         ret = {}
         feeds = allfeeds.items_to_feeds(list(args.keys()))
         for f in feeds:
@@ -488,14 +424,9 @@ class CantoBackend(PluginHandler, CantoServer):
 
         self.write(socket, "ATTRIBUTES", ret)
 
-    @rlock_feeds
-    def cmd_attributes(self, socket, args):
-        self._cmd_attributes(socket, args)
-
     # SETATTRIBUTES { id : { attribute : value } ... } -> None
 
-    @wlock_feeds
-    @write_lock(attr_lock)
+    @read_lock(feed_lock)
     @write_lock(tag_lock)
     def cmd_setattributes(self, socket, args):
 
@@ -539,7 +470,6 @@ class CantoBackend(PluginHandler, CantoServer):
 
     @write_lock(feed_lock)
     @write_lock(config_lock)
-    @read_lock(protect_lock)
     @write_lock(tag_lock)
     @read_lock(watch_lock)
     def cmd_setconfigs(self, socket, args):
@@ -557,7 +487,6 @@ class CantoBackend(PluginHandler, CantoServer):
 
     @write_lock(feed_lock)
     @write_lock(config_lock)
-    @read_lock(protect_lock)
     @write_lock(tag_lock)
     @read_lock(watch_lock)
     def cmd_delconfigs(self, socket, args):
@@ -595,21 +524,6 @@ class CantoBackend(PluginHandler, CantoServer):
                 self.watches["tags"][tag].append(socket)
             else:
                 self.watches["tags"][tag] = [socket]
-
-    # PROTECT { "reason" : [ id, ... ], ... }
-
-    @write_lock(protect_lock)
-    def cmd_protect(self, socket, args):
-        for reason in args:
-            protection.protect((socket, reason), args[reason])
-
-    # UNPROTECT { "reason" : [ id, ... ], ... }
-
-    @write_lock(protect_lock)
-    def cmd_unprotect(self, socket, args):
-        for reason in args:
-            for id in args[reason]:
-                protection.unprotect_one((socket, reason), id)
 
     # UPDATE {}
 

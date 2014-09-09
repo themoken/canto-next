@@ -32,7 +32,7 @@ class CantoTransform():
 
     # This is called with the feeds already read locked.
 
-    def __call__(self, tag, immune):
+    def __call__(self, tag):
         a = {}
         f = allfeeds.items_to_feeds(tag)
         needed = self.needed_attributes(tag)
@@ -48,12 +48,12 @@ class CantoTransform():
                 log.warn("Missing attributes for %s" % item)
                 tag.remove(item)
 
-        return self.transform(tag, a, immune)
+        return self.transform(tag, a)
 
     def needed_attributes(self, tag):
         return []
 
-    def transform(self, items, attrs, immune):
+    def transform(self, items, attrs):
         return items
 
 # A StateFilter will filter out items that match a particular state. Supports
@@ -67,7 +67,7 @@ class StateFilter(CantoTransform):
     def needed_attributes(self, tag):
         return ["canto-state"]
 
-    def transform(self, items, attrs, immune):
+    def transform(self, items, attrs):
         if self.state[0] == "-":
             state = self.state[1:]
             keep = True
@@ -76,7 +76,7 @@ class StateFilter(CantoTransform):
             keep = False
 
         return [ i for i in items if \
-                (state in attrs[i]["canto-state"]) == keep or immune(i)]
+                (state in attrs[i]["canto-state"]) == keep]
 
 # Filter out items whose [attribute] content matches an arbitrary regex.
 
@@ -95,16 +95,12 @@ class ContentFilterRegex(CantoTransform):
             return []
         return [ self.attribute ]
 
-    def transform(self, items, attrs, immune):
+    def transform(self, items, attrs):
         if not self.match:
             return items
 
         r = []
         for item in items:
-            if immune(item):
-                r.append(item)
-                continue
-
             a = attrs[item]
             if self.attribute not in a:
                 r.append(item)
@@ -132,7 +128,7 @@ class SortTransform(CantoTransform):
     def needed_attributes(self, tag):
         return [ self.attr ]
 
-    def transform(self, items, attrs, immune):
+    def transform(self, items, attrs):
         r = [ ( attrs[item][self.attr], item ) for item in items ]
         r.sort()
         return [ item[1] for item in r ]
@@ -158,10 +154,10 @@ class AllTransform(CantoTransform):
                     needed.append(a)
         return needed
 
-    def transform(self, items, attrs, immune):
+    def transform(self, items, attrs):
         good_items = items[:]
         for t in self.transforms:
-            good_items = t.transform(good_items, attrs, immune)
+            good_items = t.transform(good_items, attrs)
             if not good_items:
                 break
         return good_items
@@ -186,12 +182,12 @@ class AnyTransform(CantoTransform):
                     needed.append(a)
         return needed
 
-    def transform(self, items, attrs, immune):
+    def transform(self, items, attrs):
         good_items = []
         per_transform = []
 
         for t in self.transforms:
-            per_transform.append(t.transform(items, attrs, immune))
+            per_transform.append(t.transform(items, attrs))
 
         for pt in per_transform:
             for item in pt:
@@ -209,14 +205,10 @@ class InTags(CantoTransform):
     def needed_attributes(self, tag):
         return []
 
-    def transform(self, items, attrs, immune):
+    def transform(self, items, attrs):
         good = []
 
         for item in items:
-            if immune(item):
-                good.append(item)
-                continue
-
             for itag in alltags.items_to_tags([item]):
                 if itag in self.tags:
                     good.append(item)

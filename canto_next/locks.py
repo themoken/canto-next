@@ -21,7 +21,6 @@ tag_lock = RWLock('tag_lock')
 config_lock = RWLock('config_lock')
 
 # The rest of these are independent.
-protect_lock = RWLock('protect_lock')
 watch_lock = RWLock('watch_lock')
 attr_lock = RWLock('attr_lock')
 socktran_lock = RWLock('socktran_lock')
