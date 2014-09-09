@@ -13,8 +13,11 @@ import logging
 import socket
 import select
 import errno
+import getopt
+import shlex
 import json
 import time
+import sys
 import os
 
 PROTO_TERMINATOR='\x00'
@@ -56,6 +59,70 @@ class CantoSocket:
         on_hook("server_kill_socket", self.prot_kill_frag)
 
         self.connect()
+
+    # Handle options common to all servers and clients
+
+    def common_args(self, extrashort = "", extralong = [], version = ""):
+        self.verbosity = 0
+        self.port = -1
+        self.addr = None
+        self.disabled_plugins = []
+        self.enabled_plugins = []
+        self.plugin_default = True
+
+        try:
+            optlist, sys.argv =\
+                getopt.getopt(sys.argv[1:], 'D:p:a:vhV' + extrashort, ["dir=",
+                "port=", "address=", "help", "version",
+                "noplugins","enabledplugins","disabledplugins"] + extralong)
+
+        except getopt.GetoptError as e:
+            log.error("Error: %s" % e.msg)
+            return -1
+
+        self.conf_dir = os.path.expanduser("~/.canto-ng/")
+
+        self.location_args = []
+
+        for opt, arg in optlist:
+            if opt in [ "-D", "--dir"]:
+                self.conf_dir = os.path.expanduser(arg)
+                self.conf_dir = os.path.realpath(self.conf_dir)
+                self.location_args += [ opt, arg ]
+
+            elif opt in ["-V", "--version"]:
+                print(version)
+                sys.exit(0)
+
+            elif opt in ["-v"]:
+                self.verbosity += 1
+
+            elif opt in [ "-p", "--port"]:
+                try:
+                    self.port = int(arg)
+                    if self.port < 0:
+                        raise Exception
+                except:
+                    log.error("Error: Port must be >0 integer.")
+                    return -1
+                self.location_args += [ opt, arg ]
+
+            elif opt in [ "-a", "--address"]:
+                self.addr = arg
+                self.location_args += [ opt, arg ]
+
+            elif opt in ['--noplugins']:
+                self.plugin_default = False
+
+            elif opt in ['--disableplugins']:
+                self.disabled_plugins = shlex.split(arg)
+
+            elif opt in ['--enableplugins']:
+                self.enabled_plugins = shlex.split(arg)
+
+        self.socket_path = self.conf_dir + "/.canto_socket"
+
+        return optlist
 
     # Server setup, potentially both unix and inet sockets.
     def connect(self):

@@ -12,7 +12,6 @@ from .hooks import call_hook
 
 import logging
 import select
-import getopt
 import fcntl
 import errno
 import time
@@ -31,47 +30,6 @@ class CantoClient(CantoSocket):
         call_hook("client_new_socket", [conn])
         return conn
 
-    # Sets self.conf_dir and self.socket_path
-
-    def common_args(self, extrashort = "", extralong = []):
-        self.port = -1
-        self.addr = None
-
-        try:
-            optlist, sys.argv =\
-                    getopt.getopt(sys.argv[1:], 'D:p:a:' + extrashort,\
-                    ["dir=", "port=", "address="] + extralong)
-        except getopt.GetoptError as e:
-            log.error("Error: %s" % e.msg)
-            return -1
-
-        self.conf_dir = os.path.expanduser("~/.canto-ng/")
-
-        self.location_args = []
-
-        for opt, arg in optlist:
-            if opt in [ "-D", "--dir"]:
-                self.conf_dir = os.path.expanduser(arg)
-                self.conf_dir = os.path.realpath(self.conf_dir)
-                self.location_args += [ opt, arg ]
-
-            elif opt in [ "-p", "--port"]:
-                try:
-                    self.port = int(arg)
-                    if self.port < 0:
-                        raise Exception
-                except:
-                    log.error("Error: Port must be >0 integer.")
-                    return -1
-                self.location_args += [ opt, arg ]
-
-            elif opt in [ "-a", "--address"]:
-                self.addr = arg
-                self.location_args += [ opt, arg ]
-
-        self.socket_path = self.conf_dir + "/.canto_socket"
-
-        return optlist
 
     # Test whether we can lock the pidfile, and if we can, fork the daemon
     # with the proper arguments.

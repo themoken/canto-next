@@ -69,14 +69,15 @@ class CantoRemote(PluginHandler, CantoClient):
                 level = logging.ERROR
         )
 
-        if "-V" in sys.argv:
-            print("canto-remote " + version)
+        optl = self.common_args("h", ["help"], "canto-remote " + version)
+        if optl == -1:
             sys.exit(-1)
 
-        if self.common_args() == -1:
+        if self.args(optl) == -1:
             sys.exit(-1)
 
-        try_plugins(self.conf_dir)
+        try_plugins(self.conf_dir, self.plugin_default, self.disabled_plugins,
+                self.enabled_plugins)
 
         PluginHandler.__init__(self)
         self.plugin_class = DaemonRemotePlugin
@@ -96,9 +97,28 @@ class CantoRemote(PluginHandler, CantoClient):
 
         self.handle_args()
 
+    def args(self, optlist):
+        for opt, arg in optlist:
+            if opt in [ "-h", "--help" ]:
+                self.print_help()
+                sys.exit(0)
+        return 0
+
     def print_help(self):
-        print("USAGE: canto-remote [command] [options]")
+        print("USAGE: canto-remote [options] ([command] [command-args])\n")
         self.print_commands()
+        print("\n\t-h/--help\tThis help")
+        print("\t-V/--version\tPrint version")
+        print("\t-v/\t\tVerbose logging (for debug)")
+        print("\t-D/--dir <dir>\tSet configuration directory.")
+        print("\nPlugin control\n")
+        print("\t--noplugins\t\t\t\tDisable plugins")
+        print("\t--enableplugins 'plugin1 plugin2...'\tEnable single plugins (overrides --noplugins)")
+        print("\t--disableplugins 'plugin1 plugin2...'\tDisable single plugins")
+        print("\nNetwork control\n")
+        print("NOTE: These should be used in conjunction with SSH port forwarding to be secure\n")
+        print("\t-a/--address <IP>\tBind to interface with this address")
+        print("\t-p/--port <port>\tBind to this port")
 
     def print_commands(self):
         print("COMMANDS")

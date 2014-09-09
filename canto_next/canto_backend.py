@@ -85,9 +85,6 @@ class CantoBackend(PluginHandler, CantoServer):
 
         self.plugin_attrs = {}
 
-        # Log verbosity
-        self.verbosity = 0
-
         # Shelf for feeds:
         self.fetch = None
         self.fetch_timer = 0
@@ -96,10 +93,6 @@ class CantoBackend(PluginHandler, CantoServer):
 
         # Whether fetching is inhibited.
         self.no_fetch = False
-
-        self.disabled_plugins = []
-        self.enabled_plugins = []
-        self.plugin_default = True
 
         self.watches = { "new_tags" : [],
                          "del_tags" : [],
@@ -113,11 +106,12 @@ class CantoBackend(PluginHandler, CantoServer):
 
         self.shelf = None
 
-        self.port = -1
-        self.intf = ''
-
         # No bad arguments.
-        if self.args():
+        optl = self.common_args("nh",["nofetch","help"], "canto-daemon " + version)
+        if optl == -1:
+            sys.exit(-1)
+
+        if self.args(optl):
             sys.exit(-1)
 
         # No invalid paths.
@@ -170,9 +164,9 @@ class CantoBackend(PluginHandler, CantoServer):
                 CantoServer.__init__(self, self.sfile, self.socket_command)
             else:
                 log.info("Listening on interface %s:%d" %\
-                        (self.intf, self.port))
+                        (self.addr, self.port))
                 CantoServer.__init__(self, self.sfile, self.socket_command,\
-                        port = self.port, interface = self.intf)
+                        port = self.port, interface = self.addr)
         except Exception as e:
             err = "Error: %s" % e
             print(err)
@@ -771,10 +765,10 @@ class CantoBackend(PluginHandler, CantoServer):
         log.info("Exiting cleanly.")
 
     def print_help(self):
-        print("canto-daemon [options]")
+        print("USAGE: canto-daemon [options]")
         print("\t-h/--help\tThis help")
-        print("\t-V\t\tPrint version")
-        print("\t-v\t\tVerbose logging (for debug)")
+        print("\t-V/--version\tPrint version")
+        print("\t-v/\t\tVerbose logging (for debug)")
         print("\t-D/--dir <dir>\tSet configuration directory.")
         print("\t-n/--nofetch\tJust serve content, don't fetch new content.")
         print("\nPlugin control\n")
@@ -787,59 +781,13 @@ class CantoBackend(PluginHandler, CantoServer):
         print("\t-p/--port <port>\tBind to this port")
 
     # This function parses and validates all of the command line arguments.
-    def args(self):
-        try:
-            optlist = getopt.getopt(sys.argv[1:], 'D:vp:a:nVh',["dir=",\
-                "port=", "address=", "nofetch","noplugins","disableplugins=",\
-                "enableplugins=", "help"])[0]
-        except getopt.GetoptError as e:
-            log.error("Error: %s" % e.msg)
-            return -1
-
-        self.conf_dir = os.path.expanduser("~/.canto-ng/")
-
+    def args(self, optlist):
         for opt, arg in optlist:
-            # -D base configuration directory. Highest priority.
-            if opt in ["-D", "--dir"]:
-                self.conf_dir = os.path.expanduser(arg)
-                self.conf_dir = os.path.realpath(self.conf_dir)
-
-            # -v increase verbosity
-            elif opt in ["-v"]:
-                self.verbosity += 1
-
-            elif opt in ["-p", "--port"]:
-                try:
-                    self.port = int(arg)
-                    if self.port < 0:
-                        raise Exception
-                except:
-                    log.error("Error: Port must be >0 integer.")
-                    return -1
-
-            elif opt in ["-a", "--address"]:
-                self.intf = arg
-
-            elif opt in ["-n", "--nofetch"]:
+            if opt in ["-n", "--nofetch"]:
                 self.no_fetch = True
-
-            elif opt in ['--noplugins']:
-                self.plugin_default = False
-
-            elif opt in ['--disableplugins']:
-                self.disabled_plugins = shlex.split(arg)
-
-            elif opt in ['--enableplugins']:
-                self.enabled_plugins = shlex.split(arg)
-
             elif opt in ['-h', '--help']:
                 self.print_help()
                 sys.exit(0)
-
-            elif opt in ['-V']:
-                print("canto-daemon " + version)
-                return 1
-
         return 0
 
     # SIGINT, take our time, exit cleanly
