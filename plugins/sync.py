@@ -78,11 +78,9 @@ class CantoFileSync(DaemonBackendPlugin):
     # Use hooks to determine when we need to copy stuff.
 
     def pre_setattributes(self, socket, args):
-        print("Attributes set.")
         self.fresh_content = True
 
     def pre_setconfigs(self, socket, args):
-        print("Configs set.")
         self.fresh_config = True
 
     # Open a shelf at path, determine if it's been changed more recently than
