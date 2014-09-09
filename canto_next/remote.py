@@ -25,12 +25,6 @@ import sys
 
 import logging
 
-# By default this will log to stderr.
-logging.basicConfig(
-        format = "%(asctime)s : %(name)s -> %(message)s",
-        datefmt = "%H:%M:%S",
-        level = logging.ERROR
-)
 
 def assign_to_dict(d, var, val):
     terms = escsplit(var, '.', 0, 0, True)
@@ -67,6 +61,13 @@ class DaemonRemotePlugin(Plugin):
 class CantoRemote(PluginHandler, CantoClient):
     def __init__(self):
         self.plugin_attrs = {}
+
+        # By default this will log to stderr.
+        logging.basicConfig(
+                format = "%(asctime)s : %(name)s -> %(message)s",
+                datefmt = "%H:%M:%S",
+                level = logging.ERROR
+        )
 
         if "-V" in sys.argv:
             print("canto-remote " + version)
