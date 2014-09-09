@@ -13,8 +13,6 @@
 # 0.2 - Modified tags to escape the : separator such that tags handed out are
 #       immediaely read to be used as [ Tag -whatever- ] config headers.
 
-version = REPLACE_WITH_VERSION
-
 CANTO_PROTOCOL_VERSION = 0.4
 
 from .feed import allfeeds, wlock_feeds, rlock_feeds, wlock_all, wunlock_all, rlock_all, runlock_all, stop_feeds
@@ -107,7 +105,8 @@ class CantoBackend(PluginHandler, CantoServer):
         self.shelf = None
 
         # No bad arguments.
-        optl = self.common_args("nh",["nofetch","help"], "canto-daemon " + version)
+        version = "canto-daemon " + REPLACE_VERSION + " " + GIT_HASH
+        optl = self.common_args("nh",["nofetch","help"], version)
         if optl == -1:
             sys.exit(-1)
 

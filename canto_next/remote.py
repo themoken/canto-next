@@ -6,8 +6,6 @@
 #   it under the terms of the GNU General Public License version 2 as 
 #   published by the Free Software Foundation.
 
-version = REPLACE_WITH_VERSION
-
 from .plugins import PluginHandler, Plugin, try_plugins
 from .client import CantoClient
 from .encoding import encoder
@@ -69,7 +67,8 @@ class CantoRemote(PluginHandler, CantoClient):
                 level = logging.ERROR
         )
 
-        optl = self.common_args("h", ["help"], "canto-remote " + version)
+        version = "canto-remote " + REPLACE_VERSION + " " + GIT_HASH
+        optl = self.common_args("h", ["help"], version)
         if optl == -1:
             sys.exit(-1)
 
