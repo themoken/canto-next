@@ -62,9 +62,9 @@ class CantoShelf():
         del self.shelf[name]
 
     def update_umod(self):
-        if "control" not in self.shelf:
-            self.shelf["control"] = {}
-        self.shelf["control"]["canto-user-modified"] = int(time.time())
+        if "control" not in self.cache:
+            self.cache["control"] = {}
+        self.cache["control"]["canto-user-modified"] = int(time.time())
 
     @wlock_feeds
     def sync(self):
