@@ -210,8 +210,13 @@ class CantoFeed(PluginHandler):
                     continue
 
                 for a in attributes[item]:
-                    if a in d_item:
-                        attrs[a] = d_item[a]
+                    if a == "description":
+                        real = "summary"
+                    else:
+                        real = a
+
+                    if real in d_item:
+                        attrs[a] = d_item[real]
                     else:
                         attrs[a] = ""
             r[item] = attrs
