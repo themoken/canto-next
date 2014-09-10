@@ -84,6 +84,8 @@ class CantoServer(CantoSocket):
                 call_hook("server_kill_socket", [c])
                 t.join()
                 self.connections.remove((c, t))
+                if self.connections == []:
+                    call_hook("server_no_connections", [])
         self.connections_lock.release()
 
     def accept_conn(self, conn):
@@ -101,6 +103,9 @@ class CantoServer(CantoSocket):
 
         self.connections[-1][1].daemon = True
         self.connections[-1][1].start()
+
+        if len(self.connections) == 1:
+            call_hook("server_first_connection", [])
 
         self.connections_lock.release()
 
