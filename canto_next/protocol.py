@@ -74,7 +74,7 @@ class CantoSocket:
             optlist, sys.argv =\
                 getopt.getopt(sys.argv[1:], 'D:p:a:vhV' + extrashort, ["dir=",
                 "port=", "address=", "help", "version",
-                "noplugins","enabledplugins","disabledplugins"] + extralong)
+                "noplugins","enableplugins=","disableplugins="] + extralong)
 
         except getopt.GetoptError as e:
             log.error("Error: %s" % e.msg)
