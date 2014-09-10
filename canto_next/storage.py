@@ -21,14 +21,42 @@ import os
 
 log = logging.getLogger("SHELF")
 
-class CantoShelf():
-    def __init__(self, filename):
-        self.filename = filename
+CACHE_OFF = 0
+CACHE_ON_CONNS = 1
+CACHE_ALWAYS = 2
 
+class CantoShelf():
+    def __init__(self, filename, caching):
+        self.filename = filename
+        self.caching = caching
+
+        self.index = []
         self.cache = {}
 
+        self.has_conns = False
         self.open()
 
+        if self.caching == CACHE_ON_CONNS:
+            on_hook("server_first_connection", self.on_first_conn)
+            on_hook("server_no_connections", self.on_no_conns)
+
+    @wlock_feeds
+    def on_first_conn(self):
+        log.debug("Heating cache.")
+
+        self.index = []
+        for item in self.shelf:
+            self.cache[item] = self.shelf[item]
+            self.index.append(item)
+
+        self.has_conns = True
+
+    def on_no_conns(self):
+        log.debug("Killing cache.")
+        self.has_conns = False
+        self.sync()
+
+    @wlock_feeds
     def open(self):
         call_hook("daemon_db_open", [self.filename])
 
@@ -37,6 +65,14 @@ class CantoShelf():
             mode += 'u'
 
         self.shelf = shelve.open(self.filename, mode)
+
+        if self.caching == CACHE_ALWAYS or\
+                (self.caching == CACHE_ON_CONNS and self.has_conns):
+            for key in self.shelf:
+                self.cache[key] = self.shelf[key]
+
+        self.index = list(self.shelf.keys())
+
         log.debug("Shelf opened: %s" % self.shelf)
 
     def __setitem__(self, name, value):
@@ -45,21 +81,24 @@ class CantoShelf():
     def __getitem__(self, name):
         if name in self.cache:
             return self.cache[name]
+        log.debug("getitem hitting shelf")
         return self.shelf[name]
 
     def __contains__(self, name):
         if name in self.cache:
             return True
-        return name in self.shelf
+        if name in self.index:
+            return True
+        return False
 
     def __delitem__(self, name):
         if name in self.cache:
             del self.cache[name]
-            try:
-                del self.shelf[name]
-            except:
-                pass
-        del self.shelf[name]
+
+        if name in self.index:
+            self.index.remove(name)
+            log.debug("delitem hitting shelf")
+            del self.shelf[name]
 
     def update_umod(self):
         if "control" not in self.cache:
@@ -77,7 +116,11 @@ class CantoShelf():
 
         for key in self.cache:
             self.shelf[key] = self.cache[key]
-        self.cache = {}
+
+        if self.caching == CACHE_OFF or\
+                (self.caching == CACHE_ON_CONNS and not self.has_conns):
+            self.cache = {}
+            log.debug("Unloaded.")
 
         self.shelf.sync()
         log.debug("Synced.")
@@ -86,7 +129,6 @@ class CantoShelf():
             self.shelf.close()
             self._reorganize()
             self.open()
-            log.debug("Trimmed.")
 
     def _reorganize(self):
         # This is a workaround for shelves implemented with database types

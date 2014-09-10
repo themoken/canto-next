@@ -14,7 +14,7 @@ from .feed import allfeeds, wlock_feeds, rlock_feeds, wlock_all, wunlock_all, rl
 from .encoding import encoder
 from .server import CantoServer
 from .config import CantoConfig
-from .storage import CantoShelf
+from .storage import CantoShelf, CACHE_OFF, CACHE_ALWAYS, CACHE_ON_CONNS
 from .fetch import CantoFetch
 from .hooks import on_hook, call_hook
 from .tag import alltags
@@ -81,10 +81,11 @@ class CantoBackend(PluginHandler, CantoServer):
         self.socket_transforms = {}
 
         self.shelf = None
+        self.caching = CACHE_OFF
 
         # No bad arguments.
         version = "canto-daemon " + REPLACE_VERSION + " " + GIT_HASH
-        optl = self.common_args("nh",["nofetch","help"], version)
+        optl = self.common_args("nhc:",["nofetch","help","cache="], version)
         if optl == -1:
             sys.exit(-1)
 
@@ -668,6 +669,11 @@ class CantoBackend(PluginHandler, CantoServer):
         print("\t-v/\t\tVerbose logging (for debug)")
         print("\t-D/--dir <dir>\tSet configuration directory.")
         print("\t-n/--nofetch\tJust serve content, don't fetch new content.")
+        print("\n\t-c/--cache [on|off|conn]")
+        print("\t\tControl memory usage v. performance")
+        print("\t\t\ton - keep data in memory always (fastest)")
+        print("\t\t\tconn - keep data in memory with active connection")
+        print("\t\t\toff - keep data mostly on disk (default)")
         print("\nPlugin control\n")
         print("\t--noplugins\t\t\t\tDisable plugins")
         print("\t--enableplugins 'plugin1 plugin2...'\tEnable single plugins (overrides --noplugins)")
@@ -685,6 +691,16 @@ class CantoBackend(PluginHandler, CantoServer):
             elif opt in ['-h', '--help']:
                 self.print_help()
                 sys.exit(0)
+            elif opt in ['-c', '--cache']:
+                if arg == "conn":
+                    self.caching = CACHE_ON_CONNS
+                elif arg == "on":
+                    self.caching = CACHE_ALWAYS
+                elif arg == "off":
+                    self.caching = CACHE_OFF
+                else:
+                    print("Unknown cache setting: %s" % arg)
+                    sys.exit(-1)
         return 0
 
     # SIGINT, take our time, exit cleanly
@@ -831,7 +847,7 @@ class CantoBackend(PluginHandler, CantoServer):
     # fatal and handled lower in CantoShelf.
 
     def get_storage(self):
-        self.shelf = CantoShelf(self.feed_path)
+        self.shelf = CantoShelf(self.feed_path, self.caching)
 
     # Bring up config, the only errors possible at this point will
     # be fatal and handled lower in CantoConfig.
