@@ -104,7 +104,7 @@ class CantoBackend(PluginHandler, CantoServer):
         self.set_log()
 
         # Initial log chatter.
-        log.info("Canto Daemon started.")
+        log.info(version)
 
         if self.verbosity:
             rootlog = logging.getLogger()
