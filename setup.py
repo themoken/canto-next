@@ -6,7 +6,7 @@ from distutils.core import setup
 import subprocess
 import os
 
-string_version = "0.9.0-rc1"
+string_version = "0.9.0-alpha2"
 
 changes = ['canto_backend.py','remote.py']
 
