@@ -72,7 +72,7 @@ class CantoTags():
 
     def add_tag(self, id, name):
         if name in self.extra_tags:
-            extras = [ "tag:" + x for x in self.extra_tags[name] ]
+            extras = self.extra_tags[name]
         else:
             extras = []
 
