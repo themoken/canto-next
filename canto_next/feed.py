@@ -334,28 +334,28 @@ class CantoFeed(PluginHandler):
         for olditem in old_contents["entries"]:
             for item in to_add:
                 if olditem["id"] == item["id"]:
+                    break
+            else:
+                if "canto_update" not in olditem:
+                    olditem["canto_update"] = ref_time
+
+                item_time = olditem["canto_update"]
+
+                if "canto-state" in olditem:
+                    item_state = olditem["canto-state"]
+                else:
+                    item_state = []
+
+                if (ref_time - item_time) < self.keep_time:
+                    log.debug("Item not over keep_time (%d): %s" %
+                            (self.keep_time, olditem["id"]))
+                elif self.keep_unread and "read" not in item_state:
+                    log.debug("Keeping unread item: %s\n" % olditem["id"])
+                else:
+                    log.debug("Discarding: %s", olditem["id"])
                     continue
 
-            if "canto_update" not in olditem:
-                olditem["canto_update"] = ref_time
-
-            item_time = olditem["canto_update"]
-
-            if "canto-state" in olditem:
-                item_state = olditem["canto-state"]
-            else:
-                item_state = []
-
-            if (ref_time - item_time) < self.keep_time:
-                log.debug("Item not over keep_time (%d): %s" %
-                        (self.keep_time, olditem["id"]))
-            elif self.keep_unread and "read" not in item_state:
-                log.debug("Keeping unread item: %s\n" % olditem["id"])
-            else:
-                log.debug("Discarding: %s", olditem["id"])
-                continue
-
-            update_contents["entries"].append(olditem)
+                update_contents["entries"].append(olditem)
 
         # Allow plugins DaemonFeedPlugins defining edit_* functions to have a
         # crack at the contents before we commit to disk.
