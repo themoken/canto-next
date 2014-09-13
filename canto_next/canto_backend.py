@@ -395,17 +395,20 @@ class CantoBackend(PluginHandler, CantoServer):
 
             attr_list = []
 
-            while len(items):
-                chunk = items[:100]
-                items = items[100:]
+            if len(items) == 0:
+                self.write(socket, "ITEMS", { tag : [] })
+            else:
+                while len(items):
+                    chunk = items[:100]
+                    items = items[100:]
 
-                attr_req = {}
-                if socket in self.autoattr:
-                    for id in chunk:
-                        attr_req[id] = self.autoattr[socket][:]
+                    attr_req = {}
+                    if socket in self.autoattr:
+                        for id in chunk:
+                            attr_req[id] = self.autoattr[socket][:]
 
-                self.write(socket, "ITEMS", { tag : chunk })
-                attr_list.append(attr_req)
+                    self.write(socket, "ITEMS", { tag : chunk })
+                    attr_list.append(attr_req)
 
             self.write(socket, "ITEMSDONE", {})
 
