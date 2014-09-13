@@ -187,7 +187,12 @@ class CantoFeed(PluginHandler):
                 if d_id != d_item["id"]:
                     continue
 
-                for a in attributes[item]:
+                if not attributes[item]:
+                    get = list(d_item.keys())
+                else:
+                    get = attributes[item]
+
+                for a in get:
                     if a == "description":
                         real = "summary"
                     else:
@@ -197,6 +202,7 @@ class CantoFeed(PluginHandler):
                         attrs[a] = d_item[real]
                     else:
                         attrs[a] = ""
+
             r[item] = attrs
         return r
 
