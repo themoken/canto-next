@@ -62,8 +62,11 @@ class CantoTags():
         self.tag_transforms = {}
         self.extra_tags = {}
 
-        for tag in self.tags:
-            self.tag_changed(tag)
+        # Don't set tag_changed here, because we don't want to alert when a tag
+        # will probably just be re-populated with identical content.
+
+        # It it isn't, then the add or remove will set it for us.
+
         self.tags = {}
 
     #
