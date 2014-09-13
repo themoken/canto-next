@@ -4,6 +4,7 @@ from distutils.command.install_data import install_data
 from distutils.command.build_py import build_py
 from distutils.core import setup
 import subprocess
+import glob
 import os
 
 string_version = "0.9.0-alpha3"
@@ -48,7 +49,8 @@ setup(name='Canto',
       packages=['canto_next'],
       scripts=['bin/canto-daemon','bin/canto-remote'],
       data_files = [("share/man/man1/", ["man/canto-daemon.1", "man/canto-remote.1"]),
-                    ("lib/systemd/user", ["systemd/user/canto-daemon.service"])],
+                    ("lib/systemd/user", ["systemd/user/canto-daemon.service"]),
+                    ("lib/canto/plugins", glob.glob("plugins/*.py"))],
       cmdclass = {  'install_data' : canto_next_install_data,
                     'build_py' : canto_next_build_py },
 )
