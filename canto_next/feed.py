@@ -99,9 +99,10 @@ def wunlock_all():
 def wlock_feeds(fn):
     def _fl(*args):
         wlock_all()
-        r = fn(*args)
-        wunlock_all()
-        return r
+        try:
+            return fn(*args)
+        finally:
+            wunlock_all()
     return _fl
 
 def rlock_all():
@@ -117,9 +118,10 @@ def runlock_all():
 def rlock_feeds(fn):
     def _fl(*args):
         rlock_all()
-        r = fn(*args)
-        runlock_all()
-        return r
+        try:
+            return fn(*args)
+        finally:
+            runlock_all()
     return _fl
 
 def stop_feeds():

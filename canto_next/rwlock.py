@@ -107,9 +107,10 @@ def read_lock(lock):
     def _rlock_fn(fn):
         def _rlock(*args, **kwargs):
             lock.acquire_read()
-            r = fn(*args, **kwargs)
-            lock.release_read()
-            return r
+            try:
+                return fn(*args, **kwargs)
+            finally:
+                lock.release_read()
         return _rlock
     return _rlock_fn
 
@@ -117,8 +118,9 @@ def write_lock(lock):
     def _wlock_fn(fn):
         def _wlock(*args, **kwargs):
             lock.acquire_write()
-            r = fn(*args, **kwargs)
-            lock.release_write()
-            return r
+            try:
+                return fn(*args, **kwargs)
+            finally:
+               lock.release_write()
         return _wlock
     return _wlock_fn
