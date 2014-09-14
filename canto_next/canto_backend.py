@@ -162,8 +162,8 @@ class CantoBackend(PluginHandler, CantoServer):
 
         self.start()
 
-    def _reparse_config(self, originating_socket):
-        self.conf.parse(False)
+    def _reparse_config(self, originating_socket, changes):
+        self.conf.parse(False, changes)
 
         if self.conf.errors:
             self.write(originating_socket, "ERRORS", self.conf.errors)
@@ -184,7 +184,7 @@ class CantoBackend(PluginHandler, CantoServer):
 
     def on_config_change(self, change, originating_socket):
 
-        self._reparse_config(originating_socket)
+        self._reparse_config(originating_socket, change)
 
         # Force check of fetching. This automatically starts the fetch. For new
         # feeds, but also takes any new settings (like rates) into account.

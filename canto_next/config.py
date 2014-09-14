@@ -98,26 +98,38 @@ class CantoConfig():
         self.urls = []
         self.feed_names = []
 
-    def parse(self, fromfile=True):
-        self.reset()
-        self.read_config(fromfile)
-        if self.validate():
-            self.instantiate()
-            if not fromfile:
+    def parse(self, fromfile=True, changes={}):
+
+        # Since we host client config too, check if
+        # we should do a reparse.
+
+        we_care = False
+        for header in [ "feeds", "tags", "defaults" ]:
+            if header in changes:
+                we_care = True
+                break
+
+        if fromfile or we_care:
+            self.reset()
+            if fromfile:
+                self.read_config()
+            if self.validate():
+                self.instantiate()
                 self.write()
+        elif not fromfile:
+            self.write()
 
-    def read_config(self, fromfile):
-        if fromfile:
-            if not os.path.exists(self.filename):
-                log.info("No config found, writing default.")
-                self.json = default_config.copy()
-                self.write()
+    def read_config(self):
+        if not os.path.exists(self.filename):
+            log.info("No config found, writing default.")
+            self.json = default_config.copy()
+            self.write()
 
-            c = codecs.open(self.filename, "rb", locale_enc)
-            self.json = json.load(c)
-            c.close()
-            log.info("Read %s" % self.filename)
+        c = codecs.open(self.filename, "rb", locale_enc)
+        self.json = json.load(c)
+        c.close()
 
+        log.info("Read %s" % self.filename)
         log.debug("Parsed into: %s" % self.json)
 
     def error(self, ident, val, error):
