@@ -56,6 +56,14 @@ class CantoShelf():
         self.has_conns = False
         self.sync()
 
+    def check_control_data(self):
+        if "control" not in self.cache:
+            self.cache["control"] = {}
+
+        for ctrl_field in ["canto-modified","canto-user-modified"]:
+            if ctrl_field not in self.cache["control"]:
+                self.shelf["control"][ctrl_field] = 0
+
     @wlock_feeds
     def open(self):
         call_hook("daemon_db_open", [self.filename])
@@ -71,12 +79,15 @@ class CantoShelf():
             for key in self.shelf:
                 self.cache[key] = self.shelf[key]
 
+        self.check_control_data()
+
         self.index = list(self.shelf.keys())
 
         log.debug("Shelf opened: %s" % self.shelf)
 
     def __setitem__(self, name, value):
         self.cache[name] = value
+        self.update_mod()
 
     def __getitem__(self, name):
         if name in self.cache:
@@ -100,10 +111,16 @@ class CantoShelf():
             log.debug("delitem hitting shelf")
             del self.shelf[name]
 
+        self.update_mod()
+
     def update_umod(self):
-        if "control" not in self.cache:
-            self.cache["control"] = {}
-        self.cache["control"]["canto-user-modified"] = int(time.time())
+        ts = int(time.time())
+        self.cache["control"]["canto-user-modified"] = ts
+        self.cache["control"]["canto-modified"] = ts
+
+    def update_mod(self):
+        ts = int(time.time())
+        self.cache["control"]["canto-modified"] = ts
 
     @wlock_feeds
     def sync(self):
