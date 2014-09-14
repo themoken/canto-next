@@ -50,14 +50,14 @@ default_config =\
 }
 
 def parse_locks():
-    feed_lock.acquire_write()
     config_lock.acquire_write()
+    feed_lock.acquire_write()
     tag_lock.acquire_write()
     watch_lock.acquire_read()
 
 def parse_unlocks():
-    feed_lock.release_write()
     config_lock.release_write()
+    feed_lock.release_write()
     tag_lock.release_write()
     watch_lock.release_read()
 

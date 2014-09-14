@@ -10,7 +10,7 @@
 
 CANTO_PROTOCOL_VERSION = 0.9
 
-from .feed import allfeeds, wlock_feeds, rlock_feeds, wlock_all, wunlock_all, rlock_all, runlock_all, stop_feeds
+from .feed import allfeeds, wlock_feeds, rlock_feeds, wlock_all, wunlock_all, rlock_all, runlock_all, stop_feeds, rlock_feed_objs, runlock_feed_objs
 from .encoding import encoder
 from .server import CantoServer
 from .config import CantoConfig, parse_locks, parse_unlocks
@@ -50,8 +50,7 @@ class DaemonBackendPlugin(Plugin):
 
 # Index threads and the main thread no longer take multiple locks at once. The
 # cmd_* functions in CantoBackend only need to worry about deadlocking with
-# each other. By convention, they take locks in alphabetical order and all on
-# start of command, **except feed_lock which is always first**.
+# each other.
 
 class CantoBackend(PluginHandler, CantoServer):
     def __init__(self):
@@ -261,24 +260,32 @@ class CantoBackend(PluginHandler, CantoServer):
     # Return list of item tuples after global transforms have been performed on
     # them.
 
+    @read_lock(config_lock)
+    @read_lock(socktran_lock)
+    @read_lock(feed_lock)
+    @read_lock(tag_lock)
     def apply_transforms(self, socket, tag):
         tagobj = alltags.get_tag(tag)
 
-        f = allfeeds.items_to_feeds(tagobj)
+        feeds = allfeeds.items_to_feeds(tagobj)
+        rlock_feed_objs(feeds)
 
-        # Global transform
-        if self.conf.global_transform:
-            tagobj = self.conf.global_transform(tagobj)
+        try:
+            # Global transform
+            if self.conf.global_transform:
+                tagobj = self.conf.global_transform(tagobj)
 
-        # Tag level transform
-        if tag in alltags.tag_transforms and\
-                alltags.tag_transforms[tag]:
-            tagobj = alltags.tag_transforms[tag](tagobj)
+            # Tag level transform
+            if tag in alltags.tag_transforms and\
+                    alltags.tag_transforms[tag]:
+                tagobj = alltags.tag_transforms[tag](tagobj)
 
-        # Socket transforms ANDed together.
-        if socket in self.socket_transforms:
-            for filt in self.socket_transforms[socket]:
-                tagobj = self.socket_transforms[socket][filt](tagobj)
+            # Socket transforms ANDed together.
+            if socket in self.socket_transforms:
+                for filt in self.socket_transforms[socket]:
+                    tagobj = self.socket_transforms[socket][filt](tagobj)
+        finally:
+            runlock_feed_objs(feeds)
 
         return tagobj
 
@@ -297,7 +304,7 @@ class CantoBackend(PluginHandler, CantoServer):
     # maintag tags will be first, and in feed order. Following tags
     # are in whatever order the dict gives them in.
 
-    @rlock_feeds
+    @read_lock(feed_lock)
     @read_lock(tag_lock)
     def cmd_listtags(self, socket, args):
         r = []
@@ -378,11 +385,7 @@ class CantoBackend(PluginHandler, CantoServer):
 
     # ITEMS [tags] -> { tag : [ ids ], tag2 : ... }
 
-    @read_lock(feed_lock)
     @read_lock(attr_lock)
-    @read_lock(config_lock)
-    @read_lock(socktran_lock)
-    @read_lock(tag_lock)
     def cmd_items(self, socket, args):
         ids = []
         response = {}
@@ -418,8 +421,11 @@ class CantoBackend(PluginHandler, CantoServer):
     # ATTRIBUTES { id : [ attribs .. ] .. } ->
     # { id : { attribute : value } ... }
 
-    # This is called with appropriate locks from cmd_items
+    # Hold feed_lock so that get_attributes won't fail on a missing feed, but
+    # items_to_feeds can still throw an exception if attributes requests come
+    # in for items from removed feeds.
 
+    @read_lock(feed_lock)
     def cmd_attributes(self, socket, args):
         ret = {}
         feeds = allfeeds.items_to_feeds(list(args.keys()))

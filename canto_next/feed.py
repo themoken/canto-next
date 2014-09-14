@@ -124,6 +124,23 @@ def rlock_feeds(fn):
             runlock_all()
     return _fl
 
+# feed_objs to enforce
+def rlock_feed_objs(objs):
+    feed_lock.acquire_read()
+    for feed in sorted(allfeeds.feeds.keys()):
+        for obj in objs:
+            if obj.URL == feed:
+                obj.lock.acquire_read()
+                break
+
+def runlock_feed_objs(objs):
+    for feed in sorted(allfeeds.feeds.keys()):
+        for obj in objs:
+            if obj.URL == feed:
+                obj.lock.release_read()
+                break
+    feed_lock.release_read()
+
 def stop_feeds():
     for feed in allfeeds.feeds:
         allfeeds.feeds[feed].stopped = True
@@ -204,9 +221,8 @@ class CantoFeed(PluginHandler):
                         attrs[a] = d_item[real]
                     else:
                         attrs[a] = ""
+                r[item] = attrs
                 break
-
-            r[item] = attrs
         return r
 
     # Given an ID and a dict of attributes, update the disk.
