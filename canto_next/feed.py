@@ -202,6 +202,7 @@ class CantoFeed(PluginHandler):
                         attrs[a] = d_item[real]
                     else:
                         attrs[a] = ""
+                break
 
             r[item] = attrs
         return r
