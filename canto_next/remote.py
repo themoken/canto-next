@@ -116,8 +116,8 @@ class CantoRemote(PluginHandler, CantoClient):
         print("\t--disableplugins 'plugin1 plugin2...'\tDisable single plugins")
         print("\nNetwork control\n")
         print("NOTE: These should be used in conjunction with SSH port forwarding to be secure\n")
-        print("\t-a/--address <IP>\tBind to interface with this address")
-        print("\t-p/--port <port>\tBind to this port")
+        print("\t-a/--address <IP>\tConnect to this address")
+        print("\t-p/--port <port>\tConnect to this port")
 
     def print_commands(self):
         print("COMMANDS")
