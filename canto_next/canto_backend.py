@@ -13,7 +13,7 @@ CANTO_PROTOCOL_VERSION = 0.9
 from .feed import allfeeds, wlock_feeds, rlock_feeds, wlock_all, wunlock_all, rlock_all, runlock_all, stop_feeds
 from .encoding import encoder
 from .server import CantoServer
-from .config import CantoConfig
+from .config import CantoConfig, parse_locks, parse_unlocks
 from .storage import CantoShelf, CACHE_OFF, CACHE_ALWAYS, CACHE_ON_CONNS
 from .fetch import CantoFetch
 from .hooks import on_hook, call_hook
@@ -472,16 +472,15 @@ class CantoBackend(PluginHandler, CantoServer):
         self.cmd_setconfigs(None, args)
         return self.conf.json
 
-    @write_lock(feed_lock)
-    @write_lock(config_lock)
-    @write_lock(tag_lock)
-    @read_lock(watch_lock)
     def cmd_setconfigs(self, socket, args):
+        parse_locks()
 
         self.conf.merge(args.copy())
 
         # config_change handles it's own locking
         call_hook("daemon_config_change", [args, socket])
+
+        parse_unlocks()
 
     # DELCONFIGS { "key" : "DELETE", ...}
 
@@ -489,16 +488,15 @@ class CantoBackend(PluginHandler, CantoServer):
         cmd_delconfigs(None, args)
         return self.conf.json
 
-    @write_lock(feed_lock)
-    @write_lock(config_lock)
-    @write_lock(tag_lock)
-    @read_lock(watch_lock)
     def cmd_delconfigs(self, socket, args):
+        parse_locks()
 
         self.conf.delete(args.copy())
 
         # config_change handles it's own locking
         call_hook("daemon_config_change", [args, socket])
+
+        parse_unlocks()
 
     # WATCHCONFIGS
 

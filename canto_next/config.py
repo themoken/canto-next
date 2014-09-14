@@ -7,6 +7,7 @@
 #   it under the terms of the GNU General Public License version 2 as 
 #   published by the Free Software Foundation.
 
+from .locks import feed_lock, config_lock, tag_lock, watch_lock
 from .encoding import locale_enc
 from .transform import eval_transform
 from .feed import allfeeds, CantoFeed
@@ -47,6 +48,18 @@ default_config =\
             }
         ]
 }
+
+def parse_locks():
+    feed_lock.acquire_write()
+    config_lock.acquire_write()
+    tag_lock.acquire_write()
+    watch_lock.acquire_read()
+
+def parse_unlocks():
+    feed_lock.release_write()
+    config_lock.release_write()
+    tag_lock.release_write()
+    watch_lock.release_read()
 
 class CantoConfig():
     def __init__(self, filename, shelf):
@@ -99,6 +112,7 @@ class CantoConfig():
         self.feed_names = []
 
     def parse(self, fromfile=True, changes={}):
+        parse_locks()
 
         # Since we host client config too, check if
         # we should do a reparse.
@@ -118,6 +132,8 @@ class CantoConfig():
                 self.write()
         elif not fromfile:
             self.write()
+
+        parse_unlocks()
 
     def read_config(self):
         if not os.path.exists(self.filename):
