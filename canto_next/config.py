@@ -129,7 +129,8 @@ class CantoConfig():
                 self.read_config()
             if self.validate():
                 self.instantiate()
-                self.write()
+                if not fromfile:
+                    self.write()
         elif not fromfile:
             self.write()
 
