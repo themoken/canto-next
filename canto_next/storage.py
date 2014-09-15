@@ -57,11 +57,11 @@ class CantoShelf():
         self.sync()
 
     def check_control_data(self):
-        if "control" not in self.cache:
-            self.cache["control"] = {}
+        if "control" not in self.shelf:
+            self.shelf["control"] = {}
 
         for ctrl_field in ["canto-modified","canto-user-modified"]:
-            if ctrl_field not in self.cache["control"]:
+            if ctrl_field not in self.shelf["control"]:
                 self.shelf["control"][ctrl_field] = 0
 
     @wlock_feeds
@@ -74,12 +74,12 @@ class CantoShelf():
 
         self.shelf = shelve.open(self.filename, mode)
 
+        self.check_control_data()
+
         if self.caching == CACHE_ALWAYS or\
                 (self.caching == CACHE_ON_CONNS and self.has_conns):
             for key in self.shelf:
                 self.cache[key] = self.shelf[key]
-
-        self.check_control_data()
 
         self.index = list(self.shelf.keys())
 
@@ -114,11 +114,17 @@ class CantoShelf():
         self.update_mod()
 
     def update_umod(self):
+        if "control" not in self.cache:
+            self.cache["control"] = self.shelf['control']
+
         ts = int(time.time())
         self.cache["control"]["canto-user-modified"] = ts
         self.cache["control"]["canto-modified"] = ts
 
     def update_mod(self):
+        if "control" not in self.cache:
+            self.cache["control"] = self.shelf['control']
+
         ts = int(time.time())
         self.cache["control"]["canto-modified"] = ts
 
