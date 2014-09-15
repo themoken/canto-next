@@ -251,7 +251,6 @@ class CantoFileSync(DaemonBackendPlugin):
     def loop(self):
         self.sync_interval -= 1
         if self.sync_interval <= 0:
-            self.cmd_syncto()
             self.cmd_sync()
 
             self.sync_interval = INTERVAL
