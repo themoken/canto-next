@@ -360,17 +360,9 @@ class CantoRemote(PluginHandler, CantoClient):
         print("""<opml version="1.0">""")
         print("""\t<body>""")
         for f in self._get_feeds():
-            self.write("FEEDATTRIBUTES", { f["url"] : [ "version"] })
-            attrs = self._wait_response("FEEDATTRIBUTES")
-            if "atom" in attrs[f["url"]]["version"]:
-                feedtype = "pie"
-            else:
-                feedtype = "rss"
-
-            print("""\t\t<outline text="%s" xmlUrl="%s" type="%s" />""" %\
+            print("""\t\t<outline text="%s" xmlUrl="%s" type="rss" />""" %\
                 (xml_escape(f["name"].replace("\"","\\\"")),
-                 xml_escape(f["url"]),
-                 feedtype))
+                 xml_escape(f["url"])))
 
         print("""\t</body>""")
         print("""</opml>""")
