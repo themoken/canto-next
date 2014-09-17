@@ -12,10 +12,6 @@
 
 INTERVAL = 5 * 60
 
-# TODO
-#   - Need to handle protected items (ugh)
-#   - Need to propagate change information to connected clients
-
 from canto_next.hooks import on_hook, call_hook
 from canto_next.canto_backend import DaemonBackendPlugin
 from canto_next.remote import DaemonRemotePlugin
@@ -175,6 +171,8 @@ class CantoFileSync(DaemonBackendPlugin):
             conf_stat = os.stat(self.backend.conf_path)
             sync_stat = os.stat(fname)
 
+            log.debug('conf: %s sync: %s' % (conf_stat.st_mtime, sync_stat.st_mtime))
+
             diff = sync_stat.st_mtime - conf_stat.st_mtime
 
             # Will be empty tempfile if syncfrom failed.
@@ -186,6 +184,11 @@ class CantoFileSync(DaemonBackendPlugin):
                     shutil.move(fname, self.backend.conf_path)
                     self.backend.conf.parse()
                     parse_unlocks()
+
+                    # Echo these changes to all connected sockets that care
+                    for socket in self.backend.watches["config"]:
+                        self.backend.in_configs({}, socket)
+
                 elif diff == 0:
                     log.debug("conf: We are equal")
                     os.unlink(fname)
@@ -222,7 +225,8 @@ class CantoFileSync(DaemonBackendPlugin):
                 for feed in sorted(allfeeds.feeds.keys()):
                     allfeeds.feeds[feed].lock.release_write()
 
-                # Force feeds to be repopulated from disk
+                # Force feeds to be repopulated from disk, which will handle
+                # communicating changes to connections
 
                 self.backend.fetch.fetch(True, True)
                 self.backend.fetch.reap(True)
