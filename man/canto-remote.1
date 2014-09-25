@@ -3,19 +3,42 @@
 .SH NAME
 Canto-remote \- A basic remote for canto-daemon
 
+This provides some capability to configure and query canto-daemon without a full client. Useful for scripting or interfacing with other programs.
+
 .SH COMMAND LINE USAGE
+
+canto-remote (options) [command] (arguments)
+
+.SH OPTIONS
 
 .TP
 \-V
 Print version info and exit.
 
 .TP
+\-h/--help
+Print usage help
+
+.TP
 \-D/--dir [directory]
 Change base directory for canto-daemon (default: ~/.canto-ng)
 
 .TP
+\-\-noplugins
+Disable all plugins
+
+.TP
+\-\-enableplugins 'plugin1 plugin2...'
+Enable these plugins (overrides --noplugins)
+
+.TP
+\-\-disableplugins 'plugin1 plugin2...'
+Disable these plugins
+
+.TP
 \-a/--address [IP]
-Attempt to connect to address instead of local Unix socket
+Attempt to connect to address instead of local Unix socket, defaults to
+loopback (127.0.0.1)
 
 .TP
 \-p/--port [port]
@@ -23,10 +46,75 @@ Use port when connecting with -a
 
 .SH COMMANDS
 
-Run canto-remote with no arguments to list usage and commands.
+Canto-remote supports various commands to configure canto-daemon, although
+using a real client is recommended.
+
+.TP
+.B help [command]
+Get help on a specific command
+
+.TP
+.B addfeed [URL] (username=user password=secret) (name="Some name")
+Subscribe to a feed, optionally with special arguments. If no name is
+specified, the feed's title will be used.
+
+.TP
+.B listfeeds
+List all subscribed feeds
+
+.TP
+.B delfeed [name or listfeeds index]
+Unsubscribe from a feed
+
+.TP
+.B force-update
+Refetch all feeds, regardless of timestamps
+
+.TP
+.B config (="value")
+Change a configuration variable
+.br
+.B (You probably don't want to do this by hand, use a client)
+
+.TP
+.B one-config (= value)
+Change a single configuration variable, assuming the entire line is one setting.
+.br
+.B (You probably don't want to do this by hand, use a client)
+
+.TP
+.B export
+.br
+Write an OPML formatted list of feeds to stdout
+.br
+(i.e. canto-remote export > feedlist.opml)
+
+.TP
+.B import
+.br
+Import an OPML formatted list of feeds from stdin
+.br
+(i.e. canto-remote import < feedlist.opml)
+
+.TP
+.B kill
+.br
+Kill the daemon you're connecting to
+
+.TP
+.B script
+.br
+Run a script (testing code)
+
+.TP
+NOTE: Plugins can also add remote commands, like 'sync', which will also be
+listed with --help (or no arguments).
 
 .SH HOMEPAGE
 http://codezen.org/canto-ng
 
 .SH AUTHOR
 Jack Miller <jack@codezen.org>
+
+.SH SEE ALSO
+.BR canto-daemon (1)

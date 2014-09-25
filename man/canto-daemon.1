@@ -5,43 +5,88 @@ Canto-daemon \- An extensible RSS aggregation daemon.
 
 .SH COMMAND LINE USAGE
 
+canto-daemon (options)
+
+.SH OPTIONS
+
 .TP
-\-V
+\-V/--version
 Print version info and exit.
 
 .TP
-\-D/\-\-dir [directory]
-Change base directory for canto-daemon (default: ~/.canto-ng)
+\-h/--help
+Print usage help
 
 .TP
-\-\-nowb
-Disable database writeback. Hurts performance, saves memory.
+\-v
+Enable verbose logging (debug)
+
+.TP
+\-D/--dir [directory]
+Change base directory for canto-daemon (default: ~/.canto-ng)
 
 .TP
 \-n/--nofetch
 Do not fetch new content while running (debug).
 
 .TP
+\-c/--cache [on|off|conn]
+Control memory usage v. performance
+    on: keep the entire database in memory (fastest)
+    conn: keep the database in memory with active connections
+    off: keep as little information in memory as possible (default)
+
+.TP
+\-\-noplugins
+Disable all plugins
+
+.TP
+\-\-enableplugins 'plugin1 plugin2...'
+Enable these plugins (overrides --noplugins)
+
+.TP
+\-\-disableplugins 'plugin1 plugin2...'
+Disable these plugins
+
+.TP
 \-a/--address [IP]
-Listen on address in addition to local Unix socket.
+Listen on address in addition to local Unix socket. Use "" for all interfaces.
+Defaults to loopback (127.0.0.1)
 
 .TP
 \-p/--port [port]
 Use port when listening with -a
 
-.TP
-\-v
-Enable verbose logging (debug)
-
 .SH CONFIGURATION
 
-For configuration details, please visit http://codezen.org/canto-ng/manual .
+This daemon manages its own configuration, and should be manipulated through
+canto-remote or a client, like canto-curses.
+
+.SH PLUGINS
+
+Plugins are packaged in <prefix>/canto/plugins (i.e. /usr/lib/canto/plugins)
+and can be enabled by copying them into your configuration directory (i.e.
+~/.canto-ng/plugins). Many of them have configuration in them, so you may want
+to open the files to make changes. Here are a few example plugins included with
+the canto-daemon source.
+
+.TP
+reddit.py
+Add content to reddit items. Includes a sort
+.B "reddit_score_sort"
+that will automatically order items by upvotes.
+
+.TP
+sync.py
+A generic file-based sync plugin, to be used with other sync plugins.
+
+.TP
+sync-rsync.py
+An rsync based sync plugin (requires sync.py). See header for configuration,
+can be used to sync with a remote server via SSH, or with another local
+filesystem (for NFS/sshfs/Dropbox/gdrive etc.)
 
 .SH FILES
-.TP
-.I ~/.canto-ng/conf
-
-Shared daemon configuration file.
 
 .TP
 .I ~/.canto-ng/daemon-log
@@ -53,8 +98,15 @@ Canto-daemon log file.
 
 Canto-daemon plugins directory
 
+.TP
+.I /usr/lib/canto/plugins
+Default packaged plugin directory.
+
 .SH HOMEPAGE
 http://codezen.org/canto-ng
 
 .SH AUTHOR
 Jack Miller <jack@codezen.org>
+
+.SH SEE ALSO
+.BR canto-remote (1)
