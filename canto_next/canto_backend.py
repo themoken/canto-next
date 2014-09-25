@@ -161,29 +161,23 @@ class CantoBackend(PluginHandler, CantoServer):
 
         self.start()
 
-    def _reparse_config(self, originating_socket, changes):
-        self.conf.parse(False, changes)
+    def on_config_change(self, change, originating_socket):
+
+        self.conf.parse(False, change)
+
+        log.debug("self.conf.errors = %s" % self.conf.errors)
 
         if self.conf.errors:
             self.write(originating_socket, "ERRORS", self.conf.errors)
             self.conf.parse()
+
+            # No changes actually realized, bail
+            return
         else:
             self.conf.write()
 
         # Kill feeds that haven't been re-instantiated.
         allfeeds.all_parsed()
-
-    # Propagate config changes to watching sockets.
-
-    # On_config_change must be prepared to have originating_socket = None for
-    # internal requests that nonetheless must be propagated.
-
-    # This is invoked by set or del configs, which holds write locks on
-    # everything needed, config (for reparse/in_configs), and watch.
-
-    def on_config_change(self, change, originating_socket):
-
-        self._reparse_config(originating_socket, change)
 
         # Force check of fetching. This automatically starts the fetch. For new
         # feeds, but also takes any new settings (like rates) into account.
