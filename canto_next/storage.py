@@ -117,7 +117,7 @@ class CantoShelf():
         if "control" not in self.cache:
             self.cache["control"] = self.shelf['control']
 
-        ts = int(time.time())
+        ts = int(time.mktime(time.gmtime()))
         self.cache["control"]["canto-user-modified"] = ts
         self.cache["control"]["canto-modified"] = ts
 
@@ -125,7 +125,7 @@ class CantoShelf():
         if "control" not in self.cache:
             self.cache["control"] = self.shelf['control']
 
-        ts = int(time.time())
+        ts = int(time.mktime(time.gmtime()))
         self.cache["control"]["canto-modified"] = ts
 
     @wlock_feeds
