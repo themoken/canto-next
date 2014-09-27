@@ -24,6 +24,7 @@ from tempfile import mkstemp
 import logging
 import shelve
 import shutil
+import time
 import os
 
 log = logging.getLogger("SYNC")
@@ -48,7 +49,7 @@ class CantoFileSync(DaemonBackendPlugin):
         # Use setattributes and setconfigs commands to determine that we are the fresh
         # copy that should be synchronized.
 
-        self.sync_interval = INTERVAL
+        self.sync_ts = 0;
 
         on_hook("daemon_end_loop", self.loop)
         on_hook("daemon_pre_setconfigs", self.pre_setconfigs)
@@ -253,11 +254,10 @@ class CantoFileSync(DaemonBackendPlugin):
         self.reset()
 
     def loop(self):
-        self.sync_interval -= 1
-        if self.sync_interval <= 0:
+        ts = time.time()
+        if (ts - self.sync_ts >= INTERVAL):
             self.cmd_sync()
-
-            self.sync_interval = INTERVAL
+            self.sync_ts = ts
 
 class RemoteSync(DaemonRemotePlugin):
     def __init__(self, remote):
