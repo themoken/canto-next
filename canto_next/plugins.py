@@ -46,6 +46,8 @@ def try_plugins(topdir, plugin_default=True, disabled_plugins=[], enabled_plugin
     # Add plugin path to front of Python path.
     sys.path.insert(0, topdir)
 
+    all_errors = ""
+
     # Go ahead and import all .py
     for fname in sorted(os.listdir(p)):
         if fname.endswith(".py") and fname != "__init__.py":
@@ -67,7 +69,12 @@ def try_plugins(topdir, plugin_default=True, disabled_plugins=[], enabled_plugin
             except Exception as e:
                 tb = traceback.format_exc()
                 log.error("Exception importing file %s" % fname)
-                log.error("\n" + "".join(tb))
+                nice = "".join(tb)
+                all_errors += nice
+                log.error(nice)
+
+    if all_errors != "":
+        return all_errors
 
 class PluginHandler(object):
     def __init__(self):
