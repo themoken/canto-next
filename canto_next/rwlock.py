@@ -30,18 +30,20 @@ class RWLock(object):
 
         alllocks.append(self)
 
-    def acquire_read(self):
+    def acquire_read(self, block=True):
 
         # Hold reader_lock to see if we've already actually got this lock.
 
-        self.reader_lock.acquire()
+        r = self.reader_lock.acquire(block)
+        if not r:
+            return r
 
         cti = current_thread().ident
         if cti == self.writer_id or cti in [ x[0] for x in self.reader_stacks ]:
             self.readers += 1
             self.reader_stacks.append((current_thread().ident, traceback.format_stack()))
             self.reader_lock.release()
-            return
+            return True
 
         # Release the lock so that if we block on getting the main lock, other
         # threads can still perform the above check and release_read().
@@ -51,7 +53,9 @@ class RWLock(object):
         # Get full lock so writers can keep us from getting a lock we don't
         # already hold.
 
-        self.lock.acquire()
+        r = self.lock.acquire(block)
+        if not r:
+            return r
 
         # Re-acquire reader_lock so we can manipulate the vars.
 
@@ -64,6 +68,7 @@ class RWLock(object):
 
         self.reader_lock.release()
         self.lock.release()
+        return True
 
     def release_read(self):
         self.reader_lock.acquire()
@@ -76,8 +81,11 @@ class RWLock(object):
 
         self.reader_lock.release()
 
-    def acquire_write(self):
-        self.lock.acquire()
+    def acquire_write(self, block=True):
+        r = self.lock.acquire(block)
+
+        if not r:
+            return r
 
         self.writer_stacks.append(traceback.format_stack())
         self.writer_id = current_thread().ident;
@@ -96,6 +104,7 @@ class RWLock(object):
                     break
 
             time.sleep(0.1)
+        return True
 
     def release_write(self):
         self.writer_stacks = self.writer_stacks[0:-1]
