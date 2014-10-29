@@ -209,9 +209,11 @@ class CantoSocket:
 
         try:
             cmd, args = eval(repr(json.loads(message)), {}, {})
-            return (cmd, args)
         except:
             log.error("Failed to parse message: %s" % message)
+        else:
+            log.debug("\n\nRead:\n%s" % json.dumps((cmd, args), indent=4, sort_keys=True))
+            return (cmd, args)
 
     # Reads from a connection, returns:
     # 1) (cmd, args) from self.parse if possible.
@@ -257,7 +259,7 @@ class CantoSocket:
             return select.POLLHUP
         if e & (select.POLLIN | select.POLLPRI):
             try:
-                fragment = conn.recv(1024).decode()
+                fragment = conn.recv(4096).decode()
             except Exception as e:
                 if e.args[0] == errno.EINTR:
                     return
@@ -271,7 +273,6 @@ class CantoSocket:
                 log.debug("Read POLLIN with no data")
                 return select.POLLHUP
 
-            log.debug("Read Buffer: %s" % fragment.replace("\0",""))
             return self.parse(conn, fragment)
 
         # Parse POLLHUP last so if we still got POLLIN, any data
@@ -295,6 +296,7 @@ class CantoSocket:
         return r
 
     def _do_write(self, conn, cmd, args):
+        log.debug("\n\nWrite:\n%s\n" % json.dumps((cmd, args), indent=4, sort_keys=True))
 
         message = json.dumps((cmd, args)) + PROTO_TERMINATOR
 
@@ -308,7 +310,6 @@ class CantoSocket:
             log.error("Interpreting as HUP")
             return select.POLLHUP
 
-        log.debug("Sending: %s" % tosend.replace("\0",""))
         eintr_count = 0
 
         while tosend:
