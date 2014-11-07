@@ -1,5 +1,5 @@
 #Canto - RSS reader backend
-#   Copyright (C) 2010 Jack Miller <jack@codezen.org>
+#   Copyright (C) 2014 Jack Miller <jack@codezen.org>
 #
 #   This program is free software; you can redistribute it and/or modify
 #   it under the terms of the GNU General Public License version 2 as 
