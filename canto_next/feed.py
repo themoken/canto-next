@@ -416,7 +416,6 @@ class CantoFeed(PluginHandler):
             # Go through and take items in old_contents that didn't make it
             # into update_contents / self.items and remove them from all tags.
 
-
             tag_lock.release_write()
         else:
             self.lock.release_write()

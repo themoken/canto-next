@@ -62,7 +62,6 @@ class CantoBackend(PluginHandler, CantoServer):
 
         # Shelf for feeds:
         self.fetch = None
-        self.fetch_timer = 0
         self.fetch_manual = False
         self.fetch_force = False
 
@@ -183,7 +182,6 @@ class CantoBackend(PluginHandler, CantoServer):
         # feeds, but also takes any new settings (like rates) into account.
 
         self.fetch_force = True
-        self.fetch_timer = 0
 
         # Pretend that the sockets *other* than the ones that made the change
         # issued a CONFIGS for each of the root keys.
@@ -534,7 +532,6 @@ class CantoBackend(PluginHandler, CantoServer):
     # override rates or any other factors in updating.
 
     def cmd_update(self, socket, args):
-        self.fetch_timer = 0
         self.fetch_manual = True
         self.fetch_force = False
 
@@ -543,7 +540,6 @@ class CantoBackend(PluginHandler, CantoServer):
     # This command, on the other hand, *will* force the timers.
 
     def cmd_forceupdate(self, socket, args):
-        self.fetch_timer = 0
         self.fetch_manual = True
         self.fetch_force = True
 
@@ -602,21 +598,16 @@ class CantoBackend(PluginHandler, CantoServer):
             # Clean up any threads done updating.
             self.fetch.reap()
 
-            # Decrement all timers
-
-            self.fetch_timer -= 1
-
             # Check whether feeds need to be updated and fetch
             # them if necessary.
 
-            if self.fetch_timer <= 0 and (not self.no_fetch or self.fetch_manual):
+            if (not self.no_fetch or self.fetch_manual):
                 feed_lock.acquire_read()
 
                 self.fetch.fetch(self.fetch_force, False)
 
                 self.fetch_manual = False
                 self.fetch_force = False
-                self.fetch_timer = FETCH_CHECK_INTERVAL
 
                 feed_lock.release_read()
 

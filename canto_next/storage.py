@@ -92,7 +92,6 @@ class CantoShelf():
     def __getitem__(self, name):
         if name in self.cache:
             return self.cache[name]
-        log.debug("getitem hitting shelf")
         return self.shelf[name]
 
     def __contains__(self, name):
@@ -108,7 +107,6 @@ class CantoShelf():
 
         if name in self.index:
             self.index.remove(name)
-            log.debug("delitem hitting shelf")
             del self.shelf[name]
 
         self.update_mod()

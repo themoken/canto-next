@@ -155,8 +155,6 @@ class CantoFetch():
 
         passed = time.time() - f["canto_update"]
         if passed < feed.rate * 60:
-            log.debug("Not enough time passed on %s (only %sm)" %
-                    (feed.URL, passed / 60))
             needs_update = False
 
         return needs_update
