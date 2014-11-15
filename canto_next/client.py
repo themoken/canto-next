@@ -58,10 +58,12 @@ class CantoClient(CantoSocket):
             fd = os.open("/dev/null", os.O_RDWR)
             os.dup2(fd, sys.stderr.fileno())
 
+            cmd = "canto-daemon -D " + self.conf_dir
+            if self.verbosity > 0:
+                cmd += " -" + ("v" * self.verbosity)
+
             os.setpgid(os.getpid(), os.getpid())
-            os.execve("/bin/sh",
-                     ["/bin/sh", "-c", "canto-daemon -D " + self.conf_dir],
-                     os.environ)
+            os.execve("/bin/sh", ["/bin/sh", "-c", cmd], os.environ)
 
             # Should never get here, but just in case.
             sys.exit(-1)
