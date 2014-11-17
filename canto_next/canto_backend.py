@@ -602,14 +602,10 @@ class CantoBackend(PluginHandler, CantoServer):
             # them if necessary.
 
             if (not self.no_fetch or self.fetch_manual):
-                feed_lock.acquire_read()
-
                 self.fetch.fetch(self.fetch_force, False)
 
                 self.fetch_manual = False
                 self.fetch_force = False
-
-                feed_lock.release_read()
 
             call_hook("daemon_end_loop", [])
 

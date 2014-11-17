@@ -163,6 +163,8 @@ class CantoFeed(PluginHandler):
         self.keep_unread = keep_unread
         self.stopped = False
 
+        self.last_update = 0
+
         # This is held by the update thread, as well as any get / set attribute
         # threads
 

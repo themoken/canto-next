@@ -53,6 +53,8 @@ class CantoFetchThread(PluginHandler, Thread):
             self.feed.index({"entries" : []})
             return
 
+        self.feed.last_update = time.time()
+
         # Otherwise, actually try to get an update.
 
         extra_headers = { 'User-Agent' :\
@@ -110,7 +112,7 @@ class CantoFetchThread(PluginHandler, Thread):
             update_contents["bozo_exception"] = None
 
         # Update timestamp
-        update_contents["canto_update"] = time.time()
+        update_contents["canto_update"] = self.feed.last_update
 
         update_contents = json.loads(json.dumps(update_contents))
 
@@ -142,22 +144,10 @@ class CantoFetch():
         self.threads = []
 
     def needs_update(self, feed):
-        if feed.URL not in self.shelf:
-            log.info("Empty feed, attempt to update.")
-            return True
-
-        needs_update = True
-
-        f = self.shelf[feed.URL]
-        if "canto_update" not in f:
-            log.warn("No canto_update in feed w/ URL: %s" % feed.URL)
-            return True
-
-        passed = time.time() - f["canto_update"]
+        passed = time.time() - feed.last_update
         if passed < feed.rate * 60:
-            needs_update = False
-
-        return needs_update
+            return False
+        return True
 
     def still_working(self, URL):
         for thread, workingURL in self.threads:
