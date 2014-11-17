@@ -344,7 +344,7 @@ class CantoFeed(PluginHandler):
                         if key == "canto-tags":
                             for user_tag in olditem[key]:
                                 log.debug("index adding user tag: %s - %s" % (user_tag,item["id"]))
-                                tags_to_add.append((item["id"], user_tag))
+                                tags_to_add.append((cacheitem["id"], user_tag))
                             item[key] = olditem[key]
                         elif key.startswith("canto"):
                             item[key] = olditem[key]
