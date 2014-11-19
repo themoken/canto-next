@@ -7,7 +7,7 @@ import subprocess
 import glob
 import os
 
-string_version = "0.9.0-alpha5"
+string_version = "0.9.0"
 
 changes = ['canto_backend.py','remote.py']
 
