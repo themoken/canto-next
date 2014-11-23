@@ -14,15 +14,23 @@ log = logging.getLogger("HOOKS")
 
 hooks = {}
 
-def on_hook(hook, func):
+def on_hook(hook, func, key=None):
+    if key and type(key) != str:
+        key = str(key)
+
     if hook in hooks:
-        hooks[hook].append(func)
+        hooks[hook].append((key, func))
     else:
-        hooks[hook] = [func]
+        hooks[hook] = [(key, func)]
 
 def remove_hook(hook, func):
-    if hook in hooks and func in hooks[hook]:
-        hooks[hook].remove(func)
+    hooks[hook] = [ x for x in hooks[hook] if x[1] != func ]
+
+def unhook_all(key):
+    if key and type(key) != str:
+        key = str(key)
+    for hook in hooks:
+        hooks[hook] = [ x for x in hooks[hook] if x[0] != key ]
 
 def call_hook(hook, args):
     if hook in hooks:
@@ -31,7 +39,7 @@ def call_hook(hook, args):
         # without effecting our iteration.
 
         try:
-            for func in hooks[hook][:]:
+            for key, func in hooks[hook][:]:
                 func(*args)
         except:
             log.error("Error calling hook %s (func: %s args: %s)" % (hook, func, args))
