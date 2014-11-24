@@ -180,19 +180,6 @@ class CantoFeed(PluginHandler):
 
         allfeeds.add_feed(URL, self)
 
-    # Identify items that are no longer being recorded.
-
-    def old_ids(self, olditems):
-        r = []
-        for olditem in olditems:
-            for item in self.shelf[self.URL]["entries"]:
-                if item["id"] == olditem["id"]:
-                    break
-            else:
-                cache_id = self._cacheitem(olditem)["id"]
-                r.append(cache_id)
-        return r
-
     # Return { id : { attribute : value .. } .. }
 
     def get_attributes(self, items, attributes):
@@ -410,7 +397,7 @@ class CantoFeed(PluginHandler):
 
             self.shelf[self.URL] = update_contents
 
-            to_remove = self.old_ids(old_contents["entries"])
+            to_remove = [ self._cacheitem(x)["id"] for x in old_contents["entries"] ]
 
             self.lock.release_write()
 
