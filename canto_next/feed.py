@@ -382,6 +382,13 @@ class CantoFeed(PluginHandler):
                     log.debug("Discarding: %s", olditem["id"])
                     continue
 
+                cacheitem = self._cacheitem(olditem)
+                tags_to_add.append((cacheitem["id"], "maintag:" + self.name))
+
+                if "canto-tags" in olditem:
+                    for user_tag in olditem["canto-tags"]:
+                        tags_to_add((cacheitem["id"], user_tag))
+
                 update_contents["entries"].append(olditem)
 
         # Allow plugins DaemonFeedPlugins defining edit_* functions to have a
