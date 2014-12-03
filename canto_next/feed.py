@@ -341,8 +341,10 @@ class CantoFeed(PluginHandler):
 
         update_contents["entries"] = to_add
 
-        # STEP 2: Keep all items that have been seen in the feed in the last
-        # day (keep_time default).
+        # If to_add is empty, then we want to keep all of the items since we
+        # don't know what's in the feed currently.
+
+        keep_all = to_add == []
 
         ref_time = time.time()
         for olditem in old_contents["entries"]:
@@ -360,7 +362,12 @@ class CantoFeed(PluginHandler):
                 else:
                     item_state = []
 
-                if (ref_time - item_time) < self.keep_time:
+                # If to_add is empty, we can't know what's currently
+                # in the feed, so keep all of them.
+
+                if keep_all:
+                    pass
+                elif (ref_time - item_time) < self.keep_time:
                     log.debug("Item not over keep_time (%d): %s" %
                             (self.keep_time, olditem["id"]))
                 elif self.keep_unread and "read" not in item_state:

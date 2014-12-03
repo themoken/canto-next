@@ -186,6 +186,18 @@ class TestFeedIndex(Test):
         if nitems != 175:
             raise Exception("Wrong number of items in tag! %d - %s" % (nitems, tag))
 
+        self.banner("save all items on empty new content")
+
+        test_feed, test_shelf, first_update = self.generate_baseline("Test Feed", TEST_URL, 100, content, now - (DEF_KEEP_TIME + 1))
+
+        test_feed.index(self.generate_update_contents(0, update_content, now))
+
+        tag = alltags.tags["maintag:Test Feed"]
+        nitems = len(tag)
+
+        if nitems != 100:
+            raise Exception("Wrong number of items in tag! %d - %s" % (nitems, tag))
+
         return True
 
 TestFeedIndex("feed index")
