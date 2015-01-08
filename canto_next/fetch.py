@@ -65,7 +65,9 @@ class CantoFetchThread(PluginHandler, Thread):
             # Passworded Feed
             if self.feed.username or self.feed.password:
                 domain = urllib.parse.urlparse(self.feed.URL)[1]
-                auth = urllib.request.HTTPBasicAuthHandler()
+                man = urllib.request.HTTPPasswordMgrWithDefaultRealm()
+                auth = urllib.request.HTTPBasicAuthHandler(man)
+                auth.handler_order = 490
                 auth.add_password(None, domain, self.feed.username,
                         self.feed.password)
 
@@ -74,7 +76,9 @@ class CantoFetchThread(PluginHandler, Thread):
                             request_headers = extra_headers)
                 except:
                     # And, failing that, Digest Authentication
-                    auth = urllib.request.HTTPDigestAuthHandler()
+                    man = urllib.request.HTTPPasswordMgrWithDefaultRealm()
+                    auth = urllib.request.HTTPDigestAuthHandler(man)
+                    auth.handler_order = 490
                     auth.add_password(None, domain, self.feed.username,
                             self.feed.password)
                     result = feedparser.parse(self.feed.URL, handlers=[auth],
