@@ -23,14 +23,21 @@ def on_hook(hook, func, key=None):
     else:
         hooks[hook] = [(key, func)]
 
+def _trim_hooks():
+    for key in list(hooks.keys()):
+        if hooks[key] == []:
+            del hooks[key]
+
 def remove_hook(hook, func):
     hooks[hook] = [ x for x in hooks[hook] if x[1] != func ]
+    _trim_hooks()
 
 def unhook_all(key):
     if key and type(key) != str:
         key = str(key)
     for hook in hooks:
         hooks[hook] = [ x for x in hooks[hook] if x[0] != key ]
+    _trim_hooks()
 
 def call_hook(hook, args):
     if hook in hooks:
