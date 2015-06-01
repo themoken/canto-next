@@ -13,7 +13,7 @@ CANTO_PROTOCOL_VERSION = 0.9
 from .feed import allfeeds, wlock_feeds, rlock_feeds, wlock_all, wunlock_all, rlock_all, runlock_all, stop_feeds, rlock_feed_objs, runlock_feed_objs
 from .encoding import encoder
 from .server import CantoServer
-from .config import CantoConfig, parse_locks, parse_unlocks
+from .config import config, parse_locks, parse_unlocks
 from .storage import CantoShelf, CACHE_OFF, CACHE_ALWAYS, CACHE_ON_CONNS
 from .fetch import CantoFetch
 from .hooks import on_hook, call_hook
@@ -162,18 +162,18 @@ class CantoBackend(PluginHandler, CantoServer):
 
     def on_config_change(self, change, originating_socket):
 
-        self.conf.parse(False, change)
+        config.parse(False, change)
 
-        log.debug("self.conf.errors = %s" % self.conf.errors)
+        log.debug("config.errors = %s" % config.errors)
 
-        if self.conf.errors:
-            self.write(originating_socket, "ERRORS", self.conf.errors)
-            self.conf.parse()
+        if config.errors:
+            self.write(originating_socket, "ERRORS", config.errors)
+            config.parse()
 
             # No changes actually realized, bail
             return
         else:
-            self.conf.write()
+            config.write()
 
         # Kill feeds that haven't been re-instantiated.
         allfeeds.all_parsed()
@@ -264,8 +264,8 @@ class CantoBackend(PluginHandler, CantoServer):
 
         try:
             # Global transform
-            if self.conf.global_transform:
-                tagobj = self.conf.global_transform(tagobj)
+            if config.global_transform:
+                tagobj = config.global_transform(tagobj)
 
             # Tag level transform
             if tag in alltags.tag_transforms and\
@@ -313,7 +313,7 @@ class CantoBackend(PluginHandler, CantoServer):
     @read_lock(config_lock)
     def cmd_listtransforms(self, socket, args):
         transforms = []
-        for transform in self.conf.transforms:
+        for transform in config.transforms:
             transforms.append({"name" : transform["name"]})
         self.write(socket, "LISTTRANSFORMS", transforms)
 
@@ -449,10 +449,10 @@ class CantoBackend(PluginHandler, CantoServer):
         if args:
             ret = {}
             for topsec in args:
-                if topsec in self.conf.json:
-                    ret[topsec] = self.conf.json[topsec]
+                if topsec in config.json:
+                    ret[topsec] = config.json[topsec]
         else:
-            ret = self.conf.json
+            ret = config.json
 
         if socket:
             self.write(socket, "CONFIGS", ret)
@@ -468,12 +468,12 @@ class CantoBackend(PluginHandler, CantoServer):
 
     def in_setconfigs(self, args):
         self.cmd_setconfigs(None, args)
-        return self.conf.json
+        return config.json
 
     def cmd_setconfigs(self, socket, args):
         parse_locks()
 
-        self.conf.merge(args.copy())
+        config.merge(args.copy())
 
         # config_change handles it's own locking
         call_hook("daemon_config_change", [args, socket])
@@ -484,12 +484,12 @@ class CantoBackend(PluginHandler, CantoServer):
 
     def in_delconfigs(self, args):
         cmd_delconfigs(None, args)
-        return self.conf.json
+        return config.json
 
     def cmd_delconfigs(self, socket, args):
         parse_locks()
 
-        self.conf.delete(args.copy())
+        config.delete(args.copy())
 
         # config_change handles it's own locking
         call_hook("daemon_config_change", [args, socket])
@@ -841,12 +841,12 @@ class CantoBackend(PluginHandler, CantoServer):
     # be fatal and handled lower in CantoConfig.
 
     def get_config(self):
-        self.conf = CantoConfig(self.conf_path, self.shelf)
-        self.conf.parse()
-        if self.conf.errors:
+        config.init(self.conf_path, self.shelf)
+        config.parse()
+        if config.errors:
             print("ERRORS:")
-            for key in list(self.conf.errors.keys()):
-                for value, error in self.conf.errors[key]:
+            for key in list(config.errors.keys()):
+                for value, error in config.errors[key]:
                     s = "\t%s -> %s: %s" % (key, value, error)
                     print(encoder(s))
 

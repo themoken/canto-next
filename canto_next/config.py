@@ -62,7 +62,7 @@ def parse_unlocks():
     watch_lock.release_read()
 
 class CantoConfig():
-    def __init__(self, filename, shelf):
+    def init(self, filename, shelf):
         self.filename = filename
         self.shelf = shelf
         self.json = {}
@@ -443,3 +443,5 @@ class CantoConfig():
             json.dump(self.json, f, ensure_ascii=False, sort_keys=True, indent=4)
         finally:
             f.close()
+
+config = CantoConfig()
