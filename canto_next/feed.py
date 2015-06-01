@@ -382,7 +382,7 @@ class CantoFeed(PluginHandler):
 
                 if "canto-tags" in olditem:
                     for user_tag in olditem["canto-tags"]:
-                        tags_to_add((cacheitem["id"], user_tag))
+                        tags_to_add.append((cacheitem["id"], user_tag))
 
                 update_contents["entries"].append(olditem)
 
