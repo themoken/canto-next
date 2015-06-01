@@ -483,7 +483,7 @@ class CantoBackend(PluginHandler, CantoServer):
     # DELCONFIGS { "key" : "DELETE", ...}
 
     def in_delconfigs(self, args):
-        cmd_delconfigs(None, args)
+        self.cmd_delconfigs(None, args)
         return config.json
 
     def cmd_delconfigs(self, socket, args):
