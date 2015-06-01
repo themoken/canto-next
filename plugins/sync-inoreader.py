@@ -195,7 +195,7 @@ class CantoFetchInoReader(DaemonFetchThreadPlugin):
 
         stream_id = quote("feed/" + feed.URL, [])
 
-        query = { "n" : 100 }
+        query = { "n" : 200 }
 
         # Collect all of the items
 
@@ -206,10 +206,10 @@ class CantoFetchInoReader(DaemonFetchThreadPlugin):
             r = inoreader_req(content_path, query).json()
             ino_entries.extend(r["items"])
 
-            while "continuation" in r:
-                query["c"] = r["continuation"]
-                r = inoreader_req(content_path, query).json()
-                ino_entries.extend(r["items"])
+            #while "continuation" in r:
+            #    query["c"] = r["continuation"]
+            #    r = inoreader_req(content_path, query).json()
+            #    ino_entries.extend(r["items"])
         except Exception as e:
             log.debug("EXCEPT: %s" % traceback.format_exc(e))
 
