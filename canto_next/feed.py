@@ -286,6 +286,7 @@ class CantoFeed(PluginHandler):
         # STEP 1: Identify all of the items in update_contents, and move
         # over any associated state from old_contents
 
+        tags_to_remove = []
         tags_to_add = []
         to_add = []
 
@@ -394,7 +395,9 @@ class CantoFeed(PluginHandler):
 
             try:
                 a = getattr(self, attr)
-                a(feed = self, newcontent = update_contents)
+                a(feed = self, newcontent = update_contents,
+                        tags_to_add = tags_to_add,
+                        tags_to_remove = tags_to_remove)
             except:
                 log.error("Error running feed editing plugin")
                 log.error(traceback.format_exc())
@@ -415,6 +418,9 @@ class CantoFeed(PluginHandler):
 
             for item, tag in tags_to_add:
                 alltags.add_tag(item, tag)
+
+            for item, tag in tags_to_remove:
+                alltags.remove_tag(item, tag)
 
             # Go through and take items in old_contents that didn't make it
             # into update_contents / self.items and remove them from all tags.
