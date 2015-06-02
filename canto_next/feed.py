@@ -329,12 +329,11 @@ class CantoFeed(PluginHandler):
                         if key == "canto_update":
                             continue
                         if key == "canto-tags":
-                            if key not in item:
-                                item[key] = olditem[key]
-                            for user_tag in item[key]:
+                            for user_tag in olditem[key]:
                                 log.debug("index adding user tag: %s - %s" % (user_tag,item["id"]))
                                 tags_to_add.append((cacheitem["id"], user_tag))
-                        elif key.startswith("canto") and key not in item:
+                            item[key] = olditem[key]
+                        elif key.startswith("canto"):
                             item[key] = olditem[key]
                     break
             else:
