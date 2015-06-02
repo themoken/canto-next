@@ -1,6 +1,6 @@
 # Canto Inoreader Plugin
 # by Jack Miller
-# v0.1
+# v0.2
 
 # DEPENDENCIES
 
@@ -25,10 +25,6 @@
 # plugins (like sync-rsync). They won't break, but having multiple
 # synchronization points is pointless.
 #
-# - As soon as you enable this plugin, you'll get a bunch of duplicate items
-# because Inoreader items have different ids and this plugin doesn't bother to
-# try and match them up. Don't fret, it's only temporary.
-#
 # - You must have a standard Inoreader account, not an OAuth (Google/Facebook
 # login).
 
@@ -36,7 +32,7 @@
 
 # Inoreader credentials
 
-EMAIL="somebody@somewhere"
+EMAIL="somebody@somewhere.com"
 PASSWORD="passw0rd"
 
 # You don't *have* to change these, but the API is rate limited. So if you want
@@ -51,7 +47,7 @@ BASE_URL="https://www.inoreader.com/reader/"
 # === You shouldn't have to change anything past this line. ===
 
 from canto_next.fetch import DaemonFetchThreadPlugin
-from canto_next.feed import allfeeds
+from canto_next.feed import DaemonFeedPlugin, allfeeds
 from canto_next.hooks import call_hook, on_hook
 from canto_next.config import config
 
@@ -119,11 +115,11 @@ def strip_ino_tag(tag):
     return tag[3]
 
 def has_ino_tag(item, tag):
-    if "categories" not in item:
+    if "inoreader_categories" not in item:
         return False
 
     suff = full_ino_tag_suffix(tag)
-    for category in item["categories"]:
+    for category in item["inoreader_categories"]:
         if category.endswith(suff):
             return True
     return False
@@ -157,45 +153,52 @@ def inoreader_del_sub(feed_url):
     }
     inoreader_req("api/0/subscription/edit", query)
 
-# For inoreader -> canto, we just fetch all of our feed info from inoreader,
-# and convert inoreader's "/state/com.google/read" into canto-state read, as
-# well as other tags.
 
-# Technically, we could implement this as a "fetch" function for the fetch
-# thread, which is how the Reddit plugin grabs extra information, but since
-# inoreader provides all of the content, nicely parsed and in one place anyway,
-# we might as well use it instead of feedparser.
+# Given a change set, and the current attributes of a canto item, tell
+# Inoreader about it.
+
+def sync_state_to(changes, attrs, add_only = False):
+    if "canto-state" in changes:
+        if "read" in changes["canto-state"]:
+            if not has_ino_tag(attrs, "read"):
+                inoreader_add_tag(attrs["inoreader_id"], "read")
+        elif not add_only:
+            if has_ino_tag(attrs, "read"):
+                inoreader_remove_tag(attrs["inoreader_id"], "read")
+
+    if "canto-tags" in changes:
+        for tag in changes["canto-tags"]:
+            tag = tag.split(":", 1)[1] # strip user: or category: prefix
+            if not has_ino_tag(attrs, tag):
+                inoreader_add_tag(attrs["inoreader_id"], tag)
+
+        if add_only:
+            return
+
+        for tag in attrs["inoreader_categories"]:
+            tag = strip_ino_tag(tag)
+            if "user:" + tag not in changes[item_id]["canto-tags"]:
+                inoreader_remove_tag(attrs["inoreader_id"], tag)
+
+# Inoreader communicates with canto through this fetch thread plugin
+
+# After we've grabbed the feed, and used feedparser on it, we run
+# fetch_inoreader_sync which will add inoreader information.
 
 class CantoFetchInoReader(DaemonFetchThreadPlugin):
     def __init__(self, fetch_thread):
-        self.plugin_attrs = { "run" : self.run }
+        self.plugin_attrs = { "fetch_inoreader_sync" : self.fetch_inoreader_sync }
         self.fetch_thread = fetch_thread
 
-    def add_utag(self, item, tag):
-        tag = "user:" + tag
-        if "canto-tags" not in item:
-            item["canto-tags"] = [ tag ]
-        elif tag not in item["canto-tags"]:
-            item["canto-tags"].append(tag)
-
-    def run(self):
+    def fetch_inoreader_sync(self, **kwargs):
         # Grab these from the parent object
 
-        feed = self.fetch_thread.feed
-        fromdisk = self.fetch_thread.fromdisk
-
-        # From standard run(), if we're just loading from disk (i.e. on
-        # startup, we don't need to actually fetch an update.
-
-        if fromdisk:
-            feed.index({"entries" : [] })
-            return
-
-        feed.last_update = time.time()
+        feed = kwargs["feed"]
+        newcontent = kwargs["newcontent"]
 
         stream_id = quote("feed/" + feed.URL, [])
 
-        query = { "n" : 200 }
+        query = { "n" : 1000 }
 
         # Collect all of the items
 
@@ -214,13 +217,62 @@ class CantoFetchInoReader(DaemonFetchThreadPlugin):
             log.debug("EXCEPT: %s" % traceback.format_exc(e))
 
         for ino_entry in ino_entries:
-            # Compatibility with feedparser
-            ino_entry["summary"] = ino_entry["summary"]["content"]
-            ino_entry["link"] = ino_entry["canonical"][0]["href"]
 
-            for category in ino_entry["categories"]:
+            for canto_entry in newcontent["entries"]:
+                if ino_entry["canonical"][0]["href"] != canto_entry["link"]:
+                    continue
+
+                canto_entry["inoreader_categories"] = ino_entry["categories"]
+
+                # If this is the first time the item has been synchronized,
+                # then our state is better, but only add tags and state.
+                # So if we have it read in canto, it will be read on Inoreader,
+                # but if we received some tags from Inoreader that we don't
+                # have, we won't blow that away.
+
+                if "inoreader_id" not in canto_entry:
+                    canto_entry["inoreader_id"] = ino_entry["id"]
+                    # pretend all attributes of canto_entry changed
+                    sync_state_to(canto_entry, canto_entry, True)
+
+# Since we've included the Inoreader information, wait until we've done most of
+# feed.index to edit the internal state.
+
+# We do this separately because it's not until after feed.index() that we have
+# existing information (canto-state / canto-tags) included in the feedparser
+# data.
+
+class CantoFeedInoReader(DaemonFeedPlugin):
+    def __init__(self, feed):
+        self.plugin_attrs = { "edit_inoreader_sync" : self.edit_inoreader_sync }
+        self.feed = feed
+
+    def _list_add(self, item, attr, new):
+        if attr not in item:
+            item[attr] = [ new ]
+        elif new not in item[attr]:
+            item[attr].append(new)
+
+    def add_utag(self, item, tags_to_add, tag):
+        self._list_add(item, "canto-tags", "user:" + tag)
+        tags_to_add.append((item["id"], "user:" + tag))
+
+    def add_state(self, item, state):
+        self._list_add(item, "canto-state", state)
+
+    def edit_inoreader_sync(self, **kwargs):
+        newcontent = kwargs["newcontent"]
+        tags_to_add = kwargs["tags_to_add"]
+        tags_to_remove = kwargs["tags_to_remove"]
+
+        for entry in newcontent["entries"]:
+            # If we didn't get an id for this item, skip it
+            if "inoreader_id" not in entry:
+                continue
+
+            for category in entry["inoreader_categories"]:
                 if category.endswith("/state/com.google/read"):
-                    ino_entry["canto-state"] = [ "read" ]
+                    self.add_state(entry, "read")
                     continue
 
                 cat = category.split("/", 3)
@@ -230,70 +282,45 @@ class CantoFetchInoReader(DaemonFetchThreadPlugin):
 
                 if cat[2] == "state":
                     if cat[3] == "com.google/starred":
-                        self.add_utag(ino_entry, "starred")
+                        self.add_utag(entry, tags_to_add, "starred")
                 elif cat[2] == "label":
-                    self.add_utag(ino_entry, cat[3])
+                    self.add_utag(entry, tags_to_add, cat[3])
 
-        update_contents = { "canto_update" : feed.last_update,
-                "entries" : ino_entries }
-
-        update_contents = json.loads(json.dumps(update_contents))
-
-        log.debug("Parsed %s" % feed.URL)
-
-        # Allow DaemonFetchThreadPlugins to do any sort of fetch stuff
-        # before the thread is marked as complete.
-
-        for attr in list(self.fetch_thread.plugin_attrs.keys()):
-            if not attr.startswith("fetch_"):
+            if "canto-state" not in entry or type(entry["canto-state"]) != list:
                 continue
 
-            try:
-                a = getattr(self.fetch_thread, attr)
-                a(feed = feed, newcontent = update_contents)
-            except:
-                log.error("Error running fetch thread plugin")
-                log.error(traceback.format_exc())
+            if "read" in entry["canto-state"] and not has_ino_tag(entry, "read"):
+                entry["canto-state"].remove("read")
 
-        log.debug("Plugins complete.")
+            if "canto-tags" not in entry or type(entry["canto-tags"]) != list:
+                continue
 
-        # This handles it's own locking
-        feed.index(update_contents)
+            for tag in entry["canto-tags"][:]:
+                if not has_ino_tag(entry, tag):
+                    entry["canto-tags"].remove(tag)
+                    tags_to_remove.append((entry["id"], tag))
 
-# For canto -> inoreader, we tap into hooks
+# For canto communicating to Inoreader, we tap into the relevant hooks to
+# pickup state / tag changes, and convert that into Inoreader API calls.
 
 def post_setattributes(socket, args):
     for item_id in args.keys():
         dict_id = json.loads(item_id)
 
         feed = allfeeds.get_feed(dict_id["URL"])
-        ino_id = dict_id["ID"]
 
-        # If the item isn't from inoreader, skip it
+        attrs = feed.get_attributes([item_id], { item_id :\
+                ["inoreader_id", "inoreader_categories", "canto-state", "canto-tags"] })
+        attrs = attrs[item_id]
+
+        # If the inoreader_id isn't right (likely empty since get_attributes
+        # will sub in "") then skip synchronizing this item.
+
+        ino_id = attrs["inoreader_id"]
         if not ino_id.startswith("tag:google.com,2005:reader/item/"):
             continue
 
-        attrs = feed.get_attributes([item_id], { item_id : ["categories", "canto-state", "canto-tags"] })
-        attrs = attrs[item_id]
-
-        if "canto-state" in args[item_id]:
-            if "read" in args[item_id]["canto-state"]:
-                if not has_ino_tag(attrs, "read"):
-                    inoreader_add_tag(ino_id, "read")
-            else:
-                if has_ino_tag(attrs, "read"):
-                    inoreader_remove_tag(ino_id, "read")
-
-        if "canto-tags" in args[item_id]:
-            for tag in args[item_id]["canto-tags"]:
-                tag = tag.split(":", 1)[1] # strip user: or category: prefix
-                if not has_ino_tag(attrs, tag):
-                    inoreader_add_tag(ino_id, tag)
-
-            for tag in attrs["categories"]:
-                tag = strip_ino_tag(tag)
-                if "user:" + tag not in args[item_id]["canto-tags"]:
-                    inoreader_remove_tag(ino_id, tag)
+        sync_state_to(args[item_id], attrs)
 
 on_hook("daemon_post_setattributes", post_setattributes)
 
@@ -310,6 +337,9 @@ def post_delconfigs(socket, args):
             inoreader_del_sub(feed["url"])
 
 on_hook("daemon_post_delconfigs", post_delconfigs)
+
+# Do the initial feed synchronization. This only occurs once per run, and
+# assumes Inoreader knows everything.
 
 def on_daemon_serving():
     log.debug("Synchronizing subscriptions.")
