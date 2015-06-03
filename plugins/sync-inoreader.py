@@ -101,7 +101,7 @@ def inoreader_req(path, query = {}):
     return r
 
 def full_ino_tag_suffix(tag):
-    if tag in ["read", "starred"]:
+    if tag in ["read", "starred", "fresh"]:
         return "/state/com.google/" + tag
     return "/label/" + tag
 
@@ -290,7 +290,12 @@ class CantoFeedInoReader(DaemonFeedPlugin):
             if "canto-state" not in entry or type(entry["canto-state"]) != list:
                 continue
 
-            if "read" in entry["canto-state"] and not has_ino_tag(entry, "read"):
+            # It appears that if an item is "fresh" it will resist all attempts
+            # to set it as read?
+
+            if "read" in entry["canto-state"] and not\
+                    (has_ino_tag(entry, "read") or has_ino_tag(entry, "fresh")):
+                log.debug("Marking unread from Inoreader")
                 entry["canto-state"].remove("read")
 
             if "canto-tags" not in entry or type(entry["canto-tags"]) != list:
