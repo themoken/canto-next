@@ -19,7 +19,7 @@ from .fetch import CantoFetch
 from .hooks import on_hook, call_hook
 from .tag import alltags
 from .transform import eval_transform
-from .plugins import PluginHandler, Plugin, try_plugins
+from .plugins import PluginHandler, Plugin, try_plugins, set_program
 from .rwlock import alllocks, write_lock, read_lock
 from .locks import *
 
@@ -112,6 +112,7 @@ class CantoBackend(PluginHandler, CantoServer):
         log.info("conf_dir = %s" % self.conf_dir)
 
         # Evaluate any plugins
+        set_program("canto-daemon")
         try_plugins(self.conf_dir, self.plugin_default, self.disabled_plugins,
                 self.enabled_plugins)
 

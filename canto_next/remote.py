@@ -6,7 +6,7 @@
 #   it under the terms of the GNU General Public License version 2 as 
 #   published by the Free Software Foundation.
 
-from .plugins import PluginHandler, Plugin, try_plugins
+from .plugins import PluginHandler, Plugin, try_plugins, set_program
 from .client import CantoClient
 from .encoding import encoder
 from .format import escsplit
@@ -75,6 +75,7 @@ class CantoRemote(PluginHandler, CantoClient):
         if self.args(optl) == -1:
             sys.exit(-1)
 
+        set_program("canto-remote")
         try_plugins(self.conf_dir, self.plugin_default, self.disabled_plugins,
                 self.enabled_plugins)
 

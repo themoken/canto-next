@@ -15,6 +15,20 @@ import os
 
 log = logging.getLogger("PLUGINS")
 
+class CantoWrongProgramException(Exception):
+    pass
+
+PROGRAM="unset"
+
+def set_program(program_name):
+    global PROGRAM
+    PROGRAM=program_name
+
+def check_program(*args):
+    global PROGRAM
+    if PROGRAM not in args:
+        raise CantoWrongProgramException
+
 def try_plugins(topdir, plugin_default=True, disabled_plugins=[], enabled_plugins=[]):
     p = topdir + "/plugins"
     pinit = p + "/__init__.py"
@@ -58,14 +72,16 @@ def try_plugins(topdir, plugin_default=True, disabled_plugins=[], enabled_plugin
                     if proper in disabled_plugins:
                         log.info("[plugin] %s - DISABLED" % proper)
                     else:
-                        log.info("[plugin] %s" % proper)
                         __import__("plugins." + proper)
+                        log.info("[plugin] %s" % proper)
                 else:
                     if proper in enabled_plugins:
-                        log.info("[plugin] %s - ENABLED" % proper)
                         __import__("plugins." + proper)
+                        log.info("[plugin] %s - ENABLED" % proper)
                     else:
                         log.info("[plugin] %s - DISABLED" % proper)
+            except CantoWrongProgramException:
+                pass
             except Exception as e:
                 tb = traceback.format_exc()
                 log.error("Exception importing file %s" % fname)
