@@ -21,6 +21,10 @@ EXTRA_LOG_OUTPUT = False
 
 # You shouldn't have to change anything beyond this line.
 
+from canto_next.plugins import check_program
+
+check_program("canto-daemon")
+
 from canto_next.fetch import DaemonFetchThreadPlugin
 from canto_next.feed import DaemonFeedPlugin
 from canto_next.transform import transform_locals, CantoTransform 

@@ -46,6 +46,10 @@ BASE_URL="https://www.inoreader.com/reader/"
 
 # === You shouldn't have to change anything past this line. ===
 
+from canto_next.plugins import check_program
+
+check_program("canto-daemon")
+
 from canto_next.fetch import DaemonFetchThreadPlugin
 from canto_next.feed import DaemonFeedPlugin, allfeeds
 from canto_next.hooks import call_hook, on_hook
