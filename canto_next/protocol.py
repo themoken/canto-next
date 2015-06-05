@@ -212,7 +212,7 @@ class CantoSocket:
         except:
             log.error("Failed to parse message: %s" % message)
         else:
-            log.debug("\n\nRead:\n%s" % json.dumps((cmd, args), indent=4, sort_keys=True))
+            log.debug("\n\nRead:\n%s", json.dumps((cmd, args), indent=4, sort_keys=True))
             return (cmd, args)
 
     # Reads from a connection, returns:
@@ -245,7 +245,7 @@ class CantoSocket:
         except select.error as e:
             if e.args[0] == errno.EINTR:
                 return
-            log.debug("Raising error: %s" % e[1])
+            log.debug("Raising error: %s", e[1])
             raise
 
         if timeout and not p:
@@ -253,7 +253,7 @@ class CantoSocket:
 
         e = p[0][1]
 
-        log.debug("E: %d" % e)
+        log.debug("E: %d", e)
         if e & select.POLLERR:
             log.debug("Read ERR")
             return select.POLLHUP
@@ -296,7 +296,7 @@ class CantoSocket:
         return r
 
     def _do_write(self, conn, cmd, args):
-        log.debug("\n\nWrite:\n%s\n" % json.dumps((cmd, args), indent=4, sort_keys=True))
+        log.debug("\n\nWrite:\n%s\n", json.dumps((cmd, args), indent=4, sort_keys=True))
 
         message = json.dumps((cmd, args)) + PROTO_TERMINATOR
 
@@ -354,7 +354,7 @@ class CantoSocket:
                     return select.POLLHUP
 
                 tosend = tosend[sent:]
-                log.debug("Sent %d bytes." % sent)
+                log.debug("Sent %d bytes.", sent)
 
     def disconnected(self, conn):
         pass

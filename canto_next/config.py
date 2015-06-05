@@ -147,7 +147,7 @@ class CantoConfig():
         c.close()
 
         log.info("Read %s" % self.filename)
-        log.debug("Parsed into: %s" % self.json)
+        log.debug("Parsed into: %s", self.json)
 
     def error(self, ident, val, error):
         if ident in self.errors:
@@ -380,8 +380,8 @@ class CantoConfig():
                     type(current[key]) == list:
 
                 log.debug("Deleting items from list lists:")
-                log.debug("\\%s" % deletions[key])
-                log.debug("\\%s" % current[key])
+                log.debug("\\%s", deletions[key])
+                log.debug("\\%s", current[key])
 
                 for item in deletions[key]:
                     if item in current[key]:
@@ -418,8 +418,8 @@ class CantoConfig():
                     current[key] = change[key]
                 else:
                     log.debug("Merging lists:")
-                    log.debug("\\%s" % change[key])
-                    log.debug("\\%s" % current[key])
+                    log.debug("\\%s", change[key])
+                    log.debug("\\%s", current[key])
 
                     # Any items not in change are prepended.  This allows the
                     # simple n-item append to work as expected, it allows the

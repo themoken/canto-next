@@ -95,8 +95,8 @@ class RWLock(object):
         while self.readers > 0:
             if current_thread().ident in [ x[0] for x in self.reader_stacks ]:
                 if not warned:
-                    log.debug("WARN: %s holds read, trying to get write on %s" %
-                            (current_thread().ident, self.name))
+                    log.debug("WARN: %s holds read, trying to get write on %s", 
+                            current_thread().ident, self.name)
                     warned = True
 
                 # Break the deadlock if we're the last reader

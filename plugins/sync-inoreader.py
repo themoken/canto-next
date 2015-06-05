@@ -83,7 +83,7 @@ def ino_get_auth():
 
 authorization = ino_get_auth()
 
-log.debug("authorization: %s" % authorization)
+log.debug("authorization: %s", authorization)
 
 # XXX : Needs to handle errors / reauth
 
@@ -94,7 +94,7 @@ def inoreader_req(path, query = {}):
     r = requests.get(BASE_URL + path, params=query, headers=headers)
 
     if r.status_code != 200:
-        log.debug("STATUS %s" % r.status_code)
+        log.debug("STATUS %s", r.status_code)
         log.debug(r.headers)
         log.debug(r.text)
 
@@ -219,7 +219,7 @@ class CantoFeedInoReader(DaemonFeedPlugin):
             #    r = inoreader_req(content_path, query).json()
             #    ino_entries.extend(r["items"])
         except Exception as e:
-            log.debug("EXCEPT: %s" % traceback.format_exc(e))
+            log.debug("EXCEPT: %s", traceback.format_exc(e))
 
         for ino_entry in ino_entries:
             for canto_entry in newcontent["entries"]:
@@ -251,7 +251,7 @@ class CantoFeedInoReader(DaemonFeedPlugin):
 
                 cat = category.split("/", 3)
                 if len(cat) < 4:
-                    log.debug("Weird category? %s" % cat)
+                    log.debug("Weird category? %s", cat)
                     continue
 
                 if cat[2] == "state":
@@ -341,7 +341,7 @@ def on_daemon_serving():
             if c_feed["url"] == url:
                 break
         else:
-            log.debug("New feed: %s" % url)
+            log.debug("New feed: %s", url)
             call_hook("daemon_set_configs", [ None, { "feeds" : [ { "name" : name, "url" : url } ] } ])
 
     for c_feed in config.json["feeds"]:
@@ -351,7 +351,7 @@ def on_daemon_serving():
             if sub["url"] == url:
                 break
         else:
-            log.debug("Old feed: %s" % url)
+            log.debug("Old feed: %s", url)
             call_hook("daemon_del_configs", [ None, { "feeds" : [ c_feed ] } ] )
 
 on_hook("daemon_serving", on_daemon_serving)

@@ -85,7 +85,7 @@ class CantoFileSync(DaemonBackendPlugin):
     # our current shelf.
 
     def time_diff(self, path):
-        log.debug("Checking if %s is older than our shelf." % path)
+        log.debug("Checking if %s is older than our shelf.", path)
 
         try:
             s = shelve.open(path, 'r')

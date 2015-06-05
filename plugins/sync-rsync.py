@@ -59,14 +59,14 @@ def rsync_to(target, fname):
         log.warn("Unknown file to sync: %s" % target)
         return
 
-    log.debug("Syncto cmd: %s" % (cmd,))
-
+    log.debug("Syncto cmd: %s", cmd)
+    
     try:
         out = subprocess.check_output(cmd)
     except Exception as e:
         log.warn("Command %s : %s" % (cmd, e))
     else:
-        log.debug("Syncto output: %s" % out)
+        log.debug("Syncto output: %s", out)
 
 def rsync_from(target, fname):
     if target in targets:
@@ -75,14 +75,14 @@ def rsync_from(target, fname):
         log.warn("Unknown file to sync: %s" % target)
         return
 
-    log.debug("Syncfrom cmd: %s" % (cmd,))
+    log.debug("Syncfrom cmd: %s", cmd)
 
     try:
         out = subprocess.check_output(cmd)
     except Exception as e:
         log.warn("Command %s : %s" % (cmd, e))
     else:
-        log.debug("Syncfrom output: %s" % out)
+        log.debug("Syncfrom output: %s", out)
 
 if ENABLED:
     on_hook("daemon_syncfrom", rsync_from)

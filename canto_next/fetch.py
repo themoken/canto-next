@@ -120,7 +120,7 @@ class CantoFetchThread(PluginHandler, Thread):
 
         update_contents = json.loads(json.dumps(update_contents))
 
-        log.debug("Parsed %s" % self.feed.URL)
+        log.debug("Parsed %s", self.feed.URL)
 
         # Allow DaemonFetchThreadPlugins to do any sort of fetch stuff
         # before the thread is marked as complete.
@@ -169,7 +169,7 @@ class CantoFetch():
 
             thread = CantoFetchThread(feed, fromdisk)
             thread.start()
-            log.debug("Started thread for feed %s" % feed.URL)
+            log.debug("Started thread for feed %s", feed.URL)
             self.threads.append((thread, feed.URL))
 
     def reap(self, force=False):

@@ -236,11 +236,11 @@ class CantoFeed(PluginHandler):
 
                         for user_tag in d_item[a]:
                             if user_tag not in attributes[item][a]:
-                                log.debug("set removing tag: %s - %s" % (user_tag, item))
+                                log.debug("set removing tag: %s - %s", user_tag, item)
                                 alltags.remove_tag(item, user_tag)
                         for user_tag in attributes[item][a]:
                             if user_tag not in d_item[a]:
-                                log.debug("set adding tag: %s - %s" % (user_tag, item))
+                                log.debug("set adding tag: %s - %s", user_tag, item)
                                 alltags.add_tag(item, user_tag)
 
                     d_item[a] = attributes[item][a]
@@ -273,11 +273,11 @@ class CantoFeed(PluginHandler):
 
         if self.URL not in self.shelf:
             # Stub empty feed
-            log.debug("Previous content not found for %s." % self.URL)
+            log.debug("Previous content not found for %s.", self.URL)
             old_contents = {"entries" : []}
         else:
             old_contents = self.shelf[self.URL]
-            log.debug("Fetched previous content for %s." % self.URL)
+            log.debug("Fetched previous content for %s.", self.URL)
 
         # BEWARE: At this point, update_contents could either be
         # fresh from feedparser or fresh from disk, so it's possible that the
@@ -331,7 +331,7 @@ class CantoFeed(PluginHandler):
                             continue
                         if key == "canto-tags":
                             for user_tag in olditem[key]:
-                                log.debug("index adding user tag: %s - %s" % (user_tag,item["id"]))
+                                log.debug("index adding user tag: %s - %s", (user_tag,item["id"]))
                                 tags_to_add.append((cacheitem["id"], user_tag))
                             item[key] = olditem[key]
                         elif key.startswith("canto"):
@@ -369,10 +369,10 @@ class CantoFeed(PluginHandler):
                 if keep_all:
                     pass
                 elif (ref_time - item_time) < self.keep_time:
-                    log.debug("Item not over keep_time (%d): %s" %
+                    log.debug("Item not over keep_time (%d): %s", 
                             (self.keep_time, olditem["id"]))
                 elif self.keep_unread and "read" not in item_state:
-                    log.debug("Keeping unread item: %s\n" % olditem["id"])
+                    log.debug("Keeping unread item: %s\n", olditem["id"])
                 else:
                     log.debug("Discarding: %s", olditem["id"])
                     continue

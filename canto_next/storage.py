@@ -83,7 +83,7 @@ class CantoShelf():
 
         self.index = list(self.shelf.keys())
 
-        log.debug("Shelf opened: %s" % self.shelf)
+        log.debug("Shelf opened: %s", self.shelf)
 
     def __setitem__(self, name, value):
         self.cache[name] = value

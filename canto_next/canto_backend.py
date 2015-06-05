@@ -164,7 +164,7 @@ class CantoBackend(PluginHandler, CantoServer):
 
         config.parse(False, change)
 
-        log.debug("config.errors = %s" % config.errors)
+        log.debug("config.errors = %s", config.errors)
 
         if config.errors:
             self.write(originating_socket, "ERRORS", config.errors)
@@ -356,11 +356,11 @@ class CantoBackend(PluginHandler, CantoServer):
 
             if filt == None:
                 if key in self.socket_transforms[socket]:
-                    log.debug("Unsetting socket transform %s:%s" % (socket, key))
+                    log.debug("Unsetting socket transform %s:%s", socket, key)
                     del self.socket_transforms[socket][key]
                 continue
 
-            log.debug("Setting socket transform: %s:%s = %s" % (socket, key, filt))
+            log.debug("Setting socket transform: %s:%s = %s", socket, key, filt)
             self.socket_transforms[socket][key] = filt
 
     # AUTOATTR [ attrs ... ] -> Follow up each items request with
@@ -519,7 +519,7 @@ class CantoBackend(PluginHandler, CantoServer):
     @write_lock(watch_lock)
     def cmd_watchtags(self, socket, args):
         for tag in args:
-            log.debug("socket %s watching tag %s" % (socket, tag))
+            log.debug("socket %s watching tag %s", socket, tag)
             if tag in self.watches["tags"]:
                 self.watches["tags"][tag].append(socket)
             else:
