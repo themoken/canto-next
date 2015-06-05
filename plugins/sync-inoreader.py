@@ -115,11 +115,11 @@ def strip_ino_tag(tag):
     return tag[3]
 
 def has_ino_tag(item, tag):
-    if "inoreader_categories" not in item:
+    if "canto_inoreader_categories" not in item:
         return False
 
     suff = full_ino_tag_suffix(tag)
-    for category in item["inoreader_categories"]:
+    for category in item["canto_inoreader_categories"]:
         if category.endswith(suff):
             return True
     return False
@@ -161,24 +161,24 @@ def sync_state_to(changes, attrs, add_only = False):
     if "canto-state" in changes:
         if "read" in changes["canto-state"]:
             if not has_ino_tag(attrs, "read"):
-                inoreader_add_tag(attrs["inoreader_id"], "read")
+                inoreader_add_tag(attrs["canto_inoreader_id"], "read")
         elif not add_only:
             if has_ino_tag(attrs, "read"):
-                inoreader_remove_tag(attrs["inoreader_id"], "read")
+                inoreader_remove_tag(attrs["canto_inoreader_id"], "read")
 
     if "canto-tags" in changes:
         for tag in changes["canto-tags"]:
             tag = tag.split(":", 1)[1] # strip user: or category: prefix
             if not has_ino_tag(attrs, tag):
-                inoreader_add_tag(attrs["inoreader_id"], tag)
+                inoreader_add_tag(attrs["canto_inoreader_id"], tag)
 
         if add_only:
             return
 
-        for tag in attrs["inoreader_categories"]:
+        for tag in attrs["canto_inoreader_categories"]:
             tag = strip_ino_tag(tag)
             if "user:" + tag not in changes[item_id]["canto-tags"]:
-                inoreader_remove_tag(attrs["inoreader_id"], tag)
+                inoreader_remove_tag(attrs["canto_inoreader_id"], tag)
 
 class CantoFeedInoReader(DaemonFeedPlugin):
     def __init__(self, feed):
@@ -226,8 +226,8 @@ class CantoFeedInoReader(DaemonFeedPlugin):
                 if ino_entry["canonical"][0]["href"] != canto_entry["link"]:
                     continue
 
-                canto_entry["inoreader_id"] = ino_entry["id"]
-                canto_entry["inoreader_categories"] = ino_entry["categories"]
+                canto_entry["canto_inoreader_id"] = ino_entry["id"]
+                canto_entry["canto_inoreader_categories"] = ino_entry["categories"]
                 break
 
     def edit_inoreader_sync(self, **kwargs):
@@ -241,10 +241,10 @@ class CantoFeedInoReader(DaemonFeedPlugin):
         for entry in newcontent["entries"]:
             # If we didn't get an id for this item, skip it
 
-            if "inoreader_id" not in entry:
+            if "canto_inoreader_id" not in entry:
                 continue
 
-            for category in entry["inoreader_categories"]:
+            for category in entry["canto_inoreader_categories"]:
                 if category.endswith("/state/com.google/read"):
                     self.add_state(entry, "read")
                     continue
@@ -298,13 +298,13 @@ def post_setattributes(socket, args):
         feed = allfeeds.get_feed(dict_id["URL"])
 
         attrs = feed.get_attributes([item_id], { item_id :\
-                ["inoreader_id", "inoreader_categories", "canto-state", "canto-tags"] })
+                ["canto_inoreader_id", "canto_inoreader_categories", "canto-state", "canto-tags"] })
         attrs = attrs[item_id]
 
-        # If the inoreader_id isn't right (likely empty since get_attributes
+        # If the canto_inoreader_id isn't right (likely empty since get_attributes
         # will sub in "") then skip synchronizing this item.
 
-        ino_id = attrs["inoreader_id"]
+        ino_id = attrs["canto_inoreader_id"]
         if not ino_id.startswith("tag:google.com,2005:reader/item/"):
             continue
 
