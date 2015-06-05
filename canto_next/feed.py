@@ -331,7 +331,7 @@ class CantoFeed(PluginHandler):
                             continue
                         if key == "canto-tags":
                             for user_tag in olditem[key]:
-                                log.debug("index adding user tag: %s - %s", (user_tag,item["id"]))
+                                log.debug("index adding user tag: %s - %s", user_tag,item["id"])
                                 tags_to_add.append((cacheitem["id"], user_tag))
                             item[key] = olditem[key]
                         elif key.startswith("canto"):
@@ -370,7 +370,7 @@ class CantoFeed(PluginHandler):
                     pass
                 elif (ref_time - item_time) < self.keep_time:
                     log.debug("Item not over keep_time (%d): %s", 
-                            (self.keep_time, olditem["id"]))
+                            self.keep_time, olditem["id"])
                 elif self.keep_unread and "read" not in item_state:
                     log.debug("Keeping unread item: %s\n", olditem["id"])
                 else:
