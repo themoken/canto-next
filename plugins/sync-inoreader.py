@@ -186,8 +186,10 @@ def sync_state_to(changes, attrs, add_only = False):
 
 class CantoFeedInoReader(DaemonFeedPlugin):
     def __init__(self, feed):
-        self.plugin_attrs = { "edit_inoreader_sync" : self.edit_inoreader_sync }
+        self.plugin_attrs = { "edit_inoreader_sync" : self.edit_inoreader_sync,
+                "additems_inoreader" : self.additems_inoreader }
         self.feed = feed
+        self.ino_data = None
 
     def _list_add(self, item, attr, new):
         if attr not in item:
@@ -202,8 +204,11 @@ class CantoFeedInoReader(DaemonFeedPlugin):
     def add_state(self, item, state):
         self._list_add(item, "canto-state", state)
 
-    def fetch_inoreader_data(self, feed, newcontent):
-        # Grab these from the parent object
+    def additems_inoreader(self, **kwargs):
+        feed = kwargs["feed"]
+        newcontent = kwargs["newcontent"]
+        tags_to_add = kwargs["tags_to_add"]
+        tags_to_remove = kwargs["tags_to_remove"]
 
         stream_id = quote("feed/" + feed.URL, [])
 
@@ -225,14 +230,21 @@ class CantoFeedInoReader(DaemonFeedPlugin):
         except Exception as e:
             log.debug("EXCEPT: %s", traceback.format_exc(e))
 
-        for ino_entry in ino_entries:
-            for canto_entry in newcontent["entries"]:
+        # Make sure this is around for edit_inoreader_sync
+        self.ino_data = ino_entries
+
+        for ino_entry in self.ino_data:
+            for canto_entry in newcontent["entries"][:]:
                 if ino_entry["canonical"][0]["href"] != canto_entry["link"]:
                     continue
-
-                canto_entry["canto_inoreader_id"] = ino_entry["id"]
-                canto_entry["canto_inoreader_categories"] = ino_entry["categories"]
                 break
+            else:
+                # feedparser compatibility
+                ino_entry["summary"] = ino_entry["summary"]["content"]
+                ino_entry["link"] = ino_entry["canonical"][0]["href"]
+
+                newcontent["entries"].append(ino_entry)
+                tags_to_add.append((self.feed._cacheitem(ino_entry)["id"], "maintag:" + feed.name ))
 
     def edit_inoreader_sync(self, **kwargs):
         feed = kwargs["feed"]
@@ -240,7 +252,22 @@ class CantoFeedInoReader(DaemonFeedPlugin):
         tags_to_add = kwargs["tags_to_add"]
         tags_to_remove = kwargs["tags_to_remove"]
 
-        self.fetch_inoreader_data(feed, newcontent)
+        # Add inoreader_id/categories information to the items
+
+        # This is very similar to the loop in additems_inoreader, but needs to
+        # be separate in case other plugins add items that inoreader might
+        # track.
+
+        for ino_entry in self.ino_data:
+            for canto_entry in newcontent["entries"][:]:
+                if ino_entry["canonical"][0]["href"] != canto_entry["link"]:
+                    continue
+                canto_entry["canto_inoreader_id"] = ino_entry["id"]
+                canto_entry["canto_inoreader_categories"] = ino_entry["categories"]
+                break
+
+        # Drop the data.
+        self.ino_data = None
 
         for entry in newcontent["entries"]:
             # If we didn't get an id for this item, skip it
