@@ -48,7 +48,7 @@ from canto_next.hooks import on_hook, call_hook
 from canto_next.canto_backend import DaemonBackendPlugin
 from canto_next.remote import DaemonRemotePlugin
 
-from canto_next.config import parse_locks, parse_unlocks
+from canto_next.config import parse_locks, parse_unlocks, config
 from canto_next.locks import config_lock, feed_lock
 from canto_next.feed import wlock_all, wunlock_all, rlock_all, runlock_all, allfeeds
 
@@ -216,7 +216,7 @@ class CantoFileSync(DaemonBackendPlugin):
                     log.debug("conf: We are older")
                     parse_locks()
                     shutil.move(fname, self.backend.conf_path)
-                    self.backend.conf.parse()
+                    config.parse()
                     parse_unlocks()
 
                     # Echo these changes to all connected sockets that care
