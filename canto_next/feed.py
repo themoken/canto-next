@@ -386,6 +386,22 @@ class CantoFeed(PluginHandler):
 
                 update_contents["entries"].append(olditem)
 
+        # Allow plugins to add items prior to running the editing functions
+        # so that the editing functions are guaranteed the full list.
+
+        for attr in list(self.plugin_attrs.keys()):
+            if not attr.startswith("additems_"):
+                continue
+
+            try:
+                a = getattr(self, attr)
+                a(feed = self, newcontent = update_contents,
+                        tags_to_add = tags_to_add,
+                        tags_to_remove = tags_to_remove)
+            except:
+                log.error("Error running feed item adding plugin")
+                log.error(traceback.format_exc())
+
         # Allow plugins DaemonFeedPlugins defining edit_* functions to have a
         # crack at the contents before we commit to disk.
 
