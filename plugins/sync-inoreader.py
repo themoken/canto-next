@@ -1,6 +1,6 @@
 # Canto Inoreader Plugin
 # by Jack Miller
-# v0.2
+# v0.3
 
 # DEPENDENCIES
 
@@ -64,99 +64,137 @@ import json
 
 log = logging.getLogger("SYNC-INOREADER")
 
-extra_headers = {
-        "User-Agent" : "Canto/0.9.0 + http://codezen.org/canto-ng",
-        "AppKey" : APP_KEY,
-        "AppID" : APP_ID,
-}
+class CantoInoreaderAPI():
+    def __init__(self):
+        self.extra_headers = {
+                "User-Agent" : "Canto/0.9.0 + http://codezen.org/canto-ng",
+                "AppKey" : APP_KEY,
+                "AppID" : APP_ID,
+        }
 
-def ino_get_auth():
-    headers = extra_headers.copy()
-    headers['Email'] = EMAIL
-    headers['Passwd'] = PASSWORD
+        self.authorization = self.auth()
 
-    r = requests.get("https://www.inoreader.com/accounts/ClientLogin", headers)
-    if r.status_code != 200:
-        raise Exception("Failed to authorize: [%s] %s" % (r.status_code, r.text))
+        self.add_tags_queued = {}
+        self.del_tags_queued = {}
 
-    for line in r.text.splitlines():
-        if line.startswith("Auth="):
-            return line[5:]
+    def auth(self):
+        headers = self.extra_headers.copy()
+        headers['Email'] = EMAIL
+        headers['Passwd'] = PASSWORD
 
-    raise Exception("Failed to find Auth= in auth response")
+        r = requests.get("https://www.inoreader.com/accounts/ClientLogin", headers)
+        if r.status_code != 200:
+            raise Exception("Failed to authorize: [%s] %s" % (r.status_code, r.text))
 
-authorization = ino_get_auth()
+        for line in r.text.splitlines():
+            if line.startswith("Auth="):
+                log.debug("authorization: %s", line[5:])
+                return line[5:]
 
-log.debug("authorization: %s", authorization)
+        raise Exception("Failed to find Auth= in auth response")
 
-# XXX : Needs to handle errors / reauth
+    # XXX : Needs to handle errors / reauth
 
-def inoreader_req(path, query = {}):
-    headers = extra_headers.copy()
-    headers["Authorization"] = "GoogleLogin auth=" + authorization
+    def inoreader_req(self, path, query = {}):
+        headers = self.extra_headers.copy()
+        headers["Authorization"] = "GoogleLogin auth=" + self.authorization
 
-    r = requests.get(BASE_URL + path, params=query, headers=headers)
+        r = requests.get(BASE_URL + path, params=query, headers=headers)
 
-    if r.status_code != 200:
-        log.debug("STATUS %s", r.status_code)
-        log.debug(r.headers)
-        log.debug(r.text)
+        if r.status_code != 200:
+            log.debug("STATUS %s", r.status_code)
+            log.debug(r.headers)
+            log.debug(r.text)
 
-    return r
+        return r
 
-def full_ino_tag_suffix(tag):
-    if tag in ["read", "starred", "fresh"]:
-        return "/state/com.google/" + tag
-    return "/label/" + tag
+    # Convert special tags into /state/com.google/tag and others into
+    # /label/tag, useful when matching without knowing the user.
 
-def full_ino_tag(tag):
-    return "user/-" + full_ino_tag_suffix(tag)
+    def full_ino_tag_suffix(self, tag):
+        if tag in ["read", "starred", "fresh"]:
+            return "/state/com.google/" + tag
+        return "/label/" + tag
 
-def strip_ino_tag(tag):
-    tag = tag.split("/", 3)
-    if tag[2] == "state":
-        return tag[3].split("/", 1)[1]
-    return tag[3]
+    # Add the user/- prefix to go upstream to Inoreader.
 
-def has_ino_tag(item, tag):
-    if "canto_inoreader_categories" not in item:
+    def full_ino_tag(self, tag):
+        return "user/-" + self.full_ino_tag_suffix(tag)
+
+    # Do the opposite, convert an Inoreader tag into a natural name.  (i.e.)
+    # /user/whatever/state/com.google/read -> read
+
+    def strip_ino_tag(self, tag):
+        tag = tag.split("/", 3)
+        if tag[2] == "state":
+            return tag[3].split("/", 1)[1]
+        return tag[3]
+
+    # Return whether Inoreader data includes this natural tag
+
+    def has_tag(self, item, tag):
+        if "canto_inoreader_categories" not in item:
+            return False
+
+        suff = self.full_ino_tag_suffix(tag)
+        for category in item["canto_inoreader_categories"]:
+            if category.endswith(suff):
+                return True
         return False
 
-    suff = full_ino_tag_suffix(tag)
-    for category in item["canto_inoreader_categories"]:
-        if category.endswith(suff):
-            return True
-    return False
+    def add_tag(self, item, tag):
+        ino_id = item["canto_inoreader_id"]
+        if not self.has_tag(item, tag):
+            if tag in self.add_tags_queued:
+                self.add_tags_queued[tag].append(ino_id)
+            else:
+                self.add_tags_queued[tag] = [ino_id]
 
-def inoreader_add_tag(ino_id, tag):
-    path = "api/0/edit-tag?a=" + quote(full_ino_tag(tag))
-    path += "&i=" + quote(ino_id)
-    inoreader_req(path)
+    def remove_tag(self, item, tag):
+        ino_id = item["canto_inoreader_id"]
+        if self.has_tag(item, tag):
+            if tag in self.del_tags_queued:
+                self.del_tags_queued[tag].append(ino_id)
+            else:
+                self.del_tags_queued[tag] = [ino_id]
 
-def inoreader_remove_tag(ino_id, tag):
-    path = "api/0/edit-tag?r=" + quote(full_ino_tag(tag))
-    path += "&i=" + quote(ino_id)
-    inoreader_req(path)
+    def flush_changes(self):
+        add_url = "api/0/edit-tag?a="
+        for key in self.add_tags_queued:
+            tag_add_url = add_url + quote(self.full_ino_tag(key))
+            tag_add_url += "".join([ "&i=" + quote(x) for x in self.add_tags_queued[key]])
+            self.inoreader_req(tag_add_url)
 
-def inoreader_get_subs():
-    return inoreader_req("api/0/subscription/list").json()["subscriptions"]
+        del_url = "api/0/edit-tag?r="
+        for key in self.del_tags_queued:
+            tag_del_url = del_url + quote(self.full_ino_tag(key))
+            tag_del_url += "".join([ "&i=" + quote(x) for x in self.del_tags_queued[key]])
+            self.inoread_req(tag_del_url)
 
-def inoreader_add_sub(feed_url, title):
-    query = {
-        "ac" : "subscribe",
-        "s" : "feed/" + feed_url,
-        "t" : title
-    }
+        self.add_tags_queued = {}
+        self.del_tags_queued = {}
 
-    inoreader_req("api/0/subscription/edit", query)
+    def get_subs(self):
+        return self.inoreader_req("api/0/subscription/list").json()["subscriptions"]
 
-def inoreader_del_sub(feed_url):
-    query = {
-        "ac" : "unsubscribe",
-        "s" : "feed/" + feed_url
-    }
-    inoreader_req("api/0/subscription/edit", query)
+    def add_sub(self, feed_url, title):
+        query = {
+            "ac" : "subscribe",
+            "s" : "feed/" + feed_url,
+            "t" : title
+        }
 
+        self.inoreader_req("api/0/subscription/edit", query)
+
+    def del_sub(self, feed_url):
+        query = {
+            "ac" : "unsubscribe",
+            "s" : "feed/" + feed_url
+        }
+
+        self.inoreader_req("api/0/subscription/edit", query)
+
+api = CantoInoreaderAPI()
 
 # Given a change set, and the current attributes of a canto item, tell
 # Inoreader about it.
@@ -164,17 +202,16 @@ def inoreader_del_sub(feed_url):
 def sync_state_to(changes, attrs, add_only = False):
     if "canto-state" in changes:
         if "read" in changes["canto-state"]:
-            if not has_ino_tag(attrs, "read"):
-                inoreader_add_tag(attrs["canto_inoreader_id"], "read")
+            api.add_tag(attrs, "read")
         elif not add_only:
-            if has_ino_tag(attrs, "read"):
+            if api.has_tag(attrs, "read"):
                 inoreader_remove_tag(attrs["canto_inoreader_id"], "read")
 
     if "canto-tags" in changes:
         for tag in changes["canto-tags"]:
             tag = tag.split(":", 1)[1] # strip user: or category: prefix
-            if not has_ino_tag(attrs, tag):
-                inoreader_add_tag(attrs["canto_inoreader_id"], tag)
+            if not api.has_tag(attrs, tag):
+                api.add_tag(attrs, tag)
 
         if add_only:
             return
@@ -220,12 +257,12 @@ class CantoFeedInoReader(DaemonFeedPlugin):
         content_path = "api/0/stream/contents/" + stream_id
 
         try:
-            r = inoreader_req(content_path, query).json()
+            r = api.inoreader_req(content_path, query).json()
             ino_entries.extend(r["items"])
 
             #while "continuation" in r:
             #    query["c"] = r["continuation"]
-            #    r = inoreader_req(content_path, query).json()
+            #    r = api.inoreader_req(content_path, query).json()
             #    ino_entries.extend(r["items"])
         except Exception as e:
             log.debug("EXCEPT: %s", traceback.format_exc(e))
@@ -307,7 +344,7 @@ class CantoFeedInoReader(DaemonFeedPlugin):
             # to set it as read?
 
             if "read" in entry["canto-state"] and not\
-                    (has_ino_tag(entry, "read") or has_ino_tag(entry, "fresh")):
+                    (api.has_tag(entry, "read") or api.has_tag(entry, "fresh")):
                 log.debug("Marking unread from Inoreader")
                 entry["canto-state"].remove("read")
 
@@ -315,9 +352,11 @@ class CantoFeedInoReader(DaemonFeedPlugin):
                 continue
 
             for tag in entry["canto-tags"][:]:
-                if not has_ino_tag(entry, tag.split(":", 1)[1]):
+                if not api.has_tag(entry, tag.split(":", 1)[1]):
                     entry["canto-tags"].remove(tag)
                     tags_to_remove.append((self.feed._cacheitem(entry)["id"], tag))
+
+        api.flush_changes()
 
 # For canto communicating to Inoreader, we tap into the relevant hooks to
 # pickup state / tag changes, and convert that into Inoreader API calls.
@@ -341,19 +380,21 @@ def post_setattributes(socket, args):
 
         sync_state_to(args[item_id], attrs)
 
+    api.flush_changes()
+
 on_hook("daemon_post_setattributes", post_setattributes)
 
 def post_setconfigs(socket, args):
     if "feeds" in args:
         for feed in args["feeds"]:
-            inoreader_add_sub(feed["url"], feed["name"])
+            api.add_sub(feed["url"], feed["name"])
 
 on_hook("daemon_post_setconfigs", post_setconfigs)
 
 def post_delconfigs(socket, args):
     if "feeds" in args:
         for feed in args["feeds"]:
-            inoreader_del_sub(feed["url"])
+            api.del_sub(feed["url"])
 
 on_hook("daemon_post_delconfigs", post_delconfigs)
 
@@ -362,7 +403,7 @@ on_hook("daemon_post_delconfigs", post_delconfigs)
 
 def on_daemon_serving():
     log.debug("Synchronizing subscriptions.")
-    ino_subs = inoreader_get_subs()
+    ino_subs = api.get_subs()
 
     for sub in ino_subs:
         url = sub["url"]
