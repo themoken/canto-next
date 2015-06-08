@@ -158,18 +158,30 @@ class CantoInoreaderAPI():
             else:
                 self.del_tags_queued[tag] = [ino_id]
 
-    def flush_changes(self):
-        add_url = "api/0/edit-tag?a="
-        for key in self.add_tags_queued:
-            tag_add_url = add_url + quote(self.full_ino_tag(key))
-            tag_add_url += "".join([ "&i=" + quote(x) for x in self.add_tags_queued[key]])
-            self.inoreader_req(tag_add_url)
+    def _urllimit(self, prefix, ino_ids):
+        t = prefix
+        l = len(t)
 
-        del_url = "api/0/edit-tag?r="
+        for i, ino_id in enumerate(ino_ids):
+            if l + len(ino_id) > 2048:
+                self.inoreader_req(t)
+                return ino_ids[i:]
+            t += ino_id
+            l += len(ino_id)
+
+        self.inoreader_req(t)
+        return []
+
+    def flush_changes(self):
+        for key in self.add_tags_queued:
+            to_add = [ "&i=" + quote(x) for x in self.add_tags_queued[key]]
+            while to_add:
+                to_add = self._urllimit("api/0/edit-tag?a=" + quote(self.full_ino_tag(key)), to_add)
+
         for key in self.del_tags_queued:
-            tag_del_url = del_url + quote(self.full_ino_tag(key))
-            tag_del_url += "".join([ "&i=" + quote(x) for x in self.del_tags_queued[key]])
-            self.inoread_req(tag_del_url)
+            to_del = [ "&i=" + quote(x) for x in self.del_tags_queued[key]]
+            while to_del:
+                to_del = self._urllimit("api/0/edit-tag?r=" + quote(self.full_ino_tag(key)), to_del)
 
         self.add_tags_queued = {}
         self.del_tags_queued = {}
