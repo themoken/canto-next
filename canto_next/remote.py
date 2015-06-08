@@ -163,7 +163,7 @@ class CantoRemote(PluginHandler, CantoClient):
 
     def _autoname(self, URL):
         extra_headers = { 'User-Agent' :\
-                'Canto/0.8.0 + http://codezen.org/canto' }
+                'Canto/0.9.0 + http://codezen.org/canto-ng' }
         try:
             content = feedparser.parse(URL, request_headers = extra_headers)
         except Exception as e:
