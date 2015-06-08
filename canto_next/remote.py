@@ -315,7 +315,7 @@ class CantoRemote(PluginHandler, CantoClient):
 
     This differs from config as only one option can be set/got at a time, but
     it allows lax argument parsing (i.e. one-config CantoCurses.browser =
-    firefox %u will work as expected, without quoting.)
+    firefox will work as expected, without quoting.)
 
     If the value you're setting is a type other than string, you must specify
     --eval and the value will be eval'd into a proper type.
