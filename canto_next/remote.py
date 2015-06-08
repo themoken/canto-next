@@ -126,6 +126,7 @@ class CantoRemote(PluginHandler, CantoClient):
         print("\taddfeed - subscribe to a new feed")
         print("\tlistfeeds - list all subscribed feeds")
         print("\tdelfeed - unsubscribe from a feed")
+        print("\tstatus - print item counts")
         print("\tforce-update - refetch all feeds")
         print("\tconfig - change / query configuration variables")
         print("\tone-config - change / query one configuration variable")
@@ -481,6 +482,74 @@ class CantoRemote(PluginHandler, CantoClient):
     Force fetch of all feeds."""
 
         self.write("FORCEUPDATE", {})
+
+    def _numstate(self, tag, state):
+        self.write("AUTOATTR", [ "canto-state" ])
+        self.write("ITEMS", [ tag ])
+
+        items = []
+
+        cmd, r = self._wait_response(None)
+        while cmd != "ITEMSDONE":
+            if cmd == "ITEMS":
+                items.extend(r[tag])
+            cmd, r = self._wait_response(None)
+
+        if len(items) == 0:
+            return 0
+
+        attrs = self._wait_response("ATTRIBUTES")
+
+        if state == "unread":
+            return len([ x for x in items if "read" not in attrs[x]["canto-state"]])
+        elif state == "read":
+            return len([ x for x in items if "read" in attrs[x]["canto-state"]])
+        else:
+            return len(items)
+
+    def cmd_status(self):
+        """USAGE: canto-remote status (--tag=tag) (--read|--total|--tags)
+
+    Print the number of unread items tracked by the daemon.
+
+    --tags can be given to print a summary for all existing tags
+
+    --tag can be given to print the number of items in that particular tag
+    (i.e. "maintag:Slashdot", "user:cool")
+
+    --read can be given to print the number of read items
+    --total can be given to print the total number of items
+
+    NOTE: This is still subject to defaults.global_transform, and defined tag
+    transforms, so if you're using filter_read, for example, it will never
+    return a single read item (so --total will have no effect and --read will
+    always return 0)."""
+
+        state = "unread"
+        if "--read" in sys.argv:
+            state = "read"
+        if "--total" in sys.argv:
+            state = "all"
+
+        self.write("LISTTAGS","")
+        t = self._wait_response("LISTTAGS")
+
+        if "--tags" in sys.argv:
+            for tag in t:
+                print("%s : %s" % (tag, self._numstate(tag, state)))
+        elif "--tag" in sys.argv:
+            if "--tag" == sys.argv[-1]:
+                print("--tag must be followed by a tag name")
+                sys.exit(-1)
+
+            tag = sys.argv[sys.argv.index("--tag") + 1]
+            if tag not in t:
+                print("Unknown tag %s - use --tags to list known tags" % tag)
+                sys.exit(-1)
+
+            print("%s : %s" % (tag, self._numstate(tag, state)))
+        else:
+            print("%s" % sum([self._numstate(tag, state) for tag in t ]))
 
     def cmd_help(self):
         """USAGE: canto-remote help [command]"""
