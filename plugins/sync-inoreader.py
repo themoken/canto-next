@@ -64,6 +64,12 @@ import json
 
 log = logging.getLogger("SYNC-INOREADER")
 
+class InoreaderReqFailed(Exception):
+    pass
+
+class InoreaderAuthFailed(Exception):
+    pass
+
 class CantoInoreaderAPI():
     def __init__(self):
         self.extra_headers = {
@@ -72,7 +78,12 @@ class CantoInoreaderAPI():
                 "AppID" : APP_ID,
         }
 
-        self.authorization = self.auth()
+        try:
+            self.authorization = self.auth()
+        except:
+            self.authorization = None
+
+        self.dead = False
 
         self.add_tags_queued = {}
         self.del_tags_queued = {}
@@ -82,31 +93,61 @@ class CantoInoreaderAPI():
         headers['Email'] = EMAIL
         headers['Passwd'] = PASSWORD
 
-        r = requests.get("https://www.inoreader.com/accounts/ClientLogin", headers)
+        try:
+            r = requests.get("https://www.inoreader.com/accounts/ClientLogin", headers)
+        except Exception as e:
+            raise InoreaderReqFailed(str(e))
+
         if r.status_code != 200:
-            raise Exception("Failed to authorize: [%s] %s" % (r.status_code, r.text))
+            raise InoreaderAuthFailed("Failed to authorize: [%s] %s" % (r.status_code, r.text))
 
         for line in r.text.splitlines():
             if line.startswith("Auth="):
                 log.debug("authorization: %s", line[5:])
                 return line[5:]
 
-        raise Exception("Failed to find Auth= in auth response")
-
-    # XXX : Needs to handle errors / reauth
+        raise InoreaderAuthFailed("Failed to find Auth= in auth response")
 
     def inoreader_req(self, path, query = {}):
-        headers = self.extra_headers.copy()
-        headers["Authorization"] = "GoogleLogin auth=" + self.authorization
+        tries = 3
+        r = {}
 
-        r = requests.get(BASE_URL + path, params=query, headers=headers)
+        while tries and not self.dead:
+            tries -= 1
+            if not self.authorization:
+                try:
+                    self.authorization = self.auth()
+                except InoreaderReqFailed as e:
+                    log.debug("Auth request failed: %s", e)
+                    continue
+                except InoreaderAuthFailed:
+                    log.error("Inoreader authorization failed, please check your credentials in sync-inoreader.py")
+                    self.dead = True
+                    raise
 
-        if r.status_code != 200:
-            log.debug("STATUS %s", r.status_code)
-            log.debug(r.headers)
-            log.debug(r.text)
+            headers = self.extra_headers.copy()
+            headers["Authorization"] = "GoogleLogin auth=" + self.authorization
 
-        return r
+            r = requests.get(BASE_URL + path, params=query, headers=headers)
+
+            if r.status_code != 200:
+                log.debug("STATUS %s", r.status_code)
+                log.debug(r.headers)
+                log.debug(r.text)
+            else:
+                return r
+
+            # No authorization, attempt to get another code on the next try.
+
+            if r.status_code == 401:
+                self.authorization = None
+            elif r.status_code == 429:
+                log.error("Inoreader rate limit reached.")
+                self.dead = True
+            elif r.status_code == 503:
+                log.error("Inoreader appears down, state may be lost")
+
+        raise InoreaderReqFailed
 
     # Convert special tags into /state/com.google/tag and others into
     # /label/tag, useful when matching without knowing the user.
@@ -265,22 +306,17 @@ class CantoFeedInoReader(DaemonFeedPlugin):
 
         # Collect all of the items
 
-        ino_entries = []
+        self.ino_data = []
+
         content_path = "api/0/stream/contents/" + stream_id
 
         try:
             r = api.inoreader_req(content_path, query).json()
-            ino_entries.extend(r["items"])
-
-            #while "continuation" in r:
-            #    query["c"] = r["continuation"]
-            #    r = api.inoreader_req(content_path, query).json()
-            #    ino_entries.extend(r["items"])
+            self.ino_data.extend(r["items"])
+        except (InoreaderAuthFailed, InoreaderReqFailed):
+            return
         except Exception as e:
-            log.debug("EXCEPT: %s", traceback.format_exc(e))
-
-        # Make sure this is around for edit_inoreader_sync
-        self.ino_data = ino_entries
+            log.debug("EXCEPT: %s", traceback.format_exc())
 
         for ino_entry in self.ino_data:
             for canto_entry in newcontent["entries"][:]:
