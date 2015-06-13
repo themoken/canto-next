@@ -77,14 +77,15 @@ Add content to reddit items. Includes a sort
 that will automatically order items by upvotes.
 
 .TP
-sync.py
-A generic file-based sync plugin, to be used with other sync plugins.
+sync-rsync.py
+An rsync based sync plugin. See header for configuration, can be used to sync
+with a remote server via SSH, or with another local filesystem (for
+NFS/sshfs/Dropbox/gdrive etc.)
 
 .TP
-sync-rsync.py
-An rsync based sync plugin (requires sync.py). See header for configuration,
-can be used to sync with a remote server via SSH, or with another local
-filesystem (for NFS/sshfs/Dropbox/gdrive etc.)
+sync-inoreader.py
+Synchronize (most) content with inoreader.com, a service with support for RSS
+on the web as well as various mobile devices.
 
 .SH FILES
 
