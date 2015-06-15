@@ -41,7 +41,6 @@ def unhook_all(key):
 
 def call_hook(hook, args):
     if hook in hooks:
-
         # List copy here so hooks can remove themselves
         # without effecting our iteration.
 

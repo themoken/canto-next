@@ -250,38 +250,6 @@ class CantoBackend(PluginHandler, CantoServer):
         on_hook("daemon_del_configs", lambda x, y : self.internal_command(x, self.in_delconfigs, y))
         on_hook("daemon_get_configs", lambda x, y : self.internal_command(x, self.in_configs, y))
 
-    # Return list of item tuples after global transforms have been performed on
-    # them.
-
-    @read_lock(config_lock)
-    @read_lock(socktran_lock)
-    @read_lock(feed_lock)
-    @read_lock(tag_lock)
-    def apply_transforms(self, socket, tag):
-        tagobj = alltags.get_tag(tag)
-
-        feeds = allfeeds.items_to_feeds(tagobj)
-        rlock_feed_objs(feeds)
-
-        try:
-            # Global transform
-            if config.global_transform:
-                tagobj = config.global_transform(tagobj)
-
-            # Tag level transform
-            if tag in alltags.tag_transforms and\
-                    alltags.tag_transforms[tag]:
-                tagobj = alltags.tag_transforms[tag](tagobj)
-
-            # Socket transforms ANDed together.
-            if socket in self.socket_transforms:
-                for filt in self.socket_transforms[socket]:
-                    tagobj = self.socket_transforms[socket][filt](tagobj)
-        finally:
-            runlock_feed_objs(feeds)
-
-        return tagobj
-
     # VERSION -> X.Y
 
     def cmd_version(self, socket, args):
@@ -378,16 +346,28 @@ class CantoBackend(PluginHandler, CantoServer):
 
     # ITEMS [tags] -> { tag : [ ids ], tag2 : ... }
 
+    @read_lock(feed_lock)
+    def _apply_socktrans(self, socket, tag):
+        feeds = allfeeds.items_to_feeds(tag)
+        rlock_feed_objs(feeds)
+        try:
+            for filt in self.socket_transforms[socket]:
+                tag = self.socket_transforms[socket][filt](tag)
+        finally:
+            runlock_feed_objs(feeds)
+        return tag
+
     @read_lock(attr_lock)
+    @read_lock(socktran_lock)
     def cmd_items(self, socket, args):
         ids = []
         response = {}
 
         for tag in args:
-            # get_tag returns a list invariably, but may be empty.
-            items = self.apply_transforms(socket, tag)
+            items = alltags.get_tag(tag)
 
-            # Divide each response into 100 items or less and dispatch them
+            if socket in self.socket_transforms:
+                items = self._apply_socktrans(socket, items)
 
             attr_list = []
 

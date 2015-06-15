@@ -6,7 +6,8 @@
 #   published by the Free Software Foundation.
 
 from .hooks import on_hook, call_hook
-from .locks import tag_lock
+from .rwlock import read_lock, write_lock
+from .locks import *
 
 import logging
 
@@ -79,6 +80,8 @@ class CantoTags():
         else:
             extras = []
 
+        log.debug("EXTRAS: %s")
+
         alladded = [ name ] + extras
 
         for name in alladded:
@@ -103,15 +106,40 @@ class CantoTags():
                 self.tags[tag].remove(id)
                 self.tag_changed(tag)
 
+    def apply_transforms(self, tag, tagobj):
+        from .config import config
+        # Global transform
+        if config.global_transform:
+            tagobj = config.global_transform(tagobj)
+
+        # Tag level transform
+        if tag in self.tag_transforms and\
+                self.tag_transforms[tag]:
+            tagobj = self.tag_transforms[tag](tagobj)
+
+        return tagobj
+
     #
     # This is called from a hook, so it has to get the lock itself
     #
 
+    @read_lock(config_lock)
+    @read_lock(feed_lock)
+    @write_lock(tag_lock)
     def do_tag_changes(self):
-        tag_lock.acquire_write()
+        from .feed import allfeeds, rlock_feed_objs, runlock_feed_objs
         for tag in self.changed_tags:
+            tagobj = self.get_tag(tag)
+
+            feeds = allfeeds.items_to_feeds(tagobj)
+            rlock_feed_objs(feeds)
+            try:
+                tagobj = self.apply_transforms(tag, tagobj)
+            finally:
+                runlock_feed_objs(feeds)
+
+            self.tags[tag] = tagobj
             call_hook("daemon_tag_change", [ tag ])
         self.changed_tags = []
-        tag_lock.release_write()
 
 alltags = CantoTags()
