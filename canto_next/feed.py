@@ -250,11 +250,8 @@ class CantoFeed(PluginHandler):
 
         self.lock.release_write()
 
-    def _cacheitem(self, item):
-        cacheitem = {}
-        cacheitem["id"] = json.dumps(\
-                { "URL" : self.URL, "ID" : item["id"] })
-        return cacheitem
+    def _item_id(self, item):
+        return json.dumps({ "URL" : self.URL, "ID" : item["id"] })
 
     # Re-index contents
     # If we have update_contents, use that
@@ -316,9 +313,7 @@ class CantoFeed(PluginHandler):
                 continue
 
             to_add.append(item)
-
-            cacheitem = self._cacheitem(item)
-            tags_to_add.append((cacheitem["id"], "maintag:" + self.name))
+            tags_to_add.append((item, "maintag:" + self.name))
 
             # Move over custom content from item.  Custom content is denoted
             # with a key that starts with "canto", but not "canto_update",
@@ -332,7 +327,7 @@ class CantoFeed(PluginHandler):
                         if key == "canto-tags":
                             for user_tag in olditem[key]:
                                 log.debug("index adding user tag: %s - %s", user_tag,item["id"])
-                                tags_to_add.append((cacheitem["id"], user_tag))
+                                tags_to_add.append((item, user_tag))
                             item[key] = olditem[key]
                         elif key.startswith("canto"):
                             item[key] = olditem[key]
@@ -377,12 +372,11 @@ class CantoFeed(PluginHandler):
                     log.debug("Discarding: %s", olditem["id"])
                     continue
 
-                cacheitem = self._cacheitem(olditem)
-                tags_to_add.append((cacheitem["id"], "maintag:" + self.name))
+                tags_to_add.append((olditem, "maintag:" + self.name))
 
                 if "canto-tags" in olditem:
                     for user_tag in olditem["canto-tags"]:
-                        tags_to_add.append((cacheitem["id"], user_tag))
+                        tags_to_add.append((olditem, user_tag))
 
                 update_contents["entries"].append(olditem)
 
@@ -423,20 +417,18 @@ class CantoFeed(PluginHandler):
 
             self.shelf[self.URL] = update_contents
 
-            to_remove = [ self._cacheitem(x)["id"] for x in old_contents["entries"] ]
-
             self.lock.release_write()
 
             tag_lock.acquire_write()
 
-            for item in to_remove:
-                alltags.remove_id(item)
+            for item in old_contents["entries"]:
+                alltags.remove_id(self._item_id(item))
 
             for item, tag in tags_to_add:
-                alltags.add_tag(item, tag)
+                alltags.add_tag(self._item_id(item), tag)
 
             for item, tag in tags_to_remove:
-                alltags.remove_tag(item, tag)
+                alltags.remove_tag(self._item_id(item), tag)
 
             # Go through and take items in old_contents that didn't make it
             # into update_contents / self.items and remove them from all tags.

@@ -18,7 +18,7 @@ class TestFeedIndex(Test):
         for feed in allfeeds.get_feeds():
             maintag = "maintag:" + feed.name
             for entry in shelf[feed.URL]["entries"]:
-                full_id = feed._cacheitem(entry)["id"]
+                full_id = feed._item_id(entry)
                 if maintag not in alltags.items_to_tags([full_id]):
                     raise Exception("Item %s didn't make it into tag %s" % (entry, maintag))
 

@@ -289,7 +289,7 @@ class CantoFeedInoReader(DaemonFeedPlugin):
 
     def add_utag(self, item, tags_to_add, tag):
         self._list_add(item, "canto-tags", "user:" + tag)
-        tags_to_add.append((self.feed._cacheitem(item)["id"], "user:" + tag))
+        tags_to_add.append((item, "user:" + tag))
 
     def add_state(self, item, state):
         self._list_add(item, "canto-state", state)
@@ -329,7 +329,7 @@ class CantoFeedInoReader(DaemonFeedPlugin):
                 ino_entry["link"] = ino_entry["canonical"][0]["href"]
 
                 newcontent["entries"].append(ino_entry)
-                tags_to_add.append((self.feed._cacheitem(ino_entry)["id"], "maintag:" + feed.name ))
+                tags_to_add.append((ino_entry, "maintag:" + feed.name ))
 
     def edit_inoreader_sync(self, **kwargs):
         feed = kwargs["feed"]
@@ -402,7 +402,7 @@ class CantoFeedInoReader(DaemonFeedPlugin):
             for tag in entry["canto-tags"][:]:
                 if not api.has_tag(entry, tag.split(":", 1)[1]):
                     entry["canto-tags"].remove(tag)
-                    tags_to_remove.append((self.feed._cacheitem(entry)["id"], tag))
+                    tags_to_remove.append((entry, tag))
 
         api.flush_changes()
 
