@@ -80,8 +80,6 @@ class CantoTags():
         else:
             extras = []
 
-        log.debug("EXTRAS: %s")
-
         alladded = [ name ] + extras
 
         for name in alladded:
