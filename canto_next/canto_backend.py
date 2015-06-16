@@ -43,8 +43,6 @@ logging.basicConfig(
 
 log = logging.getLogger("CANTO-DAEMON")
 
-FETCH_CHECK_INTERVAL = 60
-
 class DaemonBackendPlugin(Plugin):
     pass
 
