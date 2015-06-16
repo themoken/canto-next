@@ -221,37 +221,59 @@ class CantoFeed(PluginHandler):
 
         d = self.shelf[self.URL]
 
+        items_to_remove = []
+        tags_to_add = []
+
         for item in items:
             d_id = dict_id(item)["ID"]
 
             for d_item in d["entries"]:
                 if d_id != d_item["id"]:
                     continue
-
                 for a in attributes[item]:
-                    if a == "canto-tags":
-                        # Sub in empty tags
-                        if a not in d_item:
-                            d_item[a] = []
-
-                        for user_tag in d_item[a]:
-                            if user_tag not in attributes[item][a]:
-                                log.debug("set removing tag: %s - %s", user_tag, item)
-                                alltags.remove_tag(item, user_tag)
-                        for user_tag in attributes[item][a]:
-                            if user_tag not in d_item[a]:
-                                log.debug("set adding tag: %s - %s", user_tag, item)
-                                alltags.add_tag(item, user_tag)
-
                     d_item[a] = attributes[item][a]
+
+                items_to_remove.append(d_item)
+                tags_to_add += self._tag([d_item])
 
         self.shelf[self.URL] = d
         self.shelf.update_umod()
 
         self.lock.release_write()
 
+        self._retag(items_to_remove, tags_to_add, [])
+
     def _item_id(self, item):
         return json.dumps({ "URL" : self.URL, "ID" : item["id"] })
+
+    def _tag(self, items):
+        tags_to_add = []
+
+        for item in items:
+            tags_to_add.append((item, "maintag:" + self.name))
+            if "canto-tags" in item:
+                for user_tag in item["canto-tags"]:
+                    log.debug("index adding user tag: %s - %s", user_tag,item["id"])
+                    tags_to_add.append((item, user_tag))
+
+        return tags_to_add
+
+    def _retag(self, items_to_remove, tags_to_add, tags_to_remove):
+        tag_lock.acquire_write()
+
+        for item in items_to_remove:
+            alltags.remove_id(self._item_id(item))
+
+        for item, tag in tags_to_add:
+            alltags.add_tag(self._item_id(item), tag)
+
+        for item, tag in tags_to_remove:
+            alltags.remove_tag(self._item_id(item), tag)
+
+        # Go through andc6b18d take items in old_contents that didn't make it
+        # into update_contents / self.items and remove them from all tags.
+
+        tag_lock.release_write()
 
     # Re-index contents
     # If we have update_contents, use that
@@ -283,8 +305,6 @@ class CantoFeed(PluginHandler):
         # STEP 1: Identify all of the items in update_contents, and move
         # over any associated state from old_contents
 
-        tags_to_remove = []
-        tags_to_add = []
         to_add = []
 
         for item in update_contents["entries"]:
@@ -313,7 +333,6 @@ class CantoFeed(PluginHandler):
                 continue
 
             to_add.append(item)
-            tags_to_add.append((item, "maintag:" + self.name))
 
             # Move over custom content from item.  Custom content is denoted
             # with a key that starts with "canto", but not "canto_update",
@@ -324,11 +343,6 @@ class CantoFeed(PluginHandler):
                     for key in olditem:
                         if key == "canto_update":
                             continue
-                        if key == "canto-tags":
-                            for user_tag in olditem[key]:
-                                log.debug("index adding user tag: %s - %s", user_tag,item["id"])
-                                tags_to_add.append((item, user_tag))
-                            item[key] = olditem[key]
                         elif key.startswith("canto"):
                             item[key] = olditem[key]
                     break
@@ -372,13 +386,10 @@ class CantoFeed(PluginHandler):
                     log.debug("Discarding: %s", olditem["id"])
                     continue
 
-                tags_to_add.append((olditem, "maintag:" + self.name))
-
-                if "canto-tags" in olditem:
-                    for user_tag in olditem["canto-tags"]:
-                        tags_to_add.append((olditem, user_tag))
-
                 update_contents["entries"].append(olditem)
+
+        tags_to_add = self._tag(update_contents["entries"])
+        tags_to_remove = []
 
         # Allow plugins to add items prior to running the editing functions
         # so that the editing functions are guaranteed the full list.
@@ -419,21 +430,7 @@ class CantoFeed(PluginHandler):
 
             self.lock.release_write()
 
-            tag_lock.acquire_write()
-
-            for item in old_contents["entries"]:
-                alltags.remove_id(self._item_id(item))
-
-            for item, tag in tags_to_add:
-                alltags.add_tag(self._item_id(item), tag)
-
-            for item, tag in tags_to_remove:
-                alltags.remove_tag(self._item_id(item), tag)
-
-            # Go through and take items in old_contents that didn't make it
-            # into update_contents / self.items and remove them from all tags.
-
-            tag_lock.release_write()
+            self._retag(old_contents["entries"], tags_to_add, tags_to_remove)
         else:
             self.lock.release_write()
 
