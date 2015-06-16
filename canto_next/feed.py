@@ -180,6 +180,9 @@ class CantoFeed(PluginHandler):
 
         allfeeds.add_feed(URL, self)
 
+    def __str__(self):
+        return "CantoFeed: %s" % self.name
+
     # Return { id : { attribute : value .. } .. }
 
     def get_attributes(self, items, attributes):
