@@ -1,6 +1,6 @@
 # Canto Reddit Plugin
 # by Jack Miller
-# v1.1
+# v1.2
 #
 # If this is placed in the plugins directory, it will add a new sort:
 # reddit_score_sort, and will add "score [subreddit]" to the beginning of
@@ -41,6 +41,8 @@ def debug(message):
     if EXTRA_LOG_OUTPUT:
         log.debug(message)
 
+keep_attrs = [ "score", "subreddit" ]
+
 class RedditFetchJSON(DaemonFetchThreadPlugin):
     def __init__(self, fetch_thread):
         self.plugin_attrs = {
@@ -76,7 +78,13 @@ class RedditFetchJSON(DaemonFetchThreadPlugin):
             for rj in reddit_json["data"]["children"]:
                 if rj["data"]["name"] == m:
                     debug("Found m=%s" % m)
-                    entry["reddit-json"] = rj
+
+                    d = { "data" : {}}
+                    for attr in keep_attrs:
+                        if attr in rj["data"]:
+                            d["data"][attr] = rj["data"][attr]
+
+                    entry["reddit-json"] = d
                     break
             else:
                 debug("Couldn't find m= %s" % m)
