@@ -453,17 +453,6 @@ def on_daemon_serving():
     log.debug("Synchronizing subscriptions.")
     ino_subs = api.get_subs()
 
-    for sub in ino_subs:
-        url = sub["url"]
-        name = sub["title"]
-
-        for c_feed in config.json["feeds"]:
-            if c_feed["url"] == url:
-                break
-        else:
-            log.debug("New feed: %s", url)
-            call_hook("daemon_set_configs", [ None, { "feeds" : [ { "name" : name, "url" : url } ] } ])
-
     for c_feed in config.json["feeds"]:
         url = c_feed["url"]
 
@@ -473,5 +462,20 @@ def on_daemon_serving():
         else:
             log.debug("Old feed: %s", url)
             call_hook("daemon_del_configs", [ None, { "feeds" : [ c_feed ] } ] )
+
+    for sub in ino_subs:
+        url = sub["url"]
+        name = sub["title"]
+
+        for c_feed in config.json["feeds"]:
+            if c_feed["url"] == url:
+                break
+            if c_feed["name"] == name:
+                log.info("Found feed with same name, but not URL? Skipping.")
+                break
+        else:
+            log.debug("New feed: %s", url)
+            call_hook("daemon_set_configs", [ None, { "feeds" : [ { "name" : name, "url" : url } ] } ])
+
 
 on_hook("daemon_serving", on_daemon_serving)
