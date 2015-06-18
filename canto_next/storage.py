@@ -8,16 +8,12 @@
 #   published by the Free Software Foundation.
 
 from .feed import wlock_feeds
-from .hooks import on_hook, call_hook
+from .hooks import call_hook
 
-import threading
-import traceback
 import logging
 import json
 import gzip
 import time
-import dbm
-import sys
 import os
 
 log = logging.getLogger("SHELF")

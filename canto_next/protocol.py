@@ -7,8 +7,6 @@
 #   it under the terms of the GNU General Public License version 2 as 
 #   published by the Free Software Foundation.
 
-from .hooks import on_hook
-
 import logging
 import socket
 import select

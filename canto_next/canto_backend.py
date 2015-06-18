@@ -10,7 +10,7 @@
 
 CANTO_PROTOCOL_VERSION = 0.9
 
-from .feed import allfeeds, wlock_feeds, rlock_feeds, wlock_all, wunlock_all, rlock_all, runlock_all, stop_feeds, rlock_feed_objs, runlock_feed_objs
+from .feed import allfeeds, wlock_all, stop_feeds, rlock_feed_objs, runlock_feed_objs
 from .encoding import encoder
 from .server import CantoServer
 from .config import config, parse_locks, parse_unlocks
@@ -26,10 +26,8 @@ from .locks import *
 import traceback
 import logging
 import signal
-import getopt
 import fcntl
 import errno
-import shlex
 import time
 import sys
 import os
@@ -714,7 +712,6 @@ class CantoBackend(PluginHandler, CantoServer):
 
         try:
             from pympler import summary, muppy
-            from pympler.asizeof import asizeof
             summary.print_(summary.summarize(muppy.get_objects()))
         except:
             pass

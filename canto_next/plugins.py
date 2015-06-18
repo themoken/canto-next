@@ -9,7 +9,6 @@
 
 import traceback
 import logging
-import inspect
 import sys
 import os
 

@@ -8,7 +8,6 @@
 
 from .plugins import PluginHandler, Plugin, try_plugins, set_program
 from .client import CantoClient
-from .encoding import encoder
 from .format import escsplit
 from .hooks import call_hook
 
@@ -16,13 +15,11 @@ from xml.sax.saxutils import escape as xml_escape
 import xml.parsers.expat
 import feedparser
 import traceback
-import urllib.request, urllib.error, urllib.parse
 import pprint
 import time
 import sys
 
 import logging
-
 
 def assign_to_dict(d, var, val):
     terms = escsplit(var, '.', 0, 0, True)

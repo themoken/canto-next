@@ -11,7 +11,6 @@ from .protocol import CantoSocket
 from .hooks import call_hook
 
 import logging
-import select
 import fcntl
 import errno
 import time

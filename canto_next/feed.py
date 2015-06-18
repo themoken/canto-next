@@ -8,7 +8,6 @@
 #   published by the Free Software Foundation.
 
 from .plugins import PluginHandler, Plugin
-from .encoding import encoder
 from .tag import alltags
 from .rwlock import RWLock, read_lock, write_lock
 from .locks import feed_lock, tag_lock

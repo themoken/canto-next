@@ -15,7 +15,6 @@ from .tag import alltags
 
 import traceback
 import logging
-import locale
 import codecs
 import json
 import os
