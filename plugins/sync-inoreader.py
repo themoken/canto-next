@@ -299,6 +299,7 @@ class CantoFeedInoReader(DaemonFeedPlugin):
         newcontent = kwargs["newcontent"]
         tags_to_add = kwargs["tags_to_add"]
         tags_to_remove = kwargs["tags_to_remove"]
+        remove_items = kwargs["remove_items"]
 
         stream_id = quote("feed/" + feed.URL, [])
 
@@ -318,8 +319,34 @@ class CantoFeedInoReader(DaemonFeedPlugin):
         except Exception as e:
             log.debug("EXCEPT: %s", traceback.format_exc())
 
+        # Find items that were inserted last time, and remove them, potentially
+        # adding them to our fresh Inoreader data.
+
+        # This keeps us from getting dupes when Inoreader finds an item, we
+        # insert it, and then a real copy comes to canto but canto doesn't
+        # detect the dupe since the ids are different.
+
+        for canto_entry in newcontent["entries"][:]:
+            if "from_inoreader" not in canto_entry:
+                continue
+
+            remove_ids.append(canto_entry)
+            newcontent["entries"].remove(canto_entry)
+
+            for ino_entry in self.ino_data[:]:
+                if canto_entry["id"] == ino_entry["id"]:
+                    break
+            else:
+                self.ino_data.append(canto_entry)
+
+        # Now insert (or re-insert) items that aren't already in our data.
+
+        # NOTE: It's okay if re-inserted items are also in remove_ids, since
+        # that's processed first, and will be cancelled out by adding the tags
+        # afterwards.
+
         for ino_entry in self.ino_data:
-            for canto_entry in newcontent["entries"][:]:
+            for canto_entry in newcontent["entries"]:
                 if ino_entry["canonical"][0]["href"] != canto_entry["link"]:
                     continue
                 break
@@ -327,6 +354,9 @@ class CantoFeedInoReader(DaemonFeedPlugin):
                 # feedparser compatibility
                 ino_entry["summary"] = ino_entry["summary"]["content"]
                 ino_entry["link"] = ino_entry["canonical"][0]["href"]
+
+                # mark this item as from inoreader (missing from feed)
+                ino_entry["from_inoreader"] = True
 
                 newcontent["entries"].append(ino_entry)
                 tags_to_add.append((ino_entry, "maintag:" + feed.name ))
