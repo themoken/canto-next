@@ -29,7 +29,7 @@ default_config =\
             "rate" : 10,
             "keep_time" : 86400,
             "keep_unread" : False,
-            "global_transform" : "None"
+            "global_transform" : "filter_read"
         },
 
         "feeds" : [
