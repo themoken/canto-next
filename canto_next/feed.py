@@ -392,6 +392,7 @@ class CantoFeed(PluginHandler):
 
         tags_to_add = self._tag(update_contents["entries"])
         tags_to_remove = []
+        remove_items = []
 
         # Allow plugins to add items prior to running the editing functions
         # so that the editing functions are guaranteed the full list.
@@ -404,7 +405,8 @@ class CantoFeed(PluginHandler):
                 a = getattr(self, attr)
                 a(feed = self, newcontent = update_contents,
                         tags_to_add = tags_to_add,
-                        tags_to_remove = tags_to_remove)
+                        tags_to_remove = tags_to_remove,
+                        remove_items = remove_items)
             except:
                 log.error("Error running feed item adding plugin")
                 log.error(traceback.format_exc())
@@ -420,7 +422,8 @@ class CantoFeed(PluginHandler):
                 a = getattr(self, attr)
                 a(feed = self, newcontent = update_contents,
                         tags_to_add = tags_to_add,
-                        tags_to_remove = tags_to_remove)
+                        tags_to_remove = tags_to_remove,
+                        remove_items = remove_items)
             except:
                 log.error("Error running feed editing plugin")
                 log.error(traceback.format_exc())
@@ -432,7 +435,7 @@ class CantoFeed(PluginHandler):
 
             self.lock.release_write()
 
-            self._retag(old_contents["entries"], tags_to_add, tags_to_remove)
+            self._retag(old_contents["entries"] + remove_items, tags_to_add, tags_to_remove)
         else:
             self.lock.release_write()
 
