@@ -168,6 +168,12 @@ class CantoFetch():
         if len(self.threads) >= self.thread_limit:
             return False
 
+        # If feed is stopped/dead, pretend like we did the work but don't
+        # resurrect tags
+
+        if feed.stopped:
+            return True
+
         thread = CantoFetchThread(feed, fromdisk)
         thread.start()
         log.debug("Started thread for feed %s", feed)

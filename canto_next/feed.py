@@ -443,5 +443,6 @@ class CantoFeed(PluginHandler):
         # Check for existence in case of delete quickly
         # after add.
 
+        self.stopped = True
         if self.URL in self.shelf:
             del self.shelf[self.URL]
