@@ -330,7 +330,7 @@ class CantoFeedInoReader(DaemonFeedPlugin):
             if "from_inoreader" not in canto_entry:
                 continue
 
-            remove_ids.append(canto_entry)
+            remove_items.append(canto_entry)
             newcontent["entries"].remove(canto_entry)
 
             for ino_entry in self.ino_data[:]:
@@ -351,12 +351,13 @@ class CantoFeedInoReader(DaemonFeedPlugin):
                     continue
                 break
             else:
-                # feedparser compatibility
-                ino_entry["summary"] = ino_entry["summary"]["content"]
-                ino_entry["link"] = ino_entry["canonical"][0]["href"]
+                if "from_inoreader" not in ino_entry:
+                    # feedparser compatibility
+                    ino_entry["summary"] = ino_entry["summary"]["content"]
+                    ino_entry["link"] = ino_entry["canonical"][0]["href"]
 
-                # mark this item as from inoreader (missing from feed)
-                ino_entry["from_inoreader"] = True
+                    # mark this item as from inoreader (missing from feed)
+                    ino_entry["from_inoreader"] = True
 
                 newcontent["entries"].append(ino_entry)
                 tags_to_add.append((ino_entry, "maintag:" + feed.name ))
