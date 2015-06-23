@@ -273,9 +273,9 @@ class CantoSocket:
     def _do_write(self, conn, cmd, args):
         log.debug("\n\nWrite:\n%s\n", json.dumps((cmd, args), indent=4, sort_keys=True))
 
-        message = json.dumps((cmd, args))
+        message = json.dumps((cmd, args)).encode("UTF-8")
         size = struct.pack("!q", len(message))
-        message = size + message.encode("UTF-8")
+        message = size + message
 
         poll = select.poll()
         tosend = message
