@@ -23,18 +23,11 @@ Enable verbose logging (debug)
 
 .TP
 \-D/--dir [directory]
-Change base directory for canto-daemon (default: ~/.canto-ng)
+Change base directory for canto-daemon (default: $XDG_CONFIG_HOME/canto)
 
 .TP
 \-n/--nofetch
 Do not fetch new content while running (debug).
-
-.TP
-\-c/--cache [on|off|conn]
-Control memory usage v. performance
-    on: keep the entire database in memory (fastest)
-    conn: keep the database in memory with active connections
-    off: keep as little information in memory as possible (default)
 
 .TP
 \-\-noplugins
@@ -66,9 +59,9 @@ canto-remote or a client, like canto-curses.
 
 Plugins are packaged in <prefix>/canto/plugins (i.e. /usr/lib/canto/plugins)
 and can be enabled by copying them into your configuration directory (i.e.
-~/.canto-ng/plugins). Many of them have configuration in them, so you may want
-to open the files to make changes. Here are a few example plugins included with
-the canto-daemon source.
+$XDG_CONFIG_HOME/canto/plugins). Many of them have configuration in them, so
+you may want to open the files to make changes. Here are a few example plugins
+included with the canto-daemon source.
 
 .TP
 reddit.py
@@ -90,12 +83,12 @@ on the web as well as various mobile devices.
 .SH FILES
 
 .TP
-.I ~/.canto-ng/daemon-log
+.I $XDG_CONFIG_HOME/canto/daemon-log
 
 Canto-daemon log file.
 
 .TP
-.I ~/.canto-ng/plugins/
+.I $XDG_CONFIG_HOME/canto/plugins/
 
 Canto-daemon plugins directory
 

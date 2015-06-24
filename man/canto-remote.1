@@ -21,7 +21,7 @@ Print usage help
 
 .TP
 \-D/--dir [directory]
-Change base directory for canto-daemon (default: ~/.canto-ng)
+Change base directory for canto-daemon (default: $XDG_CONFIG_HOME/canto)
 
 .TP
 \-\-noplugins
@@ -65,6 +65,15 @@ List all subscribed feeds
 .TP
 .B delfeed [name or listfeeds index]
 Unsubscribe from a feed
+
+.TP
+.B status (--tag=tag) (--read|--total|--tags)
+Print the number of unread items, optionally restricted to a specific tag,
+--read prints read items, --total prints total items, --tags prints the value
+for all tags.
+
+NOTE: This is still subject to filters, so if you're filtering all read items,
+--read will never return anything but 0.
 
 .TP
 .B force-update
