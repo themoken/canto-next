@@ -70,7 +70,18 @@ class CantoSocket:
             log.error("Error: %s" % e.msg)
             return -1
 
-        self.conf_dir = os.path.expanduser("~/.canto-ng/")
+        old_path = os.path.expanduser("~/.canto-ng")
+
+        if os.path.exists(old_path):
+            self.conf_dir = old_path
+        else:
+            if "XDG_CONFIG_HOME" in os.environ:
+                xdg_path = os.environ["XDG_CONFIG_HOME"]
+            else:
+                xdg_path = "~/.config"
+
+            xdg_path = os.path.expanduser(xdg_path)
+            self.conf_dir = xdg_path + "/canto"
 
         self.location_args = []
 
