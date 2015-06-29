@@ -94,7 +94,7 @@ class CantoInoreaderAPI():
         headers['Passwd'] = PASSWORD
 
         try:
-            r = requests.get("https://www.inoreader.com/accounts/ClientLogin", headers)
+            r = requests.get("https://www.inoreader.com/accounts/ClientLogin", headers, timeout=1)
         except Exception as e:
             raise InoreaderReqFailed(str(e))
 
@@ -128,7 +128,10 @@ class CantoInoreaderAPI():
             headers = self.extra_headers.copy()
             headers["Authorization"] = "GoogleLogin auth=" + self.authorization
 
-            r = requests.get(BASE_URL + path, params=query, headers=headers)
+            try:
+                r = requests.get(BASE_URL + path, params=query, headers=headers, timeout=1)
+            except requests.exceptions.Timeout:
+                raise InoreaderReqFailed
 
             if r.status_code != 200:
                 log.debug("STATUS %s", r.status_code)
