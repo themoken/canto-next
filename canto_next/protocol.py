@@ -240,21 +240,23 @@ class CantoSocket:
             return select.POLLHUP
         if e & (select.POLLIN | select.POLLPRI):
             message = ""
-            try:
-                size = struct.unpack('!q', conn.recv(8))[0]
-                while size:
+            size = struct.unpack('!q', conn.recv(8))[0]
+            while size:
+                try:
                     frag = conn.recv(min((4096, size)))
                     size -= len(frag)
                     message += frag.decode()
-            except Exception as e:
-                if e.args[0] == errno.EINTR:
-                    return
-                log.error("Error receiving: %s" % e)
-                log.error("Interpreting as HUP")
-                return select.POLLHUP
+                except Exception as e:
+                    if e.args[0] == errno.EINTR:
+                        continue
+
+                    log.error("Error receiving: %s" % e)
+                    log.error("Interpreting as HUP")
+                    return select.POLLHUP
 
             # Never get POLLRDHUP on INET sockets, so
             # use POLLIN with no data as POLLHUP
+
             if not message:
                 log.debug("Read POLLIN with no data")
                 return select.POLLHUP
