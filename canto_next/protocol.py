@@ -239,13 +239,13 @@ class CantoSocket:
             log.debug("Read ERR")
             return select.POLLHUP
         if e & (select.POLLIN | select.POLLPRI):
-            message = ""
+            message = b""
             size = struct.unpack('!q', conn.recv(8))[0]
             while size:
                 try:
                     frag = conn.recv(min((4096, size)))
                     size -= len(frag)
-                    message += frag.decode()
+                    message += frag
                 except Exception as e:
                     if e.args[0] == errno.EINTR:
                         continue
@@ -261,7 +261,7 @@ class CantoSocket:
                 log.debug("Read POLLIN with no data")
                 return select.POLLHUP
 
-            return self.parse(conn, message)
+            return self.parse(conn, message.decode())
 
         # Parse POLLHUP last so if we still got POLLIN, any data
         # is still retrieved from the socket.
