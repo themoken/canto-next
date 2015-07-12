@@ -119,8 +119,15 @@ class CantoConfig():
         we_care = False
         for header in [ "feeds", "tags", "defaults" ]:
             if header in changes:
-                we_care = True
-                break
+                if header == "tags":
+                    for tag in changes["tags"]:
+                        if list(changes["tags"][tag].keys()) != [ "collapsed" ]:
+                            we_care = True
+                    if we_care:
+                        break
+                else:
+                    we_care = True
+                    break
 
         if fromfile or we_care:
             self.reset()
