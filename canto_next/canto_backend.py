@@ -472,19 +472,22 @@ class CantoBackend(PluginHandler, CantoServer):
 
     @write_lock(watch_lock)
     def cmd_watchconfigs(self, socket, args):
-        self.watches["config"].append(socket)
+        if socket not in self.watches["config"]:
+            self.watches["config"].append(socket)
 
     # WATCHNEWTAGS
 
     @write_lock(watch_lock)
     def cmd_watchnewtags(self, socket, args):
-        self.watches["new_tags"].append(socket)
+        if socket not in self.watches["new_tags"]:
+            self.watches["new_tags"].append(socket)
 
     # WATCHDELTAGS
 
     @write_lock(watch_lock)
     def cmd_watchdeltags(self, socket, args):
-        self.watches["del_tags"].append(socket)
+        if socket not in self.watches["del_tags"]:
+            self.watches["del_tags"].append(socket)
 
     # WATCHTAGS [ "tag", ... ]
 
@@ -493,7 +496,8 @@ class CantoBackend(PluginHandler, CantoServer):
         for tag in args:
             log.debug("socket %s watching tag %s", socket, tag)
             if tag in self.watches["tags"]:
-                self.watches["tags"][tag].append(socket)
+                if socket not in self.watches["tags"][tag]:
+                    self.watches["tags"][tag].append(socket)
             else:
                 self.watches["tags"][tag] = [socket]
 
