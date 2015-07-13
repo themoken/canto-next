@@ -213,6 +213,6 @@ class CantoFetch():
         self.threads = newthreads
 
         if work_done:
+            call_hook("daemon_work_done", [])
             if self.threads == []:
                 self.shelf.sync()
-            call_hook("daemon_work_done", [])
