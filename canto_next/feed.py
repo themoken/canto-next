@@ -277,6 +277,29 @@ class CantoFeed(PluginHandler):
 
         tag_lock.release_write()
 
+    def _keep_olditem(self, olditem):
+        ref_time = time.time()
+
+        if "canto_update" not in olditem:
+            olditem["canto_update"] = ref_time
+
+        item_time = olditem["canto_update"]
+
+        if "canto-state" in olditem:
+            item_state = olditem["canto-state"]
+        else:
+            item_state = []
+
+        if (ref_time - item_time) < self.keep_time:
+            log.debug("Item not over keep_time (%d): %s", 
+                    self.keep_time, olditem["id"])
+        elif self.keep_unread and "read" not in item_state:
+            log.debug("Keeping unread item: %s\n", olditem["id"])
+        else:
+            log.debug("Discarding: %s", olditem["id"])
+            return False
+        return True
+
     # Re-index contents
     # If we have update_contents, use that
     # If not, at least populate self.items from disk.
@@ -300,16 +323,9 @@ class CantoFeed(PluginHandler):
             old_contents = self.shelf[self.URL]
             log.debug("Fetched previous content for %s.", self.URL)
 
-        # BEWARE: At this point, update_contents could either be
-        # fresh from feedparser or fresh from disk, so it's possible that the
-        # old contents and the new contents are identical.
+        new_entries = []
 
-        # STEP 1: Identify all of the items in update_contents, and move
-        # over any associated state from old_contents
-
-        to_add = []
-
-        for item in update_contents["entries"]:
+        for i, item in enumerate(update_contents["entries"]):
 
             # Update canto_update only for freshly seen items.
             item["canto_update"] = update_contents["canto_update"]
@@ -324,71 +340,67 @@ class CantoFeed(PluginHandler):
                     log.error("Unable to uniquely ID item: %s" % item)
                     continue
 
-            # Make sure that this item can be uniquely IDed.
-            found = False
-            for seen_item in to_add:
-                if seen_item["id"] == item["id"]:
-                    found = True
-                    break
+            new_entries.append((i, item["id"], item))
 
-            if found:
-                continue
+        # Sort by string id
+        new_entries.sort(key=lambda x: x[1])
 
-            to_add.append(item)
-
-            # Move over custom content from item.  Custom content is denoted
-            # with a key that starts with "canto", but not "canto_update",
-            # which changes invariably.
-
-            for olditem in old_contents["entries"]:
-                if item["id"] == olditem["id"]:
-                    for key in olditem:
-                        if key == "canto_update":
-                            continue
-                        elif key.startswith("canto"):
-                            item[key] = olditem[key]
-                    break
+        # Remove duplicates
+        last_id = ""
+        for x in new_entries[:]:
+            if x[1] == last_id:
+                new_entries.remove(x)
             else:
-                call_hook("daemon_new_item", [self, item])
+                last_id = x[1]
 
-        update_contents["entries"] = to_add
+        old_entries = [ (i, item["id"], item) for (i, item) in enumerate(old_contents["entries"])]
 
-        # If to_add is empty, then we want to keep all of the items since we
-        # don't know what's in the feed currently.
+        old_entries.sort(key=lambda x: x[1])
 
-        keep_all = to_add == []
+        keep_all = new_entries == []
 
-        ref_time = time.time()
-        for olditem in old_contents["entries"]:
-            for item in to_add:
-                if olditem["id"] == item["id"]:
-                    break
+        kept_entries = []
+
+        for x in new_entries:
+
+            # old_entry is really old, see if we should keep or discard
+
+            while old_entries and x[1] > old_entries[0][1]:
+                if keep_all or self._keep_olditem(old_entries[0][2]):
+                    kept_entries.append(old_entries.pop(0))
+                else:
+                    old_entries.pop(0)
+
+            # new entry and old entry match, move content over
+
+            if old_entries and x[1] == old_entries[0][1]:
+                olditem = old_entries.pop(0)[2]
+                for key in olditem:
+                    if key == "canto_update":
+                        continue
+                    elif key.startswith("canto"):
+                        x[2][key] = olditem[key]
+
+            # new entry is really new, tell everyone
+
             else:
-                if "canto_update" not in olditem:
-                    olditem["canto_update"] = ref_time
+                call_hook("daemon_new_item", [self, x[2]])
 
-                item_time = olditem["canto_update"]
+        # Resort lists by place, instead of string id
+        new_entries.sort()
+        old_entries.sort()
 
-                if "canto-state" in olditem:
-                    item_state = olditem["canto-state"]
-                else:
-                    item_state = []
+        if keep_all:
+            kept_entries += old_entries
+        else:
+            for x in old_entries:
+                if self._keep_olditem(x[2]):
+                    kept_entries.append(x)
 
-                # If to_add is empty, we can't know what's currently
-                # in the feed, so keep all of them.
+        kept_entries.sort()
+        new_entries += kept_entries
 
-                if keep_all:
-                    pass
-                elif (ref_time - item_time) < self.keep_time:
-                    log.debug("Item not over keep_time (%d): %s", 
-                            self.keep_time, olditem["id"])
-                elif self.keep_unread and "read" not in item_state:
-                    log.debug("Keeping unread item: %s\n", olditem["id"])
-                else:
-                    log.debug("Discarding: %s", olditem["id"])
-                    continue
-
-                update_contents["entries"].append(olditem)
+        update_contents["entries"] = [ x[2] for x in new_entries ]
 
         tags_to_add = self._tag(update_contents["entries"])
         tags_to_remove = []
