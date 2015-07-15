@@ -15,38 +15,44 @@ log = logging.getLogger("HOOKS")
 hooks = {}
 
 def on_hook(hook, func, key=None):
-    if key and type(key) != str:
+    if key != None and type(key) != str:
         key = str(key)
 
     if hook in hooks:
-        hooks[hook].append((key, func))
+        if key in hooks[hook]:
+            hooks[hook][key].append(func)
+        else:
+            hooks[hook][key] = [ func ]
     else:
-        hooks[hook] = [(key, func)]
-
-def _trim_hooks():
-    for key in list(hooks.keys()):
-        if hooks[key] == []:
-            del hooks[key]
+        hooks[hook] = { key : [ func ] }
 
 def remove_hook(hook, func):
-    hooks[hook] = [ x for x in hooks[hook] if x[1] != func ]
-    _trim_hooks()
+    for key in list(hooks[hook].keys()):
+        while func in hooks[hook][key]:
+            hooks[hook][key].remove(func)
+        if hooks[hook][key] == []:
+            del hooks[hook][key]
+            if hooks[hook] == {}:
+                del hooks[hook]
 
 def unhook_all(key):
-    if key and type(key) != str:
+    if key != None and type(key) != str:
         key = str(key)
-    for hook in hooks:
-        hooks[hook] = [ x for x in hooks[hook] if x[0] != key ]
-    _trim_hooks()
+    for hook in list(hooks.keys()):
+        if key in hooks[hook]:
+            del hooks[hook][key]
+            if hooks[hook] == {}:
+                del hooks[hook]
 
 def call_hook(hook, args):
     if hook in hooks:
-        # List copy here so hooks can remove themselves
-        # without effecting our iteration.
-
-        try:
-            for key, func in hooks[hook][:]:
-                func(*args)
-        except:
-            log.error("Error calling hook %s (func: %s args: %s)" % (hook, func, args))
-            log.error(traceback.format_exc())
+        for key in list(hooks[hook].keys()):
+            try:
+                for func in hooks[hook][key][:]:
+                    try:
+                        func(*args)
+                    except:
+                        log.error("Error calling hook %s (func: %s args: %s)" % (hook, func, args))
+                        log.error(traceback.format_exc())
+            except:
+                pass
