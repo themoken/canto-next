@@ -7,6 +7,7 @@
 #   it under the terms of the GNU General Public License version 2 as 
 #   published by the Free Software Foundation.
 
+from threading import Lock
 import logging
 import socket
 import select
@@ -47,6 +48,8 @@ class CantoSocket:
             self.address = None
 
         self.sockets = []
+        self.read_locks = {}
+        self.write_locks = {}
 
         self.connect()
 
@@ -175,6 +178,8 @@ class CantoSocket:
                 tries -= 1
 
         self.sockets.append(sock)
+        self.read_locks[sock] = Lock()
+        self.write_locks[sock] = Lock()
         return sock
 
     # Setup poll.poll() object to watch for read status on conn.
@@ -205,7 +210,9 @@ class CantoSocket:
     # 3) select.POLLHUP if the connection is dead.
 
     def do_read(self, conn, timeout=None):
+        self.read_locks[conn].acquire()
         r = self._do_read(conn, timeout)
+        self.read_locks[conn].release()
         if r == select.POLLHUP:
             self.disconnected(conn)
         return r
@@ -278,7 +285,9 @@ class CantoSocket:
     # 2) select.POLLHUP is the connection is dead.
 
     def do_write(self, conn, cmd, args):
+        self.write_locks[conn].acquire()
         r = self._do_write(conn, cmd, args)
+        self.write_locks[conn].release()
         if r == select.POLLHUP:
             self.disconnected(conn)
         return r
@@ -347,4 +356,6 @@ class CantoSocket:
                 log.debug("Sent %d bytes.", sent)
 
     def disconnected(self, conn):
-        pass
+        self.sockets.remove(conn)
+        del self.read_locks[conn]
+        del self.write_locks[conn]
