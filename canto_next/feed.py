@@ -189,31 +189,36 @@ class CantoFeed(PluginHandler):
 
         d = self.shelf[self.URL]
 
-        for item in items:
-            d_id = dict_id(item)["ID"]
-            attrs = {}
+        args = [ (dict_id(item)["ID"], item, attributes[item]) for item in items ]
+        args.sort()
 
-            for d_item in d["entries"]:
-                if d_id != d_item["id"]:
-                    continue
+        got = [ (item["id"], item) for item in d["entries"] ]
+        got.sort()
 
-                if not attributes[item]:
-                    get = list(d_item.keys())
-                else:
-                    get = attributes[item]
+        for item, full_id, needed_attrs in args:
+            while got and item > got[0][0]:
+                got.pop(0)
 
-                for a in get:
+            if got and got[0][0] == item:
+                attrs = {}
+                for a in needed_attrs:
                     if a == "description":
                         real = "summary"
                     else:
                         real = a
 
-                    if real in d_item:
-                        attrs[a] = d_item[real]
+                    if real in got[0][1]:
+                        attrs[a] = got[0][1][real]
                     else:
                         attrs[a] = ""
-                r[item] = attrs
-                break
+                r[full_id] = attrs
+                got.pop(0)
+            else:
+                log.warn("item not found: %s" % item)
+                r[full_id] = {}
+                for a in needed_attrs:
+                    r[full_id][a] = ""
+                r[full_id]["title"] = "???"
         return r
 
     # Given an ID and a dict of attributes, update the disk.
