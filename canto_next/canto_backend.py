@@ -375,9 +375,9 @@ class CantoBackend(PluginHandler, CantoServer):
                 if socket in self.autoattr:
                     for id in items:
                         attr_req[id] = self.autoattr[socket][:]
+                    attr_list.append(attr_req)
 
                 self.write(socket, "ITEMS", { tag : items })
-                attr_list.append(attr_req)
 
             self.write(socket, "ITEMSDONE", {})
 
