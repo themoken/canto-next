@@ -28,11 +28,6 @@ class CantoTags():
 
         self.extra_tags = {}
 
-        # Batch tag_changes to be sent only after
-        # a block of requests.
-
-        on_hook("daemon_work_done", self.do_tag_changes)
-
     def items_to_tags(self, ids):
         tags = []
         for id in ids:
@@ -117,24 +112,14 @@ class CantoTags():
 
         return tagobj
 
-    #
-    # This is called from a hook, so it has to get the lock itself
-    #
-
-    @read_lock(config_lock)
-    @read_lock(feed_lock)
-    @write_lock(tag_lock)
     def do_tag_changes(self):
-        from .feed import allfeeds, rlock_feed_objs, runlock_feed_objs
         for tag in self.changed_tags:
             tagobj = self.get_tag(tag)
 
-            feeds = allfeeds.items_to_feeds(tagobj)
-            rlock_feed_objs(feeds)
             try:
                 tagobj = self.apply_transforms(tag, tagobj)
-            finally:
-                runlock_feed_objs(feeds)
+            except Exception as e:
+                log.error("Exception applying transforms: %s" % e)
 
             self.tags[tag] = tagobj
             call_hook("daemon_tag_change", [ tag ])

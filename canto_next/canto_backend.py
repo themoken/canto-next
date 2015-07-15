@@ -545,8 +545,6 @@ class CantoBackend(PluginHandler, CantoServer):
                     log.error("\n" + tb)
 
                 call_hook("daemon_post_" + cmd.lower(), [socket, args])
-
-                call_hook("daemon_work_done", [])
             else:
                 log.info("Got unknown command: %s" % (cmd))
 
@@ -554,8 +552,6 @@ class CantoBackend(PluginHandler, CantoServer):
         r = func(args)
         if cb:
             cb(r)
-
-        call_hook("daemon_work_done", [])
 
     def run(self):
 

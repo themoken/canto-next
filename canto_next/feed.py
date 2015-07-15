@@ -266,6 +266,7 @@ class CantoFeed(PluginHandler):
         return tags_to_add
 
     def _retag(self, items_to_remove, tags_to_add, tags_to_remove):
+        feed_lock.acquire_read()
         tag_lock.acquire_write()
 
         for item in items_to_remove:
@@ -277,10 +278,10 @@ class CantoFeed(PluginHandler):
         for item, tag in tags_to_remove:
             alltags.remove_tag(self._item_id(item), tag)
 
-        # Go through andc6b18d take items in old_contents that didn't make it
-        # into update_contents / self.items and remove them from all tags.
+        alltags.do_tag_changes()
 
         tag_lock.release_write()
+        feed_lock.release_read()
 
     def _keep_olditem(self, olditem):
         ref_time = time.time()

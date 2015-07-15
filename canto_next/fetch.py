@@ -212,7 +212,5 @@ class CantoFetch():
 
         self.threads = newthreads
 
-        if work_done:
-            call_hook("daemon_work_done", [])
-            if self.threads == []:
-                self.shelf.sync()
+        if work_done and self.threads == []:
+            self.shelf.sync()
