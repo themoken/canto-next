@@ -341,19 +341,21 @@ class CantoBackend(PluginHandler, CantoServer):
 
     # ITEMS [tags] -> { tag : [ ids ], tag2 : ... }
 
+    @read_lock(attr_lock)
     @read_lock(feed_lock)
     def _apply_socktrans(self, socket, tag):
         feeds = allfeeds.items_to_feeds(tag)
         rlock_feed_objs(feeds)
+        socktran_lock.acquire_read()
         try:
+
             for filt in self.socket_transforms[socket]:
                 tag = self.socket_transforms[socket][filt](tag)
         finally:
+            socktran_lock.release_read()
             runlock_feed_objs(feeds)
         return tag
 
-    @read_lock(attr_lock)
-    @read_lock(socktran_lock)
     def cmd_items(self, socket, args):
         ids = []
         response = {}
