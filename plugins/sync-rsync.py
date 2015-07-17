@@ -1,6 +1,6 @@
 # Canto rsync Plugin
 # by Jack Miller
-# v1.0
+# v1.1
 
 # This implements a lightweight remote sync based around rsync to a remote
 # server, or copying to mounted filesystem, etc.
@@ -260,14 +260,14 @@ class CantoFileSync(DaemonBackendPlugin):
                 for feed in sorted(allfeeds.feeds.keys()):
                     allfeeds.feeds[feed].lock.release_write()
 
+                # Complete wunlock_all()
+                feed_lock.release_write()
+
                 # Force feeds to be repopulated from disk, which will handle
                 # communicating changes to connections
 
                 self.backend.fetch.fetch(True, True)
                 self.backend.fetch.reap(True)
-
-                # Complete wunlock_all()
-                feed_lock.release_write()
 
             # Equal, just clear it up
 
