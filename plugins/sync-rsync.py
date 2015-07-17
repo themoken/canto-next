@@ -55,8 +55,9 @@ from canto_next.feed import wlock_all, wunlock_all, rlock_all, runlock_all, allf
 from tempfile import mkstemp
 import subprocess
 import logging
-import shelve
 import shutil
+import gzip
+import json
 import time
 import os
 
@@ -121,7 +122,9 @@ class CantoFileSync(DaemonBackendPlugin):
         log.debug("Checking if %s is older than our shelf.", path)
 
         try:
-            s = shelve.open(path, 'r')
+            fp = gzip.open(path, "rt", 9, "UTF-8")
+            s = json.load(fp)
+            fp.close()
         except:
             # If something messed up, assume that the sync failed and
             # pretend that we're newer anyway.
@@ -129,9 +132,7 @@ class CantoFileSync(DaemonBackendPlugin):
 
         if "control" in s and "canto-user-modified" in s["control"]:
             remote_stamp = s["control"]["canto-user-modified"]
-            s.close()
         else:
-            s.close()
             log.debug("Remote has no timestamp")
             return -1
 
