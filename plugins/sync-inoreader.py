@@ -334,6 +334,8 @@ class CantoFeedInoReader(DaemonFeedPlugin):
                 continue
 
             remove_items.append(canto_entry)
+            tags_to_add = [ x for x in tags_to_add if x[0] != canto_entry]
+
             newcontent["entries"].remove(canto_entry)
 
             for ino_entry in self.ino_data[:]:
