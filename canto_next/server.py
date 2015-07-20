@@ -91,6 +91,7 @@ class CantoServer(CantoSocket):
     def accept_conn(self, conn):
         self.read_locks[conn] = Lock()
         self.write_locks[conn] = Lock()
+        self.write_frags[conn] = None
 
         # Notify watchers about new socket.
         call_hook("server_new_socket", [conn])
