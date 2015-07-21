@@ -71,6 +71,8 @@ class RWLock(object):
         return True
 
     def release_read(self):
+        last = False
+
         self.reader_lock.acquire()
         self.readers -= 1
 
@@ -79,7 +81,11 @@ class RWLock(object):
                 self.reader_stacks.remove(tup)
                 break
 
+        if self.readers == 0:
+            last = True
+
         self.reader_lock.release()
+        return last
 
     def acquire_write(self, block=True):
         r = self.lock.acquire(block)
@@ -107,10 +113,16 @@ class RWLock(object):
         return True
 
     def release_write(self):
+        last = False
+
         self.writer_stacks = self.writer_stacks[0:-1]
         if self.writer_stacks == []:
             self.writer_id = 0
+            last = True
+
         self.lock.release()
+
+        return last
 
 def read_lock(lock):
     def _rlock_fn(fn):
