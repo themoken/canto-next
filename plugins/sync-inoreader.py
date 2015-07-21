@@ -21,10 +21,6 @@
 # pickup the changes. Adding or removing feeds with canto works properly all
 # the time.
 #
-# - You should probably only enable this if you have disabled other sync-*
-# plugins (like sync-rsync). They won't break, but having multiple
-# synchronization points is pointless.
-#
 # - You must have a standard Inoreader account, not an OAuth (Google/Facebook
 # login).
 
