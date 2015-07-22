@@ -254,7 +254,18 @@ class CantoSocket:
             return select.POLLHUP
         if e & (select.POLLIN | select.POLLPRI):
             message = b""
-            size = struct.unpack('!q', conn.recv(8))[0]
+
+            try:
+                size_bytes = conn.recv(8)
+                if not size_bytes:
+                    log.debug("No bytes - HUP")
+                    return select.POLLHUP
+            except:
+                log.debug("Couldn't get size, interpreting as HUP\n")
+                return select.POLLHUP
+
+            size = struct.unpack('!q', size_bytes)[0]
+
             while size:
                 try:
                     frag = conn.recv(min((4096, size)))
@@ -367,7 +378,6 @@ class CantoSocket:
         return (None, 0)
 
     def disconnected(self, conn):
-        self.sockets.remove(conn)
         del self.read_locks[conn]
         del self.write_locks[conn]
         del self.write_frags[conn]
