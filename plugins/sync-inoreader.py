@@ -1,6 +1,6 @@
 # Canto Inoreader Plugin
 # by Jack Miller
-# v0.3
+# v0.4
 
 # DEPENDENCIES
 
@@ -326,7 +326,7 @@ class CantoFeedInoReader(DaemonFeedPlugin):
         # detect the dupe since the ids are different.
 
         for canto_entry in newcontent["entries"][:]:
-            if "from_inoreader" not in canto_entry:
+            if "canto-from-inoreader" not in canto_entry:
                 continue
 
             remove_items.append(canto_entry)
@@ -350,15 +350,17 @@ class CantoFeedInoReader(DaemonFeedPlugin):
             for canto_entry in newcontent["entries"]:
                 if ino_entry["canonical"][0]["href"] != canto_entry["link"]:
                     continue
+                if ino_entry["id"] == canto_entry["id"]:
+                    canto_entry["canto-from-inoreader"] = True
                 break
             else:
-                if "from_inoreader" not in ino_entry:
+                if "canto-from-inoreader" not in ino_entry:
                     # feedparser compatibility
                     ino_entry["summary"] = ino_entry["summary"]["content"]
                     ino_entry["link"] = ino_entry["canonical"][0]["href"]
 
                     # mark this item as from inoreader (missing from feed)
-                    ino_entry["from_inoreader"] = True
+                    ino_entry["canto-from-inoreader"] = True
 
                 newcontent["entries"].append(ino_entry)
                 tags_to_add.append((ino_entry, "maintag:" + feed.name ))
