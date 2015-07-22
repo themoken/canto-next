@@ -421,10 +421,7 @@ class CantoFeed(PluginHandler):
 
             try:
                 a = getattr(self, attr)
-                a(feed = self, newcontent = update_contents,
-                        tags_to_add = tags_to_add,
-                        tags_to_remove = tags_to_remove,
-                        remove_items = remove_items)
+                tags_to_add, tags_to_remove, remove_items = a(self, update_contents, tags_to_add, tags_to_remove, remove_items)
             except:
                 log.error("Error running feed item adding plugin")
                 log.error(traceback.format_exc())
@@ -438,10 +435,7 @@ class CantoFeed(PluginHandler):
 
             try:
                 a = getattr(self, attr)
-                a(feed = self, newcontent = update_contents,
-                        tags_to_add = tags_to_add,
-                        tags_to_remove = tags_to_remove,
-                        remove_items = remove_items)
+                tags_to_add, tags_to_remove, remove_items = a(self, update_contents, tags_to_add, tags_to_remove, remove_items)
             except:
                 log.error("Error running feed editing plugin")
                 log.error(traceback.format_exc())

@@ -133,8 +133,8 @@ class RedditAnnotate(DaemonFeedPlugin):
                 "edit_reddit" : self.edit_reddit,
         }
 
-    def edit_reddit(self, **kwargs):
-        for entry in kwargs["newcontent"]["entries"]:
+    def edit_reddit(self, feed, newcontent, tags_to_add, tags_to_remove, remove_items):
+        for entry in newcontent["entries"]:
             if "reddit-json" not in entry:
                 debug("NO JSON, bailing")
                 continue
@@ -158,5 +158,7 @@ class RedditAnnotate(DaemonFeedPlugin):
                 entry["reddit-score"] = score
                 entry["title"] =\
                         ("%d " % entry["reddit-score"]) + entry["title"]
+
+        return (tags_to_add, tags_to_remove, remove_items)
 
 transform_locals["reddit_score_sort"] = RedditScoreSort()

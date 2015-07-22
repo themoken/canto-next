@@ -293,12 +293,8 @@ class CantoFeedInoReader(DaemonFeedPlugin):
     def add_state(self, item, state):
         self._list_add(item, "canto-state", state)
 
-    def additems_inoreader(self, **kwargs):
-        feed = kwargs["feed"]
-        newcontent = kwargs["newcontent"]
-        tags_to_add = kwargs["tags_to_add"]
-        tags_to_remove = kwargs["tags_to_remove"]
-        remove_items = kwargs["remove_items"]
+    def additems_inoreader(self, feed, newcontent, tags_to_add, tags_to_remove, remove_items):
+        log.debug("PRE ADD: %s" % "\n".join([x[0]["id"] for x in tags_to_add]))
 
         stream_id = quote("feed/" + feed.URL, [])
 
@@ -365,11 +361,9 @@ class CantoFeedInoReader(DaemonFeedPlugin):
                 newcontent["entries"].append(ino_entry)
                 tags_to_add.append((ino_entry, "maintag:" + feed.name ))
 
-    def edit_inoreader_sync(self, **kwargs):
-        feed = kwargs["feed"]
-        newcontent = kwargs["newcontent"]
-        tags_to_add = kwargs["tags_to_add"]
-        tags_to_remove = kwargs["tags_to_remove"]
+        return (tags_to_add, tags_to_remove, remove_items)
+
+    def edit_inoreader_sync(self, feed, newcontent, tags_to_add, tags_to_remove, remove_items):
 
         # Add inoreader_id/categories information to the items
 
@@ -439,6 +433,7 @@ class CantoFeedInoReader(DaemonFeedPlugin):
                     tags_to_remove.append((entry, tag))
 
         api.flush_changes()
+        return (tags_to_add, tags_to_remove, remove_items)
 
 # For canto communicating to Inoreader, we tap into the relevant hooks to
 # pickup state / tag changes, and convert that into Inoreader API calls.
