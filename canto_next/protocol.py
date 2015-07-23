@@ -303,7 +303,13 @@ class CantoSocket:
     # 2) select.POLLHUP is the connection is dead.
 
     def do_write(self, conn, cmd, args):
-        self.write_locks[conn].acquire()
+        # If we're just flushing data, we shouldn't hang on these:
+        if cmd == None:
+            if not self.write_locks[conn].acquire(False):
+                return
+        else:
+            self.write_locks[conn].acquire()
+
         r, frag = self._do_write(conn, cmd, args, self.write_frags[conn])
         self.write_locks[conn].release()
 
