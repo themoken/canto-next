@@ -216,6 +216,24 @@ class InTags(CantoTransform):
 
         return good
 
+class ItemLimit(CantoTransform):
+    def __init__(self, num):
+        if type(num) != int:
+            log.error("ItemLimit must be called with a numerical argument")
+            self.limit = 0
+            return
+        else:
+            self.limit = num
+
+        self.name="Limit %d items" % self.limit
+
+    def transform(self, items, attrs):
+        # Shortcut if failed init
+        if self.limit == 0:
+            return items
+
+        return items[:self.limit]
+
 # Transform_locals is a list of elements that we pass to the eval() call when
 # evaluating a transform line from the config. Passing these into the local
 # scope allows simple filters to be created on the fly.
@@ -226,6 +244,7 @@ transform_locals["ContentFilter"] = ContentFilter
 transform_locals["All"] = AllTransform
 transform_locals["Any"] = AnyTransform
 transform_locals["InTags"] = InTags
+transform_locals["ItemLimit"] = ItemLimit
 
 transform_locals["filter_read"] = StateFilter("read")
 transform_locals["sort_alphabetical"] =\
