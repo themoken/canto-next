@@ -294,8 +294,6 @@ class CantoFeedInoReader(DaemonFeedPlugin):
         self._list_add(item, "canto-state", state)
 
     def additems_inoreader(self, feed, newcontent, tags_to_add, tags_to_remove, remove_items):
-        log.debug("PRE ADD: %s" % "\n".join([x[0]["id"] for x in tags_to_add]))
-
         stream_id = quote("feed/" + feed.URL, [])
 
         query = { "n" : 1000 }
@@ -310,9 +308,10 @@ class CantoFeedInoReader(DaemonFeedPlugin):
             r = api.inoreader_req(content_path, query).json()
             self.ino_data.extend(r["items"])
         except (InoreaderAuthFailed, InoreaderReqFailed):
-            return
+            return (tags_to_add, tags_to_remove, remove_items)
         except Exception as e:
             log.debug("EXCEPT: %s", traceback.format_exc())
+            raise
 
         # Find items that were inserted last time, and remove them, potentially
         # adding them to our fresh Inoreader data.
