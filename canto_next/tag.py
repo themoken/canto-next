@@ -54,6 +54,9 @@ class CantoTags():
     def set_extra_tags(self, tag, extra_tags):
         self.extra_tags[tag] = extra_tags
 
+    def clear_tags(self):
+        self.tags = {}
+
     def reset(self):
         self.tag_transforms = {}
         self.extra_tags = {}
@@ -63,7 +66,7 @@ class CantoTags():
 
         # It it isn't, then the add or remove will set it for us.
 
-        self.tags = {}
+        self.clear_tags()
 
     #
     # Following must be called with tag_lock held with write

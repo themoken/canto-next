@@ -51,6 +51,7 @@ from canto_next.remote import DaemonRemotePlugin
 from canto_next.config import parse_locks, parse_unlocks, config
 from canto_next.locks import config_lock, feed_lock
 from canto_next.feed import wlock_all, wunlock_all, rlock_all, runlock_all, allfeeds
+from canto_next.tag import alltags
 
 from tempfile import mkstemp
 import subprocess
@@ -253,6 +254,15 @@ class CantoFileSync(DaemonBackendPlugin):
                 shutil.move(fname, self.backend.feed_path)
 
                 self.backend.shelf.open()
+
+                # Clear out all of the currently tagged items. Usually on
+                # update, we're able to discard items that we have in old
+                # content, but aren't in new. But since we just replaced all of
+                # our old content with a totally fresh copy, we might not know
+                # they exist. Can't use reset() because we don't want to lose
+                # configuration.
+
+                alltags.clear_tags()
 
                 # First half of wunlock_all, release these locks so
                 # fetch threads can get locks
