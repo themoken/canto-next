@@ -10,7 +10,9 @@
 from .feed import wlock_feeds
 from .hooks import call_hook
 
+import tempfile
 import logging
+import shutil
 import json
 import gzip
 import time
@@ -111,9 +113,17 @@ class CantoShelf():
         if self.cache == {}:
             return
 
-        fp = gzip.open(self.filename, "wt", 9, "UTF-8")
+        f, tmpname = tempfile.mkstemp(None, "feeds", os.path.dirname(self.filename))
+        os.close(f)
+
+        fp = gzip.open(tmpname, "wt", 9, "UTF-8")
         json.dump(self.cache, fp, indent=4, sort_keys=True)
         fp.close()
+
+        log.debug("Written tempfile.")
+
+        shutil.move(tmpname, self.filename)
+
         log.debug("Synced.")
 
     def close(self):
