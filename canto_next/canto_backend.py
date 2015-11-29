@@ -151,7 +151,7 @@ class CantoBackend(PluginHandler, CantoServer):
         self.interrupted = 0
 
         signal.signal(signal.SIGINT, self.sig_int)
-        signal.signal(signal.SIGTERM, self.sig_term)
+        signal.signal(signal.SIGTERM, self.sig_int)
         signal.signal(signal.SIGUSR1, self.sig_usr)
 
         self.start()
@@ -650,18 +650,9 @@ class CantoBackend(PluginHandler, CantoServer):
                 sys.exit(0)
         return 0
 
-    # SIGINT, take our time, exit cleanly
-
     def sig_int(self, a, b):
         log.info("Received INT")
         self.interrupted = 1
-
-    # SIGTERM, get the fuck out quick
-
-    def sig_term(self, a, b):
-        log.info("Received TERM")
-        self.cleanup()
-        sys.exit(0)
 
     def sig_usr(self, a, b):
         import threading
