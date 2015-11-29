@@ -217,7 +217,7 @@ class CantoConfig():
         except Exception as e:
             tb = traceback.format_exc()
             msg = "\n" + "".join(tb)
-            self.error(ident, value, "Invalid transform")
+            self.error(ident, value, "Invalid transform" + msg)
             return (True, "None")
 
         return (True, value)
