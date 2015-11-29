@@ -91,7 +91,7 @@ class RedditFetchJSON(DaemonFetchThreadPlugin):
 
 class RedditScoreSort(CantoTransform):
     def __init__(self):
-        pass
+        self.name = "Reddit Score Sort"
 
     def needed_attributes(self, tag):
         return [ "reddit-score" ]
