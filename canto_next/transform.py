@@ -140,7 +140,10 @@ class AllTransform(CantoTransform):
         for i, t in enumerate(args):
             if i > 0:
                 name += " AND "
-            name += t.name
+            if hasattr(t, "name"):
+                name += t.name
+            else:
+                name += "Unknown"
 
         name += ")"
         CantoTransform.__init__(self, name)
@@ -168,8 +171,10 @@ class AnyTransform(CantoTransform):
         for i, t in enumerate(args):
             if i > 0:
                 name += " OR "
-            name += t.name
-
+            if hasattr(t, "name"):
+                name += t.name
+            else:
+                name += "Unknown"
         name += ")"
         CantoTransform.__init__(self, name)
         self.transforms = args
