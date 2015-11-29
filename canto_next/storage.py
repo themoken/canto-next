@@ -55,8 +55,18 @@ class CantoShelf():
                         self.cache[key] = s[key]
                 except Exception as e:
                     log.error("Failed to migrate old shelf: %s", e)
-                    raise
-                log.info("Migrated old shelf")
+                    try:
+                        f = open(self.filename)
+                        data = f.read()
+                        f.close()
+                        log.error("BAD DATA: [%s]" % data)
+                    except Exception as e:
+                        log.error("Couldn't even read data? %s" % e)
+                        pass
+                    log.error("Carrying on with empty shelf")
+                    self.cache = {}
+                else:
+                    log.info("Migrated old shelf")
             finally:
                 fp.close()
 
