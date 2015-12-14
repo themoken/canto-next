@@ -257,7 +257,7 @@ def sync_state_to(changes, attrs, add_only = False):
             api.add_tag(attrs, "read")
         elif not add_only:
             if api.has_tag(attrs, "read"):
-                inoreader_remove_tag(attrs["canto_inoreader_id"], "read")
+                api.remove_tag(attrs, "read")
 
     if "canto-tags" in changes:
         for tag in changes["canto-tags"]:
@@ -269,9 +269,9 @@ def sync_state_to(changes, attrs, add_only = False):
             return
 
         for tag in attrs["canto_inoreader_categories"]:
-            tag = strip_ino_tag(tag)
-            if "user:" + tag not in changes[item_id]["canto-tags"]:
-                inoreader_remove_tag(attrs["canto_inoreader_id"], tag)
+            tag = api.strip_ino_tag(tag)
+            if "user:" + tag not in changes["canto-tags"]:
+                api.remove_tag(attrs, tag)
 
 class CantoFeedInoReader(DaemonFeedPlugin):
     def __init__(self, feed):
