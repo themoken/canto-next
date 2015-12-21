@@ -113,7 +113,7 @@ class CantoShelf():
         if self.cache == {}:
             return
 
-        f, tmpname = tempfile.mkstemp(None, "feeds", os.path.dirname(self.filename))
+        f, tmpname = tempfile.mkstemp("", "feeds", os.path.dirname(self.filename))
         os.close(f)
 
         fp = gzip.open(tmpname, "wt", 9, "UTF-8")
