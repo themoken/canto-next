@@ -14,7 +14,7 @@ changes = ['canto_backend.py','remote.py']
 class canto_next_build_py(build_py):
     def run(self):
         for source in changes:
-            os.utime("canto_next/" + source)
+            os.utime("canto_next/" + source, None)
         build_py.run(self)
 
 class canto_next_install_data(install_data):
