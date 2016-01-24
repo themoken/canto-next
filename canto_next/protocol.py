@@ -303,15 +303,30 @@ class CantoSocket:
     # 2) select.POLLHUP is the connection is dead.
 
     def do_write(self, conn, cmd, args):
+
+        # conn could be missing when the connection monitor thread has already
+        # cleaned up a connection (i.e. saw it close) before the response
+        # thread finishes sending it's response. So, instead of having response
+        # threads lock connections (ouch), or deferring the processing of the
+        # POLLHUP response, just detect when it's using stale data and ignore
+        # it.
+
+        try:
+            wlock = self.write_locks[conn]
+        except KeyError as e:
+            log.debug("conn not in write_locks %s" % e)
+            return
+
         # If we're just flushing data, we shouldn't hang on these:
+
         if cmd == None:
-            if not self.write_locks[conn].acquire(False):
+            if not wlock.acquire(False):
                 return
         else:
-            self.write_locks[conn].acquire()
+            wlock.acquire()
 
         r, frag = self._do_write(conn, cmd, args, self.write_frags[conn])
-        self.write_locks[conn].release()
+        wlock.release()
 
         if r == select.POLLHUP:
             self.disconnected(conn)
