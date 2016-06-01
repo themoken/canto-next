@@ -83,6 +83,7 @@ class CantoServer(CantoSocket):
             if not t.isAlive():
                 call_hook("server_kill_socket", [c])
                 t.join()
+                c.close()
                 self.connections.remove((c, t))
                 if self.connections == []:
                     call_hook("server_no_connections", [])
