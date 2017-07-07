@@ -546,7 +546,7 @@ class CantoRemote(PluginHandler, CantoClient):
 
             print("%s : %s" % (tag, self._numstate(tag, state)))
         else:
-            print("%s" % sum([self._numstate(tag, state) for tag in t ]))
+            print("%s" % sum([self._numstate(tag, state) for tag in t if tag.startswith("maintag:")]))
 
     def cmd_help(self):
         """USAGE: canto-remote help [command]"""
