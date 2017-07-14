@@ -97,6 +97,23 @@ class CantoFetchThread(PluginHandler, Thread):
             log.error("ERROR: try to parse %s, got %s" % (self.feed.URL, e))
             return
 
+        # Allow DaemonFetchThreadPlugins to do any sort of fetch stuff Doing
+        # this before any other processing allows us to have plugins that
+        # totally override the standard fetch.
+
+        for attr in list(self.plugin_attrs.keys()):
+            if not attr.startswith("fetch_"):
+                continue
+
+            try:
+                a = getattr(self, attr)
+                a(feed = self.feed, newcontent = update_contents)
+            except:
+                log.error("Error running fetch thread plugin")
+                log.error(traceback.format_exc())
+
+        log.debug("Plugins complete.")
+
         # Interpret feedparser's bozo_exception, if there was an
         # error that resulted in no content, it's the same as
         # any other broken feed.
@@ -124,22 +141,6 @@ class CantoFetchThread(PluginHandler, Thread):
         update_contents = json.loads(json.dumps(update_contents))
 
         log.debug("Parsed %s", self.feed.URL)
-
-        # Allow DaemonFetchThreadPlugins to do any sort of fetch stuff
-        # before the thread is marked as complete.
-
-        for attr in list(self.plugin_attrs.keys()):
-            if not attr.startswith("fetch_"):
-                continue
-
-            try:
-                a = getattr(self, attr)
-                a(feed = self.feed, newcontent = update_contents)
-            except:
-                log.error("Error running fetch thread plugin")
-                log.error(traceback.format_exc())
-
-        log.debug("Plugins complete.")
 
         # This handles it's own locking
         self.feed.index(update_contents)
