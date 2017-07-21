@@ -23,6 +23,13 @@ ENABLED = False
 # Synchronization interval in seconds
 INTERVAL = 5 * 60
 
+# How long, in seconds, we should wait for the initial sync. Setting to 0 will
+# cause a sync to occur before any other items can be read from disk, which
+# ensures you won't see any old items, but also means a full sync has to occur
+# before any items make it to the client and causes a long delay on startup.
+
+INITIAL_SYNC = 30
+
 #============================================
 # Probably won't need to change these.
 
@@ -84,8 +91,6 @@ class CantoFileSync(DaemonBackendPlugin):
         # Use setattributes and setconfigs commands to determine that we are the fresh
         # copy that should be synchronized.
 
-        self.sync_ts = 0;
-
         on_hook("daemon_end_loop", self.loop)
         on_hook("daemon_pre_setconfigs", self.pre_setconfigs)
         on_hook("daemon_pre_setattributes", self.pre_setattributes)
@@ -93,13 +98,15 @@ class CantoFileSync(DaemonBackendPlugin):
 
         self.reset()
 
-        # Do the initial sync
-
         # sync will grab files, check the timediff on the file if the file is
         # actually newer (like we failed to sync last time) then it will set
         # fresh_config and do a syncto.
 
-        self.cmd_sync()
+        self.sync_ts = 0
+        if (INITIAL_SYNC == 0):
+            self.cmd_sync()
+        elif (INITIAL_SYNC < INTERVAL):
+            self.sync_ts = time.time() - (INTERVAL - INITIAL_SYNC)
 
     def reset(self):
         self.fresh_config = False
