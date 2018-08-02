@@ -25,6 +25,10 @@ import time
 
 log = logging.getLogger("CANTO-FETCH")
 
+# Function to pass to json.dumps to strip non-serializable data
+def json_ignore(x):
+    return None
+
 class DaemonFetchThreadPlugin(Plugin):
     pass
 
@@ -138,7 +142,7 @@ class CantoFetchThread(PluginHandler, Thread):
         # Update timestamp
         update_contents["canto_update"] = self.feed.last_update
 
-        update_contents = json.loads(json.dumps(update_contents))
+        update_contents = json.loads(json.dumps(update_contents, default=json_ignore))
 
         log.debug("Parsed %s", self.feed.URL)
 
