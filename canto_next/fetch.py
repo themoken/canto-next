@@ -209,7 +209,7 @@ class CantoFetch():
         newthreads = []
 
         for thread, URL in self.threads:
-            if not force and thread.isAlive():
+            if not force and thread.is_alive():
                 newthreads.append((thread, URL))
                 continue
             work_done = True

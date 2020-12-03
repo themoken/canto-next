@@ -80,7 +80,7 @@ class CantoServer(CantoSocket):
     def no_dead_conns(self):
         self.connections_lock.acquire()
         for c, t in self.connections[:]:
-            if not t.isAlive():
+            if not t.is_alive():
                 call_hook("server_kill_socket", [c])
                 t.join()
                 c.close()
